@@ -1,5 +1,4 @@
-// app.js - VERSIÓN SIMPLIFICADA SIN WebSockets
-// Actualización por polling cada 10 segundos
+// app.js - VERSIÓN ACTUALIZACIÓN EN TIEMPO REAL
 
 // Base URL for API
 const API_BASE = '';
@@ -11,11 +10,10 @@ let resumen = [];
 let estadisticas = {};
 let configuracion = {};
 let isLoading = false;
-let autoRefreshInterval = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('💰 Paybook - Sistema Simplificado');
+    console.log('💰 CashFlow - Sistema en Tiempo Real');
     
     // Set default dates
     const ahora = new Date();
@@ -32,60 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Setup event listeners
     setupEventListeners();
     
-    // Start auto-refresh every 10 seconds
-    iniciarAutoRefresh();
-    
     // Show welcome message
     setTimeout(() => {
-        mostrarAlerta('¡Sistema listo!', 'Actualización automática cada 10 segundos', 'success');
+        mostrarAlerta('¡Sistema listo!', 'Todos los cambios se actualizan en tiempo real', 'success');
     }, 1500);
 });
-
-// ========== AUTO REFRESH SYSTEM ==========
-function iniciarAutoRefresh() {
-    // Clear any existing interval
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-    }
-    
-    // Start new interval (10 seconds)
-    autoRefreshInterval = setInterval(() => {
-        if (!document.hidden && !isLoading) {
-            actualizarDatosAutomaticamente();
-        }
-    }, 10000); // 10 segundos
-    
-    console.log('🔄 Auto-refresh iniciado (cada 10s)');
-}
-
-function detenerAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
-        console.log('⏹️ Auto-refresh detenido');
-    }
-}
-
-async function actualizarDatosAutomaticamente() {
-    try {
-        // Solo actualizar resumen y estadísticas (no todo)
-        await Promise.all([
-            actualizarResumen(),
-            cargarEstadisticas()
-        ]);
-        
-        // Actualizar UI
-        calcularEstadisticas();
-        
-        // Update timestamp
-        const ahora = new Date();
-        document.getElementById('lastUpdate').textContent = 
-            `Última actualización: ${ahora.toLocaleTimeString('es-ES')}`;
-            
-    } catch (error) {
-        console.log('⚠️ Error en actualización automática:', error);
-    }
-}
 
 // ========== SETUP EVENT LISTENERS ==========
 function setupEventListeners() {
@@ -99,18 +48,6 @@ function setupEventListeners() {
     
     document.getElementById('montoCarga')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') agregarCarga();
-    });
-    
-    // Detect page visibility changes
-    document.addEventListener('visibilitychange', function() {
-        if (document.hidden) {
-            console.log('📱 Página oculta - pausando auto-refresh');
-        } else {
-            console.log('📱 Página visible - reanudando');
-            if (!autoRefreshInterval) {
-                iniciarAutoRefresh();
-            }
-        }
     });
 }
 
@@ -236,7 +173,6 @@ function mostrarLoading(mostrar = true) {
     }
 }
 
-// Función segura para ocultar loading
 function forzarOcultarLoading() {
     isLoading = false;
     const overlay = document.getElementById('loadingOverlay');
@@ -297,7 +233,7 @@ async function cargarConfiguracion() {
     }
 }
 
-// Función mejorada para cargar datos iniciales
+// ========== LOAD INITIAL DATA ==========
 async function cargarDatosIniciales() {
     if (isLoading) {
         console.log('⚠️ Ya está cargando, ignorando llamada duplicada');
@@ -308,12 +244,12 @@ async function cargarDatosIniciales() {
     mostrarLoading(true);
     
     try {
-        // Cargar en paralelo para mejor rendimiento
+        // Cargar todo en paralelo
         const [cajerosData, cargasData, resumenData, estadisticasData] = await Promise.all([
-            cargarCajeros().catch(e => { console.error('Error cargando cajeros:', e); return []; }),
-            cargarCargas().catch(e => { console.error('Error cargando cargas:', e); return []; }),
-            actualizarResumen().catch(e => { console.error('Error cargando resumen:', e); return []; }),
-            cargarEstadisticas().catch(e => { console.error('Error cargando estadísticas:', e); return {}; })
+            cargarCajeros().catch(e => { console.error('Error cajeros:', e); return []; }),
+            cargarCargas().catch(e => { console.error('Error cargas:', e); return []; }),
+            actualizarResumen().catch(e => { console.error('Error resumen:', e); return []; }),
+            cargarEstadisticas().catch(e => { console.error('Error estadísticas:', e); return {}; })
         ]);
         
         console.log('✅ Todos los datos cargados');
@@ -321,7 +257,8 @@ async function cargarDatosIniciales() {
         console.log(`- Cargas: ${cargas.length}`);
         console.log(`- Resumen: ${resumen.length} cajeros`);
         
-        calcularEstadisticas();
+        // Actualizar toda la UI
+        actualizarTodaLaUI();
         
         // Actualizar timestamp
         const ahora = new Date();
@@ -340,53 +277,61 @@ async function cargarDatosIniciales() {
         console.error('❌ Error crítico cargando datos:', error);
         mostrarAlerta('Error', 'No se pudieron cargar los datos. Verifica la consola.', 'error');
     } finally {
-        // IMPORTANTE: Siempre ocultar loading
         console.log('🏁 Finalizando carga, ocultando loading...');
         mostrarLoading(false);
     }
 }
 
+function actualizarTodaLaUI() {
+    calcularEstadisticas();
+    actualizarTablaResumen();
+    actualizarTablaCargas();
+    actualizarEstadisticasUI();
+}
+
 // ========== CASHIERS MANAGEMENT ==========
-async function actualizarListaCajeros() {
+async function cargarCajeros() {
     try {
         const response = await fetch(`${API_BASE}/api/cajeros`);
         const data = await response.json();
         
         if (data.success) {
             cajeros = data.data || [];
-            
-            // Actualizar select de cajeros
             actualizarSelectCajeros();
-            
-            // Actualizar estadísticas
             actualizarEstadisticasCajeros();
-            
-            console.log('✅ Lista de cajeros actualizada');
-            
-            // Opcional: Actualizar contador en tiempo real
-            const contador = document.getElementById('cajerosCount');
-            if (contador) {
-                const activos = cajeros.filter(c => c.activo).length;
-                contador.innerHTML = `<i class="fas fa-users me-1"></i> ${activos} ${activos === 1 ? 'cajero activo' : 'cajeros activos'}`;
-            }
-            
-            return true;
+            return cajeros;
+        } else {
+            throw new Error(data.error);
         }
-        return false;
     } catch (error) {
-        console.error('❌ Error actualizando lista de cajeros:', error);
+        console.error('Error cargando cajeros:', error);
+        throw error;
+    }
+}
+
+async function actualizarListaCajeros(seleccionarId = null) {
+    try {
+        await cargarCajeros();
+        if (seleccionarId) {
+            const select = document.getElementById('selectCajero');
+            if (select) select.value = seleccionarId;
+        }
+        console.log('✅ Lista de cajeros actualizada');
+        return true;
+    } catch (error) {
+        console.error('❌ Error actualizando cajeros:', error);
         return false;
     }
 }
 
-function actualizarSelectCajeros(seleccionarId = null) {
+function actualizarSelectCajeros() {
     const select = document.getElementById('selectCajero');
     if (!select) return;
     
-    // Guardar el valor actualmente seleccionado
-    const valorAnterior = seleccionarId || select.value;
+    // Guardar selección actual
+    const seleccionActual = select.value;
     
-    // Limpiar opciones actuales
+    // Limpiar opciones
     select.innerHTML = '<option value="">Seleccione un cajero</option>';
     
     // Filtrar solo cajeros activos
@@ -404,25 +349,33 @@ function actualizarSelectCajeros(seleccionarId = null) {
         select.appendChild(option);
     });
     
-    // Restaurar selección anterior o usar la nueva
-    if (valorAnterior && cajerosActivos.some(c => c.id == valorAnterior)) {
-        select.value = valorAnterior;
-    } else if (cajerosActivos.length > 0 && !valorAnterior) {
-        // Si no hay selección, seleccionar el primero
-        select.value = cajerosActivos[0].id;
+    // Restaurar selección si existe
+    if (seleccionActual && cajerosActivos.some(c => c.id == seleccionActual)) {
+        select.value = seleccionActual;
     }
     
     // Actualizar contador
-    const cajerosCount = document.getElementById('cajerosCount');
-    if (cajerosCount) {
-        cajerosCount.innerHTML = `<i class="fas fa-users me-1"></i> ${cajerosActivos.length} ${cajerosActivos.length === 1 ? 'cajero activo' : 'cajeros activos'}`;
-    }
+    actualizarEstadisticasCajeros();
 }
 
 function actualizarEstadisticasCajeros() {
     const activos = cajeros.filter(c => c.activo).length;
+    const totales = cajeros.length;
+    
+    // Actualizar en navbar
     document.getElementById('totalCajeros').textContent = activos;
-    document.getElementById('contadorCajeros').textContent = `${activos} ${activos === 1 ? 'cajero' : 'cajeros'}`;
+    
+    // Actualizar en formulario
+    const contadorCajeros = document.getElementById('contadorCajeros');
+    if (contadorCajeros) {
+        contadorCajeros.textContent = `${activos} ${activos === 1 ? 'cajero' : 'cajeros'}`;
+    }
+    
+    // Actualizar en card
+    const cajerosCount = document.getElementById('cajerosCount');
+    if (cajerosCount) {
+        cajerosCount.innerHTML = `<i class="fas fa-users me-1"></i> ${activos} ${activos === 1 ? 'cajero activo' : 'cajeros activos'}`;
+    }
 }
 
 async function agregarCajero() {
@@ -454,7 +407,6 @@ async function agregarCajero() {
         });
         
         const data = await response.json();
-        console.log('📨 Respuesta agregar cajero:', data);
         
         if (data.success) {
             mostrarAlerta('¡Éxito!', `Cajero "${nombre}" agregado correctamente`, 'success');
@@ -466,20 +418,21 @@ async function agregarCajero() {
             form.classList.add('border-gradient');
             setTimeout(() => form.classList.remove('border-gradient'), 1000);
             
-            // 🆕 NUEVO: Actualizar la lista de cajeros SIN recargar toda la página
-            await actualizarListaCajeros();
+            // ACTUALIZAR EN TIEMPO REAL: Actualizar lista de cajeros
+            await actualizarListaCajeros(data.data.id);
             
-            // Seleccionar automáticamente el nuevo cajero en el select
-            if (data.data && data.data.id) {
-                const selectCajero = document.getElementById('selectCajero');
+            // Seleccionar automáticamente el nuevo cajero
+            const selectCajero = document.getElementById('selectCajero');
+            if (selectCajero) {
                 selectCajero.value = data.data.id;
-                
-                // Mostrar confirmación
-                mostrarAlerta('Cajero seleccionado', `"${nombre}" ya está seleccionado para nueva carga`, 'info');
-                
-                // Cambiar a la sección de cargas si estamos en cajeros
-                mostrarSeccion('cargas');
             }
+            
+            // Mostrar confirmación
+            mostrarAlerta('Cajero seleccionado', `"${nombre}" ya está seleccionado para nueva carga`, 'info');
+            
+            // Actualizar estadísticas generales
+            await cargarEstadisticas();
+            calcularEstadisticas();
             
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
@@ -522,7 +475,10 @@ async function editarCajero(id) {
         
         if (data.success) {
             mostrarAlerta('¡Éxito!', `Cajero actualizado a "${nuevoNombre}"`, 'success');
-            await cargarDatosIniciales();
+            // ACTUALIZAR EN TIEMPO REAL
+            await actualizarListaCajeros(id);
+            await actualizarResumen();
+            calcularEstadisticas();
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo actualizar el cajero', 'error');
         }
@@ -553,7 +509,10 @@ async function eliminarCajero(id) {
         
         if (data.success) {
             mostrarAlerta('¡Éxito!', data.message || 'Cajero procesado correctamente', 'success');
-            await cargarDatosIniciales();
+            // ACTUALIZAR EN TIEMPO REAL
+            await actualizarListaCajeros();
+            await actualizarResumen();
+            calcularEstadisticas();
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo procesar el cajero', 'error');
         }
@@ -567,19 +526,12 @@ async function eliminarCajero(id) {
 
 // ========== CHARGES MANAGEMENT ==========
 async function cargarCargas(fechaInicio = null, fechaFin = null) {
-    console.log('🔍 cargarCargas() llamado');
-    
     try {
         let url = `${API_BASE}/api/cargas`;
         
         if (fechaInicio && fechaFin) {
             url += `?fecha_inicio=${encodeURIComponent(fechaInicio)}&fecha_fin=${encodeURIComponent(fechaFin)}`;
-            console.log(`📅 Filtrando por fecha: ${fechaInicio} a ${fechaFin}`);
-        } else {
-            console.log('📅 Sin filtro de fecha');
         }
-        
-        console.log(`🌐 Fetching: ${url}`);
         
         const response = await fetch(url);
         
@@ -588,34 +540,24 @@ async function cargarCargas(fechaInicio = null, fechaFin = null) {
         }
         
         const data = await response.json();
-        console.log('📦 Respuesta API cargas:', data);
         
         if (data.success) {
             cargas = data.data || [];
-            console.log(`✅ ${cargas.length} cargas cargadas`);
             actualizarTablaCargas();
             actualizarEstadisticasCargas();
             return cargas;
         } else {
-            console.error('❌ Error en respuesta API:', data.error);
             throw new Error(data.error || 'Error desconocido');
         }
     } catch (error) {
         console.error('❌ Error cargando cargas:', error);
-        mostrarAlerta('Error', `No se pudieron cargar las cargas: ${error.message}`, 'error');
         throw error;
     }
 }
 
-// Función mejorada para actualizar tabla de cargas
 function actualizarTablaCargas() {
     const tbody = document.getElementById('tablaCargas');
-    if (!tbody) {
-        console.error('❌ No se encontró el elemento #tablaCargas');
-        return;
-    }
-    
-    console.log(`🔄 Actualizando tabla con ${cargas.length} cargas`);
+    if (!tbody) return;
     
     if (cargas.length === 0) {
         tbody.innerHTML = `
@@ -695,10 +637,6 @@ function actualizarTablaCargas() {
                 </td>
                 <td class="text-center">
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary hover-lift" onclick="editarCarga(${carga.id})" 
-                                title="Editar carga">
-                            <i class="fas fa-edit"></i>
-                        </button>
                         <button class="btn btn-outline-danger hover-lift" onclick="eliminarCarga(${carga.id})" 
                                 title="Eliminar carga">
                             <i class="fas fa-trash"></i>
@@ -714,18 +652,11 @@ function actualizarTablaCargas() {
         }
     });
     
-    // Mostrar contador si hay más de 50
-    if (cargas.length > 50) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td colspan="5" class="text-center text-muted py-2">
-                <small><i class="fas fa-info-circle me-1"></i> Mostrando 50 de ${cargas.length} cargas totales</small>
-            </td>
-        `;
-        tbody.appendChild(tr);
+    // Mostrar contador
+    const historialCount = document.getElementById('historialCount');
+    if (historialCount) {
+        historialCount.innerHTML = `<i class="fas fa-list me-1"></i> ${cargas.length} ${cargas.length === 1 ? 'carga' : 'cargas'}`;
     }
-    
-    console.log('✅ Tabla de cargas actualizada');
 }
 
 function getBadgeClass(plataforma) {
@@ -801,56 +732,17 @@ async function agregarCarga() {
             form.classList.add('border-gradient');
             setTimeout(() => form.classList.remove('border-gradient'), 1000);
             
-            // Update data
-            await cargarDatosIniciales();
+            // ACTUALIZAR EN TIEMPO REAL
+            await Promise.all([
+                cargarCargas(),
+                actualizarResumen(),
+                cargarEstadisticas()
+            ]);
+            
+            calcularEstadisticas();
             mostrarSeccion('historial');
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo registrar la carga', 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarAlerta('Error de conexión', 'No se pudo conectar con el servidor', 'error');
-    } finally {
-        mostrarLoading(false);
-    }
-}
-
-async function editarCarga(id) {
-    const carga = cargas.find(c => c.id === id);
-    if (!carga) return;
-    
-    const nuevoMonto = prompt(`Editar monto para ${carga.cajero} (${carga.plataforma}):`, carga.monto);
-    if (!nuevoMonto || parseFloat(nuevoMonto) === carga.monto) {
-        return;
-    }
-    
-    const monto = parseFloat(nuevoMonto);
-    if (isNaN(monto) || monto <= 0) {
-        mostrarAlerta('Error', 'El monto debe ser un número mayor a 0', 'error');
-        return;
-    }
-    
-    mostrarLoading(true);
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/cargas/${id}`, {
-            method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ 
-                monto: monto
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            mostrarAlerta('¡Éxito!', `Carga actualizada a $${monto.toFixed(2)}`, 'success');
-            await cargarDatosIniciales();
-        } else {
-            mostrarAlerta('Error', data.error || 'No se pudo actualizar la carga', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -879,7 +771,13 @@ async function eliminarCarga(id) {
         
         if (data.success) {
             mostrarAlerta('Eliminado', 'Carga eliminada correctamente', 'success');
-            await cargarDatosIniciales();
+            // ACTUALIZAR EN TIEMPO REAL
+            await Promise.all([
+                cargarCargas(),
+                actualizarResumen(),
+                cargarEstadisticas()
+            ]);
+            calcularEstadisticas();
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo eliminar la carga', 'error');
         }
@@ -962,6 +860,7 @@ async function actualizarResumen() {
         if (data.success) {
             resumen = data.data || [];
             actualizarTablaResumen();
+            return resumen;
         } else {
             throw new Error(data.error);
         }
@@ -1059,6 +958,7 @@ async function cargarEstadisticas() {
         if (data.success) {
             estadisticas = data.data;
             actualizarEstadisticasUI();
+            return estadisticas;
         }
     } catch (error) {
         console.error('Error cargando estadísticas:', error);
@@ -1179,8 +1079,14 @@ async function pagarCajero(cajeroId, cajeroNombre) {
                 `Se pagó $${montoNum.toFixed(2)} a ${cajeroNombre}\n\nPendiente anterior: $${pendiente.toFixed(2)}\nNuevo pendiente: $${(pendiente - montoNum).toFixed(2)}`, 
                 'success');
             
-            // Actualizar datos
-            await cargarDatosIniciales();
+            // ACTUALIZAR EN TIEMPO REAL
+            await Promise.all([
+                actualizarResumen(),
+                cargarEstadisticas(),
+                cargarCargas()
+            ]);
+            calcularEstadisticas();
+            
         } else {
             mostrarAlerta('Error', pagoData.error || 'No se pudo registrar el pago', 'error');
         }
@@ -1440,50 +1346,6 @@ async function mostrarConfiguracion() {
     });
 }
 
-async function editarConfiguracion(clave, valorActual) {
-    const nuevoValor = prompt(`Nuevo valor para ${clave.replace(/_/g, ' ').toLowerCase()}:`, valorActual);
-    if (nuevoValor === null || nuevoValor === valorActual) {
-        return;
-    }
-    
-    mostrarLoading(true);
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/configuracion`, {
-            method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                [clave]: nuevoValor
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            mostrarAlerta('Configuración actualizada', `${clave} actualizado a: ${nuevoValor}`, 'success');
-            await cargarConfiguracion();
-            
-            // Close modal and reopen
-            const modal = document.getElementById('modalConfiguracion');
-            if (modal) {
-                const bsModal = bootstrap.Modal.getInstance(modal);
-                bsModal.hide();
-                setTimeout(() => mostrarConfiguracion(), 500);
-            }
-        } else {
-            mostrarAlerta('Error', data.error || 'No se pudo actualizar la configuración', 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
-    } finally {
-        mostrarLoading(false);
-    }
-}
-
 // ========== UTILITY FUNCTIONS ==========
 function formatCurrency(amount) {
     return new Intl.NumberFormat('es-ES', {
@@ -1510,7 +1372,6 @@ window.agregarCajero = agregarCajero;
 window.agregarCarga = agregarCarga;
 window.agregarCargaRapida = agregarCargaRapida;
 window.eliminarCarga = eliminarCarga;
-window.editarCarga = editarCarga;
 window.filtrarCargas = filtrarCargas;
 window.limpiarFiltro = limpiarFiltro;
 window.exportarReporte = exportarReporte;
@@ -1532,3 +1393,6 @@ window.cerrarAlerta = cerrarAlerta;
 window.pagarCajero = pagarCajero;
 window.verPendientes = verPendientes;
 window.forzarOcultarLoading = forzarOcultarLoading;
+window.cargarCajeros = cargarCajeros;
+window.cargarCargas = cargarCargas;
+window.actualizarResumen = actualizarResumen;

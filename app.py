@@ -6,8 +6,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 import traceback
 from threading import Lock
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Habilitar CORS para todas las rutas
 
 # Ruta de la base de datos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -339,9 +341,6 @@ def get_cargas():
             cargas = cursor.fetchall()
             conn.close()
         
-        # DEBUG: Imprimir cuántas cargas se encontraron
-        print(f"📊 API /api/cargas: {len(cargas)} cargas encontradas")
-        
         return jsonify({
             'success': True,
             'data': [{
@@ -355,7 +354,6 @@ def get_cargas():
         })
         
     except Exception as e:
-        print(f"❌ Error en /api/cargas: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cargas', methods=['POST'])
@@ -621,7 +619,6 @@ def get_estadisticas():
             }
         })
     except Exception as e:
-        print(f"❌ Error en /api/estadisticas: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ========== API PAGOS ==========
@@ -864,16 +861,15 @@ def status():
         'status': 'online',
         'database': os.path.exists(DB_PATH),
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'version': '2.1',
-        'websocket': 'desactivado',
-        'actualizacion': 'polling cada 10s'
+        'version': '2.2',
+        'actualizacion': 'tiempo real'
     })
 
 # ========== INICIAR SERVIDOR ==========
 if __name__ == '__main__':
-    print("🚀 Iniciando CashFlow v2.1 (SIN WebSockets)...")
+    port = int(os.environ.get("PORT", 5000))
+    print(f"🚀 Iniciando CashFlow v2.2 (Actualización en Tiempo Real)...")
     print(f"📁 Base de datos: {DB_PATH}")
-    print("🌐 Servidor: http://127.0.0.1:5000")
-    print("📱 Acceso móvil: http://[TU-IP]:5000")
+    print(f"🌐 Puerto: {port}")
     print("\n⚠️  Para detener: Presiona Ctrl+C\n")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
