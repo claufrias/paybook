@@ -15,7 +15,7 @@ let autoRefreshInterval = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('💰 CashFlow - Sistema Simplificado');
+    console.log('💰 Paybook - Sistema Simplificado');
     
     // Set default dates
     const ahora = new Date();
@@ -347,36 +347,76 @@ async function cargarDatosIniciales() {
 }
 
 // ========== CASHIERS MANAGEMENT ==========
-async function cargarCajeros() {
+async function actualizarListaCajeros() {
     try {
         const response = await fetch(`${API_BASE}/api/cajeros`);
         const data = await response.json();
         
         if (data.success) {
             cajeros = data.data || [];
+            
+            // Actualizar select de cajeros
             actualizarSelectCajeros();
+            
+            // Actualizar estadísticas
             actualizarEstadisticasCajeros();
-        } else {
-            throw new Error(data.error);
+            
+            console.log('✅ Lista de cajeros actualizada');
+            
+            // Opcional: Actualizar contador en tiempo real
+            const contador = document.getElementById('cajerosCount');
+            if (contador) {
+                const activos = cajeros.filter(c => c.activo).length;
+                contador.innerHTML = `<i class="fas fa-users me-1"></i> ${activos} ${activos === 1 ? 'cajero activo' : 'cajeros activos'}`;
+            }
+            
+            return true;
         }
+        return false;
     } catch (error) {
-        console.error('Error cargando cajeros:', error);
-        throw error;
+        console.error('❌ Error actualizando lista de cajeros:', error);
+        return false;
     }
 }
 
-function actualizarSelectCajeros() {
+function actualizarSelectCajeros(seleccionarId = null) {
     const select = document.getElementById('selectCajero');
     if (!select) return;
     
+    // Guardar el valor actualmente seleccionado
+    const valorAnterior = seleccionarId || select.value;
+    
+    // Limpiar opciones actuales
     select.innerHTML = '<option value="">Seleccione un cajero</option>';
     
-    cajeros.filter(c => c.activo).forEach(cajero => {
+    // Filtrar solo cajeros activos
+    const cajerosActivos = cajeros.filter(c => c.activo);
+    
+    // Ordenar alfabéticamente
+    cajerosActivos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    
+    // Agregar opciones
+    cajerosActivos.forEach(cajero => {
         const option = document.createElement('option');
         option.value = cajero.id;
         option.textContent = cajero.nombre;
+        option.dataset.activo = cajero.activo;
         select.appendChild(option);
     });
+    
+    // Restaurar selección anterior o usar la nueva
+    if (valorAnterior && cajerosActivos.some(c => c.id == valorAnterior)) {
+        select.value = valorAnterior;
+    } else if (cajerosActivos.length > 0 && !valorAnterior) {
+        // Si no hay selección, seleccionar el primero
+        select.value = cajerosActivos[0].id;
+    }
+    
+    // Actualizar contador
+    const cajerosCount = document.getElementById('cajerosCount');
+    if (cajerosCount) {
+        cajerosCount.innerHTML = `<i class="fas fa-users me-1"></i> ${cajerosActivos.length} ${cajerosActivos.length === 1 ? 'cajero activo' : 'cajeros activos'}`;
+    }
 }
 
 function actualizarEstadisticasCajeros() {
@@ -385,7 +425,6 @@ function actualizarEstadisticasCajeros() {
     document.getElementById('contadorCajeros').textContent = `${activos} ${activos === 1 ? 'cajero' : 'cajeros'}`;
 }
 
-// Función mejorada para agregar cajero
 async function agregarCajero() {
     const nombreInput = document.getElementById('nombreCajero');
     const nombre = nombreInput.value.trim();
@@ -427,8 +466,20 @@ async function agregarCajero() {
             form.classList.add('border-gradient');
             setTimeout(() => form.classList.remove('border-gradient'), 1000);
             
-            // Recargar datos
-            await cargarDatosIniciales();
+            // 🆕 NUEVO: Actualizar la lista de cajeros SIN recargar toda la página
+            await actualizarListaCajeros();
+            
+            // Seleccionar automáticamente el nuevo cajero en el select
+            if (data.data && data.data.id) {
+                const selectCajero = document.getElementById('selectCajero');
+                selectCajero.value = data.data.id;
+                
+                // Mostrar confirmación
+                mostrarAlerta('Cajero seleccionado', `"${nombre}" ya está seleccionado para nueva carga`, 'info');
+                
+                // Cambiar a la sección de cargas si estamos en cajeros
+                mostrarSeccion('cargas');
+            }
             
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
@@ -439,7 +490,6 @@ async function agregarCajero() {
         mostrarAlerta('Error de conexión', 'Verifique su conexión a internet', 'error');
         
     } finally {
-        // IMPORTANTE: Siempre ocultar loading
         mostrarLoading(false);
     }
 }
