@@ -3,7 +3,6 @@ import sqlite3
 import os
 import json
 from datetime import datetime, timedelta
-import pandas as pd
 import traceback
 from threading import Lock
 from flask_cors import CORS

@@ -1276,16 +1276,17 @@ async function exportarReporte() {
         const data = await response.json();
         
         if (data.success) {
-            // Create download link
+            // Cambiar "Excel" por "CSV" en el mensaje
+            mostrarAlerta('Exportado', 'Reporte descargado correctamente (CSV)', 'success');
+            
+            // Crear download link
             const link = document.createElement('a');
             link.href = data.url;
-            link.download = data.filename;
+            link.download = data.filename.replace('.xlsx', '.csv'); // Cambiar extensión
             link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            mostrarAlerta('Exportado', 'Reporte descargado correctamente', 'success');
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo exportar el reporte', 'error');
         }
