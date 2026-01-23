@@ -9,7 +9,7 @@ from threading import Lock
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Habilitar CORS para todas las rutas
+CORS(app)
 
 # Ruta de la base de datos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -807,6 +807,38 @@ def get_configuracion():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/configuracion', methods=['PUT'])
+def update_configuracion():
+    try:
+        if request.json_data:
+            data = request.json_data
+        else:
+            data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No se recibieron datos'}), 400
+        
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            for clave, valor in data.items():
+                cursor.execute('''
+                    INSERT OR REPLACE INTO configuraciones (clave, valor)
+                    VALUES (?, ?)
+                ''', (clave, str(valor)))
+            
+            conn.commit()
+            conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Configuración actualizada exitosamente'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ========== API HERRAMIENTAS ==========
 @app.route('/api/herramientas/calcular-comisiones', methods=['POST'])
 def calcular_comisiones():
@@ -861,14 +893,14 @@ def status():
         'status': 'online',
         'database': os.path.exists(DB_PATH),
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'version': '2.2',
+        'version': '3.0',
         'actualizacion': 'tiempo real'
     })
 
 # ========== INICIAR SERVIDOR ==========
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    print(f"🚀 Iniciando CashFlow v2.2 (Actualización en Tiempo Real)...")
+    print(f"🚀 Iniciando CashFlow v3.0 (Actualización en Tiempo Real)...")
     print(f"📁 Base de datos: {DB_PATH}")
     print(f"🌐 Puerto: {port}")
     print("\n⚠️  Para detener: Presiona Ctrl+C\n")

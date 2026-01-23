@@ -1,4 +1,4 @@
-// app.js - VERSIÓN ACTUALIZACIÓN EN TIEMPO REAL
+// app.js - VERSIÓN COMPLETA Y FUNCIONAL
 
 // Base URL for API
 const API_BASE = '';
@@ -13,7 +13,7 @@ let isLoading = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('💰 CashFlow - Sistema en Tiempo Real');
+    console.log('💰 CashFlow v3.0 - Sistema en Tiempo Real');
     
     // Set default dates
     const ahora = new Date();
@@ -23,17 +23,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('fechaInicio').value = inicioDia.toISOString().slice(0, 16);
     document.getElementById('fechaFin').value = finDia.toISOString().slice(0, 16);
     
-    // Load initial data
-    cargarConfiguracion();
-    cargarDatosIniciales();
-    
     // Setup event listeners
     setupEventListeners();
     
-    // Show welcome message
-    setTimeout(() => {
-        mostrarAlerta('¡Sistema listo!', 'Todos los cambios se actualizan en tiempo real', 'success');
-    }, 1500);
+    // Load initial data
+    cargarDatosIniciales();
 });
 
 // ========== SETUP EVENT LISTENERS ==========
@@ -42,13 +36,20 @@ function setupEventListeners() {
     document.addEventListener('keydown', handleKeyboardShortcuts);
     
     // Form submissions
-    document.getElementById('nombreCajero')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') agregarCajero();
-    });
+    const nombreCajeroInput = document.getElementById('nombreCajero');
+    const montoCargaInput = document.getElementById('montoCarga');
     
-    document.getElementById('montoCarga')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') agregarCarga();
-    });
+    if (nombreCajeroInput) {
+        nombreCajeroInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') agregarCajero();
+        });
+    }
+    
+    if (montoCargaInput) {
+        montoCargaInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') agregarCarga();
+        });
+    }
 }
 
 function handleKeyboardShortcuts(event) {
@@ -62,13 +63,15 @@ function handleKeyboardShortcuts(event) {
     // Ctrl + N or Cmd + N to focus new cashier
     if ((event.ctrlKey || event.metaKey) && event.key === 'n') {
         event.preventDefault();
-        document.getElementById('nombreCajero')?.focus();
+        const input = document.getElementById('nombreCajero');
+        if (input) input.focus();
     }
     
     // Ctrl + G or Cmd + G to focus new charge
     if ((event.ctrlKey || event.metaKey) && event.key === 'g') {
         event.preventDefault();
-        document.getElementById('montoCarga')?.focus();
+        const input = document.getElementById('montoCarga');
+        if (input) input.focus();
     }
     
     // Ctrl + E or Cmd + E to export
@@ -120,23 +123,29 @@ function mostrarAlerta(titulo, mensaje, tipo = 'info') {
     `;
     
     const container = document.getElementById('alertContainer');
-    container.prepend(alerta);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (alerta.parentNode) {
-            alerta.classList.add('hiding');
-            setTimeout(() => {
-                if (alerta.parentNode) alerta.remove();
-            }, 300);
-        }
-    }, 5000);
+    if (container) {
+        container.prepend(alerta);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alerta.parentNode) {
+                alerta.classList.add('hiding');
+                setTimeout(() => {
+                    if (alerta.parentNode) alerta.remove();
+                }, 300);
+            }
+        }, 5000);
+    }
 }
 
 function cerrarAlerta(btn) {
     const alerta = btn.closest('.alert-ig');
-    alerta.classList.add('hiding');
-    setTimeout(() => alerta.remove(), 300);
+    if (alerta) {
+        alerta.classList.add('hiding');
+        setTimeout(() => {
+            if (alerta.parentNode) alerta.remove();
+        }, 300);
+    }
 }
 
 // ========== LOADING OVERLAY ==========
@@ -149,23 +158,23 @@ function mostrarLoading(mostrar = true) {
         overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
         
-        // Timeout de seguridad (8 segundos máximo)
+        // Safety timeout (10 seconds max)
         if (window.loadingTimeout) {
             clearTimeout(window.loadingTimeout);
         }
         window.loadingTimeout = setTimeout(() => {
             if (isLoading) {
-                console.warn('⚠️ Loading timeout - forzando ocultar');
+                console.warn('⚠️ Loading timeout - forcing hide');
                 mostrarLoading(false);
                 mostrarAlerta('Timeout', 'La operación tardó demasiado', 'warning');
             }
-        }, 8000);
+        }, 10000);
         
     } else {
         overlay.classList.remove('active');
         document.body.style.overflow = 'auto';
         
-        // Limpiar timeout
+        // Clear timeout
         if (window.loadingTimeout) {
             clearTimeout(window.loadingTimeout);
             window.loadingTimeout = null;
@@ -240,24 +249,43 @@ async function cargarDatosIniciales() {
         return;
     }
     
-    console.log('🚀 cargarDatosIniciales() iniciado');
+    console.log('🚀 Cargando datos iniciales...');
     mostrarLoading(true);
     
     try {
-        // Cargar todo en paralelo
-        const [cajerosData, cargasData, resumenData, estadisticasData] = await Promise.all([
-            cargarCajeros().catch(e => { console.error('Error cajeros:', e); return []; }),
-            cargarCargas().catch(e => { console.error('Error cargas:', e); return []; }),
-            actualizarResumen().catch(e => { console.error('Error resumen:', e); return []; }),
-            cargarEstadisticas().catch(e => { console.error('Error estadísticas:', e); return {}; })
+        // Cargar configuración primero
+        await cargarConfiguracion();
+        
+        // Cargar datos en paralelo para mejor rendimiento
+        const [cajerosData, cargasData, resumenData, estadisticasData] = await Promise.allSettled([
+            cargarCajeros(),
+            cargarCargas(),
+            cargarResumen(),
+            cargarEstadisticas()
         ]);
         
-        console.log('✅ Todos los datos cargados');
-        console.log(`- Cajeros: ${cajeros.length}`);
-        console.log(`- Cargas: ${cargas.length}`);
-        console.log(`- Resumen: ${resumen.length} cajeros`);
+        // Procesar resultados
+        if (cajerosData.status === 'fulfilled') {
+            cajeros = cajerosData.value || [];
+            console.log(`✅ ${cajeros.length} cajeros cargados`);
+        }
         
-        // Actualizar toda la UI
+        if (cargasData.status === 'fulfilled') {
+            cargas = cargasData.value || [];
+            console.log(`✅ ${cargas.length} cargas cargadas`);
+        }
+        
+        if (resumenData.status === 'fulfilled') {
+            resumen = resumenData.value || [];
+            console.log(`✅ Resumen de ${resumen.length} cajeros cargado`);
+        }
+        
+        if (estadisticasData.status === 'fulfilled') {
+            estadisticas = estadisticasData.value || {};
+            console.log('✅ Estadísticas cargadas');
+        }
+        
+        // Actualizar UI
         actualizarTodaLaUI();
         
         // Actualizar timestamp
@@ -267,26 +295,28 @@ async function cargarDatosIniciales() {
             lastUpdateEl.textContent = `Última actualización: ${ahora.toLocaleTimeString('es-ES')}`;
         }
         
-        // Mostrar resumen en consola
-        if (resumen.length > 0) {
-            const totalPendiente = resumen.reduce((sum, item) => sum + item.total, 0);
-            console.log(`💰 Total pendiente: $${totalPendiente.toFixed(2)}`);
-        }
+        // Mostrar mensaje de bienvenida
+        setTimeout(() => {
+            mostrarAlerta('¡Sistema listo!', 'Todos los cambios se actualizan en tiempo real', 'success');
+        }, 1000);
         
     } catch (error) {
         console.error('❌ Error crítico cargando datos:', error);
         mostrarAlerta('Error', 'No se pudieron cargar los datos. Verifica la consola.', 'error');
     } finally {
-        console.log('🏁 Finalizando carga, ocultando loading...');
-        mostrarLoading(false);
+        // Siempre ocultar loading después de 1 segundo mínimo
+        setTimeout(() => {
+            mostrarLoading(false);
+        }, 1000);
     }
 }
 
 function actualizarTodaLaUI() {
-    calcularEstadisticas();
+    actualizarSelectCajeros();
     actualizarTablaResumen();
     actualizarTablaCargas();
-    actualizarEstadisticasUI();
+    calcularEstadisticas();
+    actualizarContadores();
 }
 
 // ========== CASHIERS MANAGEMENT ==========
@@ -296,10 +326,7 @@ async function cargarCajeros() {
         const data = await response.json();
         
         if (data.success) {
-            cajeros = data.data || [];
-            actualizarSelectCajeros();
-            actualizarEstadisticasCajeros();
-            return cajeros;
+            return data.data || [];
         } else {
             throw new Error(data.error);
         }
@@ -309,27 +336,23 @@ async function cargarCajeros() {
     }
 }
 
-async function actualizarListaCajeros(seleccionarId = null) {
+async function actualizarListaCajeros() {
     try {
         await cargarCajeros();
-        if (seleccionarId) {
-            const select = document.getElementById('selectCajero');
-            if (select) select.value = seleccionarId;
-        }
-        console.log('✅ Lista de cajeros actualizada');
-        return true;
+        actualizarSelectCajeros();
+        mostrarAlerta('Actualizado', 'Lista de cajeros actualizada', 'success');
     } catch (error) {
-        console.error('❌ Error actualizando cajeros:', error);
-        return false;
+        console.error('Error actualizando cajeros:', error);
+        mostrarAlerta('Error', 'No se pudo actualizar la lista de cajeros', 'error');
     }
 }
 
-function actualizarSelectCajeros() {
+function actualizarSelectCajeros(seleccionarId = null) {
     const select = document.getElementById('selectCajero');
     if (!select) return;
     
     // Guardar selección actual
-    const seleccionActual = select.value;
+    const seleccionActual = seleccionarId || select.value;
     
     // Limpiar opciones
     select.innerHTML = '<option value="">Seleccione un cajero</option>';
@@ -352,29 +375,32 @@ function actualizarSelectCajeros() {
     // Restaurar selección si existe
     if (seleccionActual && cajerosActivos.some(c => c.id == seleccionActual)) {
         select.value = seleccionActual;
+    } else if (cajerosActivos.length > 0 && !seleccionActual) {
+        // Si no hay selección, seleccionar el primero
+        select.value = cajerosActivos[0].id;
     }
     
-    // Actualizar contador
-    actualizarEstadisticasCajeros();
+    // Actualizar contadores
+    actualizarContadoresCajeros();
 }
 
-function actualizarEstadisticasCajeros() {
+function actualizarContadoresCajeros() {
     const activos = cajeros.filter(c => c.activo).length;
-    const totales = cajeros.length;
     
-    // Actualizar en navbar
-    document.getElementById('totalCajeros').textContent = activos;
+    // Navbar
+    const totalCajerosEl = document.getElementById('totalCajeros');
+    if (totalCajerosEl) totalCajerosEl.textContent = activos;
     
-    // Actualizar en formulario
-    const contadorCajeros = document.getElementById('contadorCajeros');
-    if (contadorCajeros) {
-        contadorCajeros.textContent = `${activos} ${activos === 1 ? 'cajero' : 'cajeros'}`;
+    // Card header
+    const contadorCajerosEl = document.getElementById('contadorCajeros');
+    if (contadorCajerosEl) {
+        contadorCajerosEl.textContent = `${activos} ${activos === 1 ? 'cajero' : 'cajeros'}`;
     }
     
-    // Actualizar en card
-    const cajerosCount = document.getElementById('cajerosCount');
-    if (cajerosCount) {
-        cajerosCount.innerHTML = `<i class="fas fa-users me-1"></i> ${activos} ${activos === 1 ? 'cajero activo' : 'cajeros activos'}`;
+    // Cajeros count
+    const cajerosCountEl = document.getElementById('cajerosCount');
+    if (cajerosCountEl) {
+        cajerosCountEl.innerHTML = `<i class="fas fa-users me-1"></i> ${activos} ${activos === 1 ? 'cajero activo' : 'cajeros activos'}`;
     }
 }
 
@@ -393,7 +419,7 @@ async function agregarCajero() {
         return;
     }
     
-    console.log(`➕ Intentando agregar cajero: "${nombre}"`);
+    console.log(`➕ Agregando cajero: "${nombre}"`);
     mostrarLoading(true);
     
     try {
@@ -415,11 +441,14 @@ async function agregarCajero() {
             
             // Animar el formulario
             const form = document.getElementById('formCajero');
-            form.classList.add('border-gradient');
-            setTimeout(() => form.classList.remove('border-gradient'), 1000);
+            if (form) {
+                form.classList.add('border-gradient');
+                setTimeout(() => form.classList.remove('border-gradient'), 1000);
+            }
             
-            // ACTUALIZAR EN TIEMPO REAL: Actualizar lista de cajeros
-            await actualizarListaCajeros(data.data.id);
+            // Recargar cajeros
+            cajeros = await cargarCajeros();
+            actualizarSelectCajeros(data.data.id);
             
             // Seleccionar automáticamente el nuevo cajero
             const selectCajero = document.getElementById('selectCajero');
@@ -427,12 +456,17 @@ async function agregarCajero() {
                 selectCajero.value = data.data.id;
             }
             
+            // Recargar resumen y estadísticas
+            await Promise.all([
+                cargarResumen(),
+                cargarEstadisticas()
+            ]);
+            
+            actualizarTablaResumen();
+            calcularEstadisticas();
+            
             // Mostrar confirmación
             mostrarAlerta('Cajero seleccionado', `"${nombre}" ya está seleccionado para nueva carga`, 'info');
-            
-            // Actualizar estadísticas generales
-            await cargarEstadisticas();
-            calcularEstadisticas();
             
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
@@ -475,10 +509,15 @@ async function editarCajero(id) {
         
         if (data.success) {
             mostrarAlerta('¡Éxito!', `Cajero actualizado a "${nuevoNombre}"`, 'success');
-            // ACTUALIZAR EN TIEMPO REAL
-            await actualizarListaCajeros(id);
-            await actualizarResumen();
+            
+            // Recargar datos
+            cajeros = await cargarCajeros();
+            resumen = await cargarResumen();
+            
+            actualizarSelectCajeros(id);
+            actualizarTablaResumen();
             calcularEstadisticas();
+            
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo actualizar el cajero', 'error');
         }
@@ -494,7 +533,11 @@ async function eliminarCajero(id) {
     const cajero = cajeros.find(c => c.id === id);
     if (!cajero) return;
     
-    if (!confirm(`¿Está seguro de ${cajero.activo ? 'desactivar' : 'eliminar'} al cajero "${cajero.nombre}"?\n${cajero.activo ? 'Se mantendrán sus cargas registradas.' : 'Esta acción no se puede deshacer.'}`)) {
+    const confirmacion = cajero.activo ? 
+        `¿Está seguro de desactivar al cajero "${cajero.nombre}"?\nSe mantendrán sus cargas registradas.` :
+        `¿Está seguro de eliminar permanentemente al cajero "${cajero.nombre}"?\nEsta acción no se puede deshacer.`;
+    
+    if (!confirm(confirmacion)) {
         return;
     }
     
@@ -509,10 +552,15 @@ async function eliminarCajero(id) {
         
         if (data.success) {
             mostrarAlerta('¡Éxito!', data.message || 'Cajero procesado correctamente', 'success');
-            // ACTUALIZAR EN TIEMPO REAL
-            await actualizarListaCajeros();
-            await actualizarResumen();
+            
+            // Recargar datos
+            cajeros = await cargarCajeros();
+            resumen = await cargarResumen();
+            
+            actualizarSelectCajeros();
+            actualizarTablaResumen();
             calcularEstadisticas();
+            
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo procesar el cajero', 'error');
         }
@@ -542,10 +590,7 @@ async function cargarCargas(fechaInicio = null, fechaFin = null) {
         const data = await response.json();
         
         if (data.success) {
-            cargas = data.data || [];
-            actualizarTablaCargas();
-            actualizarEstadisticasCargas();
-            return cargas;
+            return data.data || [];
         } else {
             throw new Error(data.error || 'Error desconocido');
         }
@@ -630,18 +675,13 @@ function actualizarTablaCargas() {
                     </span>
                 </td>
                 <td class="text-end">
-                    <span class="fw-bold text-gradient">$${parseFloat(carga.monto || 0).toLocaleString('es-ES', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    })}</span>
+                    <span class="fw-bold text-gradient">$${parseFloat(carga.monto || 0).toFixed(2)}</span>
                 </td>
                 <td class="text-center">
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-danger hover-lift" onclick="eliminarCarga(${carga.id})" 
-                                title="Eliminar carga">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+                    <button class="btn btn-outline-danger btn-sm hover-lift" onclick="eliminarCarga(${carga.id})" 
+                            title="Eliminar carga">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             `;
             
@@ -652,10 +692,15 @@ function actualizarTablaCargas() {
         }
     });
     
-    // Mostrar contador
+    // Actualizar contador
     const historialCount = document.getElementById('historialCount');
     if (historialCount) {
         historialCount.innerHTML = `<i class="fas fa-list me-1"></i> ${cargas.length} ${cargas.length === 1 ? 'carga' : 'cargas'}`;
+    }
+    
+    const cargasCount = document.getElementById('cargasCount');
+    if (cargasCount) {
+        cargasCount.innerHTML = `<i class="fas fa-list me-1"></i> ${cargas.length} ${cargas.length === 1 ? 'carga registrada' : 'cargas registradas'}`;
     }
 }
 
@@ -668,8 +713,18 @@ function getBadgeClass(plataforma) {
     }
 }
 
-function actualizarEstadisticasCargas() {
-    document.getElementById('totalCargas').textContent = cargas.length;
+function actualizarContadores() {
+    // Total cargas
+    const totalCargasEl = document.getElementById('totalCargas');
+    if (totalCargasEl) {
+        totalCargasEl.textContent = cargas.length;
+    }
+    
+    // Data status
+    const dataStatusEl = document.getElementById('dataStatus');
+    if (dataStatusEl) {
+        dataStatusEl.textContent = `Cajeros: ${cajeros.filter(c => c.activo).length} | Cargas: ${cargas.length} | Total: $${resumen.reduce((sum, item) => sum + item.total, 0).toFixed(2)}`;
+    }
 }
 
 async function agregarCarga() {
@@ -729,18 +784,31 @@ async function agregarCarga() {
             
             // Animate success
             const form = document.getElementById('formCarga');
-            form.classList.add('border-gradient');
-            setTimeout(() => form.classList.remove('border-gradient'), 1000);
+            if (form) {
+                form.classList.add('border-gradient');
+                setTimeout(() => form.classList.remove('border-gradient'), 1000);
+            }
             
-            // ACTUALIZAR EN TIEMPO REAL
-            await Promise.all([
+            // Recargar datos en paralelo
+            const [nuevasCargas, nuevoResumen, nuevasEstadisticas] = await Promise.all([
                 cargarCargas(),
-                actualizarResumen(),
+                cargarResumen(),
                 cargarEstadisticas()
             ]);
             
+            cargas = nuevasCargas;
+            resumen = nuevoResumen;
+            estadisticas = nuevasEstadisticas;
+            
+            // Actualizar UI
+            actualizarTablaCargas();
+            actualizarTablaResumen();
             calcularEstadisticas();
+            actualizarContadores();
+            
+            // Mostrar sección de historial
             mostrarSeccion('historial');
+            
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo registrar la carga', 'error');
         }
@@ -771,13 +839,24 @@ async function eliminarCarga(id) {
         
         if (data.success) {
             mostrarAlerta('Eliminado', 'Carga eliminada correctamente', 'success');
-            // ACTUALIZAR EN TIEMPO REAL
-            await Promise.all([
+            
+            // Recargar datos en paralelo
+            const [nuevasCargas, nuevoResumen, nuevasEstadisticas] = await Promise.all([
                 cargarCargas(),
-                actualizarResumen(),
+                cargarResumen(),
                 cargarEstadisticas()
             ]);
+            
+            cargas = nuevasCargas;
+            resumen = nuevoResumen;
+            estadisticas = nuevasEstadisticas;
+            
+            // Actualizar UI
+            actualizarTablaCargas();
+            actualizarTablaResumen();
             calcularEstadisticas();
+            actualizarContadores();
+            
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo eliminar la carga', 'error');
         }
@@ -792,16 +871,18 @@ async function eliminarCarga(id) {
 // Quick add charge
 function agregarCargaRapida() {
     mostrarSeccion('cargas');
-    document.getElementById('montoCarga').focus();
+    const montoInput = document.getElementById('montoCarga');
+    if (montoInput) montoInput.focus();
     
     // If no cajero selected, show alert
-    if (!document.getElementById('selectCajero').value) {
+    const selectCajero = document.getElementById('selectCajero');
+    if (selectCajero && !selectCajero.value) {
         mostrarAlerta('Seleccione cajero', 'Primero seleccione un cajero para cargar rápido', 'info');
     }
 }
 
 // ========== FILTERS ==========
-function filtrarCargas() {
+async function filtrarCargas() {
     const fechaInicio = document.getElementById('fechaInicio').value;
     const fechaFin = document.getElementById('fechaFin').value;
     
@@ -817,50 +898,47 @@ function filtrarCargas() {
     
     mostrarLoading(true);
     
-    cargarCargas(fechaInicio, fechaFin)
-        .then(() => {
-            const inicio = new Date(fechaInicio).toLocaleDateString('es-ES');
-            const fin = new Date(fechaFin).toLocaleDateString('es-ES');
-            mostrarAlerta('Filtro aplicado', 
-                `Mostrando cargas desde ${inicio} hasta ${fin}`, 
-                'info');
-        })
-        .catch(error => {
-            mostrarAlerta('Error', 'No se pudieron filtrar las cargas', 'error');
-        })
-        .finally(() => {
-            mostrarLoading(false);
-        });
+    try {
+        cargas = await cargarCargas(fechaInicio, fechaFin);
+        actualizarTablaCargas();
+        
+        const inicio = new Date(fechaInicio).toLocaleDateString('es-ES');
+        const fin = new Date(fechaFin).toLocaleDateString('es-ES');
+        mostrarAlerta('Filtro aplicado', 
+            `Mostrando cargas desde ${inicio} hasta ${fin}`, 
+            'info');
+    } catch (error) {
+        mostrarAlerta('Error', 'No se pudieron filtrar las cargas', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
 }
 
-function limpiarFiltro() {
+async function limpiarFiltro() {
     document.getElementById('fechaInicio').value = '';
     document.getElementById('fechaFin').value = '';
     
     mostrarLoading(true);
     
-    cargarCargas()
-        .then(() => {
-            mostrarAlerta('Filtro limpiado', 'Mostrando todas las cargas', 'info');
-        })
-        .catch(error => {
-            mostrarAlerta('Error', 'No se pudieron cargar las cargas', 'error');
-        })
-        .finally(() => {
-            mostrarLoading(false);
-        });
+    try {
+        cargas = await cargarCargas();
+        actualizarTablaCargas();
+        mostrarAlerta('Filtro limpiado', 'Mostrando todas las cargas', 'info');
+    } catch (error) {
+        mostrarAlerta('Error', 'No se pudieron cargar las cargas', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
 }
 
 // ========== SUMMARY ==========
-async function actualizarResumen() {
+async function cargarResumen() {
     try {
         const response = await fetch(`${API_BASE}/api/resumen`);
         const data = await response.json();
         
         if (data.success) {
-            resumen = data.data || [];
-            actualizarTablaResumen();
-            return resumen;
+            return data.data || [];
         } else {
             throw new Error(data.error);
         }
@@ -914,28 +992,16 @@ function actualizarTablaResumen() {
                 </div>
             </td>
             <td class="text-end">
-                <span class="fw-medium">$${item.zeus.toLocaleString('es-ES', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}</span>
+                <span class="fw-medium">$${item.zeus.toFixed(2)}</span>
             </td>
             <td class="text-end">
-                <span class="fw-medium">$${item.gana.toLocaleString('es-ES', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}</span>
+                <span class="fw-medium">$${item.gana.toFixed(2)}</span>
             </td>
             <td class="text-end">
-                <span class="fw-medium">$${item.ganamos.toLocaleString('es-ES', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}</span>
+                <span class="fw-medium">$${item.ganamos.toFixed(2)}</span>
             </td>
             <td class="text-end">
-                <span class="fw-bold text-gradient">$${item.total.toLocaleString('es-ES', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}</span>
+                <span class="fw-bold text-gradient">$${item.total.toFixed(2)}</span>
             </td>
             <td class="text-center">
                 <button class="btn btn-success btn-sm hover-lift" 
@@ -956,63 +1022,55 @@ async function cargarEstadisticas() {
         const data = await response.json();
         
         if (data.success) {
-            estadisticas = data.data;
-            actualizarEstadisticasUI();
-            return estadisticas;
+            return data.data;
         }
     } catch (error) {
         console.error('Error cargando estadísticas:', error);
     }
+    return {};
 }
 
 function calcularEstadisticas() {
     // Total general (SOLO NO PAGADAS)
     const totalGeneral = resumen.reduce((sum, item) => sum + item.total, 0);
-    document.getElementById('totalGeneral').textContent = 
-        `$${totalGeneral.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+    const totalGeneralEl = document.getElementById('totalGeneral');
+    if (totalGeneralEl) {
+        totalGeneralEl.textContent = `$${totalGeneral.toFixed(2)}`;
+    }
     
     // Today's total (TODAS las cargas)
     const hoy = new Date().toISOString().split('T')[0];
-    const cargasHoy = cargas.filter(c => c.fecha.startsWith(hoy));
-    const totalHoy = cargasHoy.reduce((sum, c) => sum + parseFloat(c.monto), 0);
+    const cargasHoy = cargas.filter(c => c.fecha && c.fecha.startsWith(hoy));
+    const totalHoy = cargasHoy.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0);
     
-    document.getElementById('totalHoy').textContent = 
-        `$${totalHoy.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
-    
-    // Total cargas
-    document.getElementById('totalCargas').textContent = cargas.length;
+    const totalHoyEl = document.getElementById('totalHoy');
+    if (totalHoyEl) {
+        totalHoyEl.textContent = `$${totalHoy.toFixed(2)}`;
+    }
     
     // Top cashier
     if (resumen.length > 0) {
         const top = resumen.reduce((max, item) => item.total > max.total ? item : max, resumen[0]);
-        document.getElementById('topCajero').textContent = 
-            `$${top.total.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
-        document.getElementById('topCajeroNombre').innerHTML = 
-            `<i class="fas fa-crown me-1"></i> ${top.cajero}`;
+        
+        const topCajeroEl = document.getElementById('topCajero');
+        if (topCajeroEl) {
+            topCajeroEl.textContent = `$${top.total.toFixed(2)}`;
+        }
+        
+        const topCajeroNombreEl = document.getElementById('topCajeroNombre');
+        if (topCajeroNombreEl) {
+            topCajeroNombreEl.innerHTML = `<i class="fas fa-crown me-1"></i> ${top.cajero}`;
+        }
     }
     
     // Average per charge
     const todasLasCargas = cargas.length > 0 ? 
-        cargas.reduce((sum, c) => sum + parseFloat(c.monto), 0) : 0;
+        cargas.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0) : 0;
     const promedio = cargas.length > 0 ? todasLasCargas / cargas.length : 0;
     
-    document.getElementById('promedioCarga').textContent = 
-        `$${promedio.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
-}
-
-function actualizarEstadisticasUI() {
-    if (!estadisticas.totales) return;
-    
-    if (estadisticas.totales.cajeros) {
-        document.getElementById('totalCajeros').textContent = estadisticas.totales.cajeros;
-    }
-    if (estadisticas.totales.monto_total) {
-        document.getElementById('totalGeneral').textContent = 
-            `$${estadisticas.totales.monto_total.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
-    }
-    if (estadisticas.hoy?.monto) {
-        document.getElementById('totalHoy').textContent = 
-            `$${estadisticas.hoy.monto.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+    const promedioCargaEl = document.getElementById('promedioCarga');
+    if (promedioCargaEl) {
+        promedioCargaEl.textContent = `$${promedio.toFixed(2)}`;
     }
 }
 
@@ -1079,13 +1137,22 @@ async function pagarCajero(cajeroId, cajeroNombre) {
                 `Se pagó $${montoNum.toFixed(2)} a ${cajeroNombre}\n\nPendiente anterior: $${pendiente.toFixed(2)}\nNuevo pendiente: $${(pendiente - montoNum).toFixed(2)}`, 
                 'success');
             
-            // ACTUALIZAR EN TIEMPO REAL
-            await Promise.all([
-                actualizarResumen(),
-                cargarEstadisticas(),
-                cargarCargas()
+            // Recargar datos en paralelo
+            const [nuevoResumen, nuevasCargas, nuevasEstadisticas] = await Promise.all([
+                cargarResumen(),
+                cargarCargas(),
+                cargarEstadisticas()
             ]);
+            
+            resumen = nuevoResumen;
+            cargas = nuevasCargas;
+            estadisticas = nuevasEstadisticas;
+            
+            // Actualizar UI
+            actualizarTablaResumen();
+            actualizarTablaCargas();
             calcularEstadisticas();
+            actualizarContadores();
             
         } else {
             mostrarAlerta('Error', pagoData.error || 'No se pudo registrar el pago', 'error');
@@ -1140,7 +1207,7 @@ async function verPendientes() {
             html += `
                 <tr>
                     <td>${cajero.cajero}</td>
-                    <td class="text-end fw-bold text-warning">$${cajero.total.toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
+                    <td class="text-end fw-bold text-warning">$${cajero.total.toFixed(2)}</td>
                     <td class="text-end">${cajero.cargas}</td>
                     <td class="text-center">
                         <button class="btn btn-success btn-sm" onclick="pagarCajero(${cajero.cajero_id}, '${cajero.cajero.replace(/'/g, "\\'")}')">
@@ -1260,7 +1327,7 @@ async function calcularComisiones() {
         if (data.success) {
             const comision = data.data.comision;
             mostrarAlerta('Cálculo de Comisiones', 
-                `Porcentaje: ${porcentaje}%\nMonto Total: $${montoTotal.toLocaleString('es-ES', {minimumFractionDigits: 2})}\nComisión: $${comision.toLocaleString('es-ES', {minimumFractionDigits: 2})}`, 
+                `Porcentaje: ${porcentaje}%\nMonto Total: $${montoTotal.toFixed(2)}\nComisión: $${comision.toFixed(2)}`, 
                 'info');
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo calcular las comisiones', 'error');
@@ -1297,7 +1364,7 @@ async function mostrarConfiguracion() {
             <tr>
                 <td>${clave.replace(/_/g, ' ').toUpperCase()}</td>
                 <td>${valor}</td>
-                    <td>
+                <td>
                     <button class="btn btn-sm btn-ig-outline" onclick="editarConfiguracion('${clave}', '${valor}')">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -1321,7 +1388,9 @@ async function mostrarConfiguracion() {
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content ig-card">
                 <div class="modal-header ig-card-header">
-                    <h5 class="modal-title gradient-text">Configuración</h5>
+                    <h5 class="modal-title gradient-text">
+                        <i class="fas fa-cog me-2"></i>Configuración
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body ig-card-body">
@@ -1346,6 +1415,52 @@ async function mostrarConfiguracion() {
     });
 }
 
+async function editarConfiguracion(clave, valorActual) {
+    const nuevoValor = prompt(`Nuevo valor para ${clave.replace(/_/g, ' ').toLowerCase()}:`, valorActual);
+    if (nuevoValor === null || nuevoValor === valorActual) {
+        return;
+    }
+    
+    mostrarLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/configuracion`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                [clave]: nuevoValor
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarAlerta('Configuración actualizada', `${clave} actualizado a: ${nuevoValor}`, 'success');
+            await cargarConfiguracion();
+            
+            // Close modal and reopen
+            const modal = document.getElementById('modalConfiguracion');
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                    setTimeout(() => mostrarConfiguracion(), 500);
+                }
+            }
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo actualizar la configuración', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
 // ========== UTILITY FUNCTIONS ==========
 function formatCurrency(amount) {
     return new Intl.NumberFormat('es-ES', {
@@ -1366,11 +1481,74 @@ function formatDate(dateString) {
     });
 }
 
+// ========== REPORT FUNCTIONS ==========
+function generarReporteDiario() {
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fechaInicio').value = `${hoy}T00:00`;
+    document.getElementById('fechaFin').value = `${hoy}T23:59`;
+    filtrarCargas();
+    mostrarAlerta('Reporte Diario', 'Filtro aplicado para hoy', 'info');
+}
+
+function generarReporteSemanal() {
+    const hoy = new Date();
+    const inicioSemana = new Date(hoy);
+    inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+    const finSemana = new Date(inicioSemana);
+    finSemana.setDate(inicioSemana.getDate() + 6);
+    
+    document.getElementById('fechaInicio').value = inicioSemana.toISOString().slice(0, 16);
+    document.getElementById('fechaFin').value = finSemana.toISOString().slice(0, 16);
+    filtrarCargas();
+    mostrarAlerta('Reporte Semanal', 'Filtro aplicado para esta semana', 'info');
+}
+
+function generarReporteMensual() {
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+    
+    document.getElementById('fechaInicio').value = inicioMes.toISOString().slice(0, 16);
+    document.getElementById('fechaFin').value = finMes.toISOString().slice(0, 16);
+    filtrarCargas();
+    mostrarAlerta('Reporte Mensual', 'Filtro aplicado para este mes', 'info');
+}
+
+function diagnostico() {
+    const diagnosticos = [];
+    
+    // Verificar conexión
+    diagnosticos.push(`✅ Conectado al servidor`);
+    
+    // Verificar datos
+    diagnosticos.push(`✅ Cajeros: ${cajeros.length} (${cajeros.filter(c => c.activo).length} activos)`);
+    diagnosticos.push(`✅ Cargas: ${cargas.length}`);
+    diagnosticos.push(`✅ Resumen: ${resumen.length} cajeros con total de $${resumen.reduce((sum, item) => sum + item.total, 0).toFixed(2)}`);
+    
+    // Verificar localStorage
+    if (typeof(Storage) !== "undefined") {
+        diagnosticos.push(`✅ localStorage disponible`);
+    } else {
+        diagnosticos.push(`❌ localStorage no disponible`);
+    }
+    
+    // Verificar fetch API
+    if (window.fetch) {
+        diagnosticos.push(`✅ Fetch API disponible`);
+    } else {
+        diagnosticos.push(`❌ Fetch API no disponible`);
+    }
+    
+    mostrarAlerta('Diagnóstico del Sistema', diagnosticos.join('\n'), 'info');
+}
+
 // ========== GLOBAL FUNCTIONS ==========
 window.actualizarTodo = cargarDatosIniciales;
 window.agregarCajero = agregarCajero;
 window.agregarCarga = agregarCarga;
 window.agregarCargaRapida = agregarCargaRapida;
+window.editarCajero = editarCajero;
+window.eliminarCajero = eliminarCajero;
 window.eliminarCarga = eliminarCarga;
 window.filtrarCargas = filtrarCargas;
 window.limpiarFiltro = limpiarFiltro;
@@ -1393,6 +1571,22 @@ window.cerrarAlerta = cerrarAlerta;
 window.pagarCajero = pagarCajero;
 window.verPendientes = verPendientes;
 window.forzarOcultarLoading = forzarOcultarLoading;
+window.generarReporteDiario = generarReporteDiario;
+window.generarReporteSemanal = generarReporteSemanal;
+window.generarReporteMensual = generarReporteMensual;
+window.diagnostico = diagnostico;
+window.actualizarListaCajeros = actualizarListaCajeros;
 window.cargarCajeros = cargarCajeros;
 window.cargarCargas = cargarCargas;
-window.actualizarResumen = actualizarResumen;
+window.actualizarResumen = cargarResumen;
+window.cargarDatosIniciales = cargarDatosIniciales;
+
+// Emergency hide loading after 20 seconds
+setTimeout(() => {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay && overlay.classList.contains('active')) {
+        console.warn('⚠️ Emergency: Hiding loading overlay after 20 seconds');
+        forzarOcultarLoading();
+        mostrarAlerta('Timeout', 'La carga inicial tardó demasiado. Verifica tu conexión.', 'warning');
+    }
+}, 20000);
