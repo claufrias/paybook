@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 import traceback
 from threading import Lock
 from flask_cors import CORS
+import csv
+import io
 
 app = Flask(__name__)
 CORS(app)
@@ -277,14 +279,13 @@ def delete_cajero(id):
             cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ?', (id,))
             tiene_cargas = cursor.fetchone()[0] > 0
             
+            # Primero marcamos como inactivo (más seguro que eliminar)
+            cursor.execute('UPDATE cajeros SET activo = 0 WHERE id = ?', (id,))
+            
             if tiene_cargas:
-                # Marcar como inactivo
-                cursor.execute('UPDATE cajeros SET activo = 0 WHERE id = ?', (id,))
                 mensaje = f'Cajero "{cajero[1]}" marcado como inactivo (tiene cargas registradas)'
             else:
-                # Eliminar completamente
-                cursor.execute('DELETE FROM cajeros WHERE id = ?', (id,))
-                mensaje = f'Cajero "{cajero[1]}" eliminado exitosamente'
+                mensaje = f'Cajero "{cajero[1]}" marcado como inactivo'
             
             conn.commit()
             conn.close()
@@ -722,65 +723,48 @@ def exportar_excel():
             cursor = conn.cursor()
             
             # Construir query según tipo de reporte
+            query_cargas = '''
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota
+                FROM cargas cg
+                JOIN cajeros c ON cg.cajero_id = c.id
+            '''
+            
+            params = []
             if fecha_inicio and fecha_fin:
-                cursor.execute('''
-                    SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota
-                    FROM cargas cg
-                    JOIN cajeros c ON cg.cajero_id = c.id
-                    WHERE cg.fecha BETWEEN ? AND ?
-                    ORDER BY cg.fecha DESC
-                ''', (fecha_inicio, fecha_fin))
-            else:
-                cursor.execute('''
-                    SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota
-                    FROM cargas cg
-                    JOIN cajeros c ON cg.cajero_id = c.id
-                    ORDER BY cg.fecha DESC
-                ''')
+                query_cargas += ' WHERE cg.fecha BETWEEN ? AND ?'
+                params.extend([fecha_inicio, fecha_fin])
             
-            cargas = cursor.fetchall()
+            query_cargas += ' ORDER BY cg.fecha DESC'
             
-            # Crear DataFrame
-            df_cargas = pd.DataFrame(cargas, columns=['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Nota'])
+            cursor.execute(query_cargas, params)
+            cargas_data = cursor.fetchall()
             
-            # Crear DataFrame de resumen por cajero
-            cursor.execute('''
-                SELECT c.nombre, 
-                       COALESCE(SUM(CASE WHEN cg.plataforma = 'Zeus' THEN cg.monto ELSE 0 END), 0) as Zeus,
-                       COALESCE(SUM(CASE WHEN cg.plataforma = 'Gana' THEN cg.monto ELSE 0 END), 0) as Gana,
-                       COALESCE(SUM(CASE WHEN cg.plataforma = 'Ganamos' THEN cg.monto ELSE 0 END), 0) as Ganamos,
-                       COALESCE(SUM(cg.monto), 0) as Total,
-                       COUNT(cg.id) as Cargas
-                FROM cajeros c
-                LEFT JOIN cargas cg ON c.id = cg.cajero_id
-                GROUP BY c.id
-                ORDER BY Total DESC
-            ''')
+            # Crear CSV en memoria
+            output = io.StringIO()
+            writer = csv.writer(output)
             
-            resumen = cursor.fetchall()
-            df_resumen = pd.DataFrame(resumen, columns=['Cajero', 'Zeus', 'Gana', 'Ganamos', 'Total', 'Cargas'])
+            # Escribir encabezados
+            writer.writerow(['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Nota'])
+            
+            # Escribir datos
+            for row in cargas_data:
+                writer.writerow(row)
+            
+            # Preparar respuesta
+            output.seek(0)
             
             conn.close()
             
-            # Crear carpeta static si no existe
-            static_dir = os.path.join(BASE_DIR, 'static')
-            if not os.path.exists(static_dir):
-                os.makedirs(static_dir)
+            # Crear respuesta
+            filename = f'reporte_comisiones_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
             
-            # Guardar archivo Excel
-            filename = f'reporte_comisiones_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-            filepath = os.path.join(static_dir, filename)
+            response = app.response_class(
+                output.getvalue(),
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment; filename={filename}'}
+            )
             
-            with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
-                df_resumen.to_excel(writer, sheet_name='Resumen', index=False)
-                df_cargas.to_excel(writer, sheet_name='Cargas Detalladas', index=False)
-        
-        return jsonify({
-            'success': True,
-            'filename': filename,
-            'url': f'/static/{filename}',
-            'message': 'Reporte exportado exitosamente'
-        })
+            return response
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

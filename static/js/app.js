@@ -1,4 +1,4 @@
-// app.js - VERSIÓN COMPLETA Y FUNCIONAL
+// app.js - VERSIÓN CORREGIDA Y COMPLETA
 
 // Base URL for API
 const API_BASE = '';
@@ -194,6 +194,8 @@ function forzarOcultarLoading() {
         clearTimeout(window.loadingTimeout);
         window.loadingTimeout = null;
     }
+    
+    mostrarAlerta('Loading Reset', 'La pantalla de carga ha sido reiniciada', 'info');
 }
 
 // ========== SECTION NAVIGATION ==========
@@ -533,11 +535,14 @@ async function eliminarCajero(id) {
     const cajero = cajeros.find(c => c.id === id);
     if (!cajero) return;
     
-    const confirmacion = cajero.activo ? 
-        `¿Está seguro de desactivar al cajero "${cajero.nombre}"?\nSe mantendrán sus cargas registradas.` :
-        `¿Está seguro de eliminar permanentemente al cajero "${cajero.nombre}"?\nEsta acción no se puede deshacer.`;
+    const confirmacion = confirm(
+        `¿Está seguro de desactivar al cajero "${cajero.nombre}"?\n\n` +
+        `El cajero se marcará como inactivo y no se mostrará en las listas de selección, ` +
+        `pero se mantendrán todas sus cargas registradas.\n\n` +
+        `Esta acción se puede revertir editando el cajero.`
+    );
     
-    if (!confirm(confirmacion)) {
+    if (!confirmacion) {
         return;
     }
     
@@ -1230,7 +1235,7 @@ async function verPendientes() {
         modal.className = 'modal fade';
         modal.id = 'modalPendientes';
         modal.innerHTML = `
-            <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
@@ -1269,26 +1274,40 @@ async function verPendientes() {
 
 // ========== EXPORT ==========
 async function exportarReporte() {
+    const fechaInicio = document.getElementById('fechaInicio').value;
+    const fechaFin = document.getElementById('fechaFin').value;
+    
+    let url = `${API_BASE}/api/exportar/excel`;
+    
+    if (fechaInicio && fechaFin) {
+        url += `?fecha_inicio=${encodeURIComponent(fechaInicio)}&fecha_fin=${encodeURIComponent(fechaFin)}`;
+    }
+    
     mostrarLoading(true);
     
     try {
-        const response = await fetch(`${API_BASE}/api/exportar/excel`);
-        const data = await response.json();
+        const response = await fetch(url);
         
-        if (data.success) {
-            // Cambiar "Excel" por "CSV" en el mensaje
-            mostrarAlerta('Exportado', 'Reporte descargado correctamente (CSV)', 'success');
-            
-            // Crear download link
+        if (response.ok && response.headers.get('content-type') === 'text/csv') {
+            // Download CSV file
+            const blob = await response.blob();
+            const urlBlob = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = data.url;
-            link.download = data.filename.replace('.xlsx', '.csv'); // Cambiar extensión
-            link.style.display = 'none';
+            link.href = urlBlob;
+            link.download = `reporte_comisiones_${new Date().toISOString().slice(0,10)}.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            window.URL.revokeObjectURL(urlBlob);
+            
+            mostrarAlerta('Exportado', 'Reporte descargado correctamente (CSV)', 'success');
         } else {
-            mostrarAlerta('Error', data.error || 'No se pudo exportar el reporte', 'error');
+            const data = await response.json();
+            if (data.error) {
+                mostrarAlerta('Error', data.error, 'error');
+            } else {
+                mostrarAlerta('Error', 'No se pudo exportar el reporte', 'error');
+            }
         }
     } catch (error) {
         console.error('Error:', error);
@@ -1338,6 +1357,507 @@ async function calcularComisiones() {
         mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
     } finally {
         mostrarLoading(false);
+    }
+}
+
+// ========== MODAL FUNCTIONS ==========
+async function mostrarModalCajeros() {
+    mostrarLoading(true);
+    
+    try {
+        const cajerosData = await cargarCajeros();
+        
+        let html = `
+            <div class="cajeros-modal">
+                <h4 class="gradient-text mb-4">Gestión de Cajeros</h4>
+                <div class="mb-4">
+                    <div class="input-group">
+                        <input type="text" id="buscarCajero" class="form-control form-control-ig" placeholder="Buscar cajero...">
+                        <button class="btn btn-ig" onclick="agregarCajeroDesdeModal()">
+                            <i class="fas fa-plus me-2"></i> Nuevo
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-ig table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Estado</th>
+                                <th>Fecha Creación</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        cajerosData.forEach(cajero => {
+            html += `
+                <tr class="${cajero.activo ? '' : 'table-secondary'}">
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="story-circle small me-2">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div>
+                                <div class="fw-medium">${cajero.nombre}</div>
+                                <small class="text-muted">ID: ${cajero.id}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge ${cajero.activo ? 'bg-success' : 'bg-secondary'}">
+                            ${cajero.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                    </td>
+                    <td>
+                        <small class="text-muted">${new Date(cajero.fecha_creacion).toLocaleDateString('es-ES')}</small>
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="editarCajero(${cajero.id})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${cajero.activo ? `
+                                <button class="btn btn-outline-danger" onclick="eliminarCajero(${cajero.id})" title="Desactivar">
+                                    <i class="fas fa-user-slash"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-outline-success" onclick="reactivarCajero(${cajero.id})" title="Reactivar">
+                                    <i class="fas fa-user-check"></i>
+                                </button>
+                            `}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'modal fade';
+        modal.id = 'modalCajeros';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content ig-card">
+                    <div class="modal-header ig-card-header">
+                        <h5 class="modal-title gradient-text">
+                            <i class="fas fa-users me-2"></i>Gestión de Cajeros
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body ig-card-body">
+                        ${html}
+                    </div>
+                    <div class="modal-footer">
+                        <small class="text-muted me-auto">Total: ${cajerosData.length} cajeros</small>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Show modal
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        
+        // Clean up modal on close
+        modal.addEventListener('hidden.bs.modal', function () {
+            document.body.removeChild(modal);
+            cargarDatosIniciales(); // Refresh data
+        });
+        
+        // Add search functionality
+        const buscarInput = modal.querySelector('#buscarCajero');
+        if (buscarInput) {
+            buscarInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const rows = modal.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(searchTerm) ? '' : 'none';
+                });
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error', 'No se pudo cargar los cajeros', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+async function reactivarCajero(id) {
+    const cajero = cajeros.find(c => c.id === id);
+    if (!cajero) return;
+    
+    if (!confirm(`¿Reactivar al cajero "${cajero.nombre}"?`)) {
+        return;
+    }
+    
+    mostrarLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/cajeros/${id}`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ 
+                nombre: cajero.nombre,
+                activo: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarAlerta('¡Éxito!', `Cajero "${cajero.nombre}" reactivado`, 'success');
+            
+            // Close modal and reopen
+            const modal = document.getElementById('modalCajeros');
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                    setTimeout(() => mostrarModalCajeros(), 500);
+                }
+            }
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo reactivar el cajero', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+function agregarCajeroDesdeModal() {
+    const nombre = prompt('Ingrese el nombre del nuevo cajero:');
+    if (!nombre || nombre.trim() === '') return;
+    
+    // Use existing function
+    document.getElementById('nombreCajero').value = nombre;
+    agregarCajero();
+    
+    // Close modal after adding
+    const modal = document.getElementById('modalCajeros');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
+    }
+}
+
+function mostrarModalReportes() {
+    let html = `
+        <div class="reportes-modal">
+            <h4 class="gradient-text mb-4">Reportes</h4>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="reporte-card text-center hover-lift" onclick="generarReporteDiario()">
+                        <div class="story-circle mb-3 mx-auto" style="width: 80px; height: 80px;">
+                            <i class="fas fa-calendar-day fa-2x"></i>
+                        </div>
+                        <h5>Reporte Diario</h5>
+                        <small class="text-muted">Cargas del día de hoy</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="reporte-card text-center hover-lift" onclick="generarReporteSemanal()">
+                        <div class="story-circle mb-3 mx-auto" style="width: 80px; height: 80px;">
+                            <i class="fas fa-calendar-week fa-2x"></i>
+                        </div>
+                        <h5>Reporte Semanal</h5>
+                        <small class="text-muted">Cargas de esta semana</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="reporte-card text-center hover-lift" onclick="generarReporteMensual()">
+                        <div class="story-circle mb-3 mx-auto" style="width: 80px; height: 80px;">
+                            <i class="fas fa-calendar-alt fa-2x"></i>
+                        </div>
+                        <h5>Reporte Mensual</h5>
+                        <small class="text-muted">Cargas de este mes</small>
+                    </div>
+                </div>
+                <div class="col-12 mt-4">
+                    <div class="ig-card">
+                        <div class="ig-card-header">
+                            <h6 class="mb-0 gradient-text">Exportar Reporte Personalizado</h6>
+                        </div>
+                        <div class="ig-card-body">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted">Desde</label>
+                                    <input type="date" id="exportDesde" class="form-control form-control-ig" 
+                                           value="${new Date().toISOString().slice(0,10)}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted">Hasta</label>
+                                    <input type="date" id="exportHasta" class="form-control form-control-ig" 
+                                           value="${new Date().toISOString().slice(0,10)}">
+                                </div>
+                                <div class="col-12 mt-3">
+                                    <button class="btn btn-ig w-100" onclick="exportarReportePersonalizado()">
+                                        <i class="fas fa-file-excel me-2"></i> Exportar CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'modalReportes';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content ig-card">
+                <div class="modal-header ig-card-header">
+                    <h5 class="modal-title gradient-text">
+                        <i class="fas fa-file-alt me-2"></i>Reportes
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body ig-card-body">
+                    ${html}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    // Clean up modal on close
+    modal.addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modal);
+    });
+}
+
+function mostrarReporteDiario() {
+    // Create modal with daily report
+    const hoy = new Date().toISOString().split('T')[0];
+    
+    mostrarLoading(true);
+    
+    fetch(`${API_BASE}/api/cargas?fecha_inicio=${hoy}T00:00:00&fecha_fin=${hoy}T23:59:59`)
+        .then(response => response.json())
+        .then(data => {
+            mostrarLoading(false);
+            
+            if (data.success) {
+                const cargasHoy = data.data;
+                let html = `
+                    <div class="reporte-detalle">
+                        <h4 class="gradient-text mb-3">Reporte Diario - ${hoy}</h4>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="stat-card">
+                                    <div class="stat-label">TOTAL CARGAS</div>
+                                    <div class="stat-number">${cargasHoy.length}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="stat-card">
+                                    <div class="stat-label">MONTO TOTAL</div>
+                                    <div class="stat-number">$${cargasHoy.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0).toFixed(2)}</div>
+                                </div>
+                            </div>
+                        </div>
+                `;
+                
+                if (cargasHoy.length > 0) {
+                    html += `
+                        <div class="table-responsive">
+                            <table class="table table-ig table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th>
+                                        <th>Cajero</th>
+                                        <th>Plataforma</th>
+                                        <th class="text-end">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    cargasHoy.forEach(carga => {
+                        const hora = carga.fecha.split(' ')[1];
+                        html += `
+                            <tr>
+                                <td>${hora}</td>
+                                <td>${carga.cajero}</td>
+                                <td><span class="badge ${getBadgeClass(carga.plataforma)}">${carga.plataforma}</span></td>
+                                <td class="text-end">$${parseFloat(carga.monto).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h6>No hay cargas hoy</h6>
+                        </div>
+                    `;
+                }
+                
+                html += `</div>`;
+                
+                // Show in modal
+                const modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.id = 'modalReporteDiario';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content ig-card">
+                            <div class="modal-header ig-card-header">
+                                <h5 class="modal-title gradient-text">
+                                    <i class="fas fa-calendar-day me-2"></i>Reporte Diario
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body ig-card-body">
+                                ${html}
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-ig" onclick="exportarReporteDiario()">
+                                    <i class="fas fa-file-excel me-2"></i> Exportar
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+                
+                modal.addEventListener('hidden.bs.modal', function () {
+                    document.body.removeChild(modal);
+                });
+                
+            } else {
+                mostrarAlerta('Error', data.error || 'No se pudo generar el reporte', 'error');
+            }
+        })
+        .catch(error => {
+            mostrarLoading(false);
+            console.error('Error:', error);
+            mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+        });
+}
+
+function mostrarReporteSemanal() {
+    const hoy = new Date();
+    const inicioSemana = new Date(hoy);
+    inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+    const finSemana = new Date(inicioSemana);
+    finSemana.setDate(inicioSemana.getDate() + 6);
+    
+    const inicioStr = inicioSemana.toISOString().slice(0, 10);
+    const finStr = finSemana.toISOString().slice(0, 10);
+    
+    mostrarAlerta('Reporte Semanal', `Filtrando cargas desde ${inicioStr} hasta ${finStr}`, 'info');
+    
+    // Apply filter
+    document.getElementById('fechaInicio').value = `${inicioStr}T00:00`;
+    document.getElementById('fechaFin').value = `${finStr}T23:59`;
+    filtrarCargas();
+}
+
+function mostrarReporteMensual() {
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+    
+    const inicioStr = inicioMes.toISOString().slice(0, 10);
+    const finStr = finMes.toISOString().slice(0, 10);
+    
+    mostrarAlerta('Reporte Mensual', `Filtrando cargas desde ${inicioStr} hasta ${finStr}`, 'info');
+    
+    // Apply filter
+    document.getElementById('fechaInicio').value = `${inicioStr}T00:00`;
+    document.getElementById('fechaFin').value = `${finStr}T23:59`;
+    filtrarCargas();
+}
+
+function exportarReportePersonalizado() {
+    const desde = document.getElementById('exportDesde').value;
+    const hasta = document.getElementById('exportHasta').value;
+    
+    if (!desde || !hasta) {
+        mostrarAlerta('Error', 'Seleccione ambas fechas', 'error');
+        return;
+    }
+    
+    if (new Date(desde) > new Date(hasta)) {
+        mostrarAlerta('Error', 'La fecha de inicio no puede ser mayor que la fecha de fin', 'error');
+        return;
+    }
+    
+    // Set filter dates
+    document.getElementById('fechaInicio').value = `${desde}T00:00`;
+    document.getElementById('fechaFin').value = `${hasta}T23:59`;
+    
+    // Export
+    exportarReporte();
+    
+    // Close modal
+    const modal = document.getElementById('modalReportes');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
+    }
+}
+
+function exportarReporteDiario() {
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fechaInicio').value = `${hoy}T00:00`;
+    document.getElementById('fechaFin').value = `${hoy}T23:59`;
+    exportarReporte();
+    
+    // Close modal
+    const modal = document.getElementById('modalReporteDiario');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
     }
 }
 
@@ -1572,6 +2092,9 @@ window.cerrarAlerta = cerrarAlerta;
 window.pagarCajero = pagarCajero;
 window.verPendientes = verPendientes;
 window.forzarOcultarLoading = forzarOcultarLoading;
+window.mostrarReporteDiario = mostrarReporteDiario;
+window.mostrarReporteSemanal = mostrarReporteSemanal;
+window.mostrarReporteMensual = mostrarReporteMensual;
 window.generarReporteDiario = generarReporteDiario;
 window.generarReporteSemanal = generarReporteSemanal;
 window.generarReporteMensual = generarReporteMensual;
@@ -1581,6 +2104,9 @@ window.cargarCajeros = cargarCajeros;
 window.cargarCargas = cargarCargas;
 window.actualizarResumen = cargarResumen;
 window.cargarDatosIniciales = cargarDatosIniciales;
+window.mostrarModalCajeros = mostrarModalCajeros;
+window.mostrarModalReportes = mostrarModalReportes;
+window.reactivarCajero = reactivarCajero;
 
 // Emergency hide loading after 20 seconds
 setTimeout(() => {
