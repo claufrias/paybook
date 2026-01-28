@@ -44,6 +44,7 @@ def init_db():
             fecha TEXT,
             nota TEXT,
             pagado BOOLEAN DEFAULT 0,
+            es_deuda BOOLEAN DEFAULT 0,
             FOREIGN KEY(cajero_id) REFERENCES cajeros(id)
         )
     ''')
@@ -74,7 +75,8 @@ def init_db():
         INSERT OR IGNORE INTO configuraciones (clave, valor) 
         VALUES ('porcentaje_comision', '10'),
                ('moneda', '$'),
-               ('plataformas', 'Zeus,Gana,Ganamos')
+               ('plataformas', 'Zeus,Gana,Ganamos'),
+               ('permitir_deudas', '1')
     ''')
     
     conn.commit()
@@ -93,6 +95,9 @@ def actualizar_bd():
         if 'pagado' not in columnas:
             cursor.execute('ALTER TABLE cargas ADD COLUMN pagado BOOLEAN DEFAULT 0')
         
+        if 'es_deuda' not in columnas:
+            cursor.execute('ALTER TABLE cargas ADD COLUMN es_deuda BOOLEAN DEFAULT 0')
+        
         # Verificar tabla pagos
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pagos'")
         if not cursor.fetchone():
@@ -107,6 +112,11 @@ def actualizar_bd():
                     FOREIGN KEY(cajero_id) REFERENCES cajeros(id)
                 )
             ''')
+        
+        # Verificar configuración de deudas
+        cursor.execute("SELECT clave FROM configuraciones WHERE clave = 'permitir_deudas'")
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO configuraciones (clave, valor) VALUES ('permitir_deudas', '1')")
         
         conn.commit()
         conn.close()
@@ -345,7 +355,7 @@ def get_cargas():
             limite = request.args.get('limite', 100)
             
             query = '''
-                SELECT cg.id, c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota, cg.pagado
+                SELECT cg.id, c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota, cg.pagado, cg.es_deuda
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE 1=1
@@ -381,7 +391,8 @@ def get_cargas():
                 'monto': row[3],
                 'fecha': row[4],
                 'nota': row[5] or '',
-                'pagado': bool(row[6])
+                'pagado': bool(row[6]),
+                'es_deuda': bool(row[7])
             } for row in cargas]
         })
         
@@ -410,13 +421,15 @@ def add_carga():
         monto = float(data['monto'])
         nota = data.get('nota', '').strip()
         
-        if monto <= 0:
-            return jsonify({'success': False, 'error': 'El monto debe ser mayor a 0'}), 400
+        # Permitir montos negativos (deudas)
+        if monto == 0:
+            return jsonify({'success': False, 'error': 'El monto no puede ser 0'}), 400
         
-        if monto > 1000000:
+        if abs(monto) > 1000000:
             return jsonify({'success': False, 'error': 'El monto no puede superar $1,000,000'}), 400
         
         fecha = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        es_deuda = 1 if monto < 0 else 0
         
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
@@ -430,14 +443,15 @@ def add_carga():
                 return jsonify({'success': False, 'error': 'El cajero no existe o está inactivo'}), 400
             
             cursor.execute('''
-                INSERT INTO cargas (cajero_id, plataforma, monto, fecha, nota)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (cajero_id, plataforma, monto, fecha, nota))
+                INSERT INTO cargas (cajero_id, plataforma, monto, fecha, nota, es_deuda)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (cajero_id, plataforma, monto, fecha, nota, es_deuda))
             
             conn.commit()
             carga_id = cursor.lastrowid
             conn.close()
         
+        tipo_carga = "deuda" if monto < 0 else "carga"
         return jsonify({
             'success': True,
             'data': {
@@ -447,9 +461,10 @@ def add_carga():
                 'monto': monto,
                 'fecha': fecha,
                 'nota': nota,
-                'pagado': False
+                'pagado': False,
+                'es_deuda': es_deuda
             },
-            'message': 'Carga registrada exitosamente'
+            'message': f'{tipo_carga.capitalize()} registrada exitosamente'
         })
         
     except ValueError:
@@ -491,6 +506,11 @@ def get_resumen():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
+            # Obtener configuración de deudas
+            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'permitir_deudas'")
+            permitir_deudas = cursor.fetchone()
+            permitir_deudas = bool(int(permitir_deudas[0])) if permitir_deudas else True
+            
             # Obtener todos los cajeros activos
             cursor.execute('SELECT id, nombre FROM cajeros WHERE activo = 1 ORDER BY nombre')
             cajeros = cursor.fetchall()
@@ -499,12 +519,22 @@ def get_resumen():
             
             for cajero_id, nombre in cajeros:
                 # Calcular totales por plataforma - SOLO NO PAGADAS
-                cursor.execute('''
-                    SELECT plataforma, SUM(monto) as total
-                    FROM cargas 
-                    WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
-                    GROUP BY plataforma
-                ''', (cajero_id,))
+                if permitir_deudas:
+                    # Si se permiten deudas, incluir montos negativos
+                    cursor.execute('''
+                        SELECT plataforma, SUM(monto) as total
+                        FROM cargas 
+                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
+                        GROUP BY plataforma
+                    ''', (cajero_id,))
+                else:
+                    # Si no se permiten deudas, solo montos positivos
+                    cursor.execute('''
+                        SELECT plataforma, SUM(monto) as total
+                        FROM cargas 
+                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
+                        GROUP BY plataforma
+                    ''', (cajero_id,))
                 
                 montos = cursor.fetchall()
                 
@@ -518,7 +548,11 @@ def get_resumen():
                 total_general = sum(totales.values())
                 
                 # Obtener cantidad de cargas NO PAGADAS
-                cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)', (cajero_id,))
+                if permitir_deudas:
+                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)', (cajero_id,))
+                else:
+                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0', (cajero_id,))
+                
                 cantidad_cargas = cursor.fetchone()[0]
                 
                 resumen.append({
@@ -549,6 +583,11 @@ def get_resumen_pendientes():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
+            # Obtener configuración de deudas
+            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'permitir_deudas'")
+            permitir_deudas = cursor.fetchone()
+            permitir_deudas = bool(int(permitir_deudas[0])) if permitir_deudas else True
+            
             # Obtener todos los cajeros activos
             cursor.execute('SELECT id, nombre FROM cajeros WHERE activo = 1 ORDER BY nombre')
             cajeros = cursor.fetchall()
@@ -557,12 +596,20 @@ def get_resumen_pendientes():
             
             for cajero_id, nombre in cajeros:
                 # Calcular totales por plataforma (SOLO NO PAGADAS)
-                cursor.execute('''
-                    SELECT plataforma, SUM(monto) as total
-                    FROM cargas 
-                    WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
-                    GROUP BY plataforma
-                ''', (cajero_id,))
+                if permitir_deudas:
+                    cursor.execute('''
+                        SELECT plataforma, SUM(monto) as total
+                        FROM cargas 
+                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
+                        GROUP BY plataforma
+                    ''', (cajero_id,))
+                else:
+                    cursor.execute('''
+                        SELECT plataforma, SUM(monto) as total
+                        FROM cargas 
+                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
+                        GROUP BY plataforma
+                    ''', (cajero_id,))
                 
                 montos = cursor.fetchall()
                 
@@ -576,7 +623,11 @@ def get_resumen_pendientes():
                 total_general = sum(totales.values())
                 
                 # Obtener cantidad de cargas NO PAGADAS
-                cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)', (cajero_id,))
+                if permitir_deudas:
+                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)', (cajero_id,))
+                else:
+                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0', (cajero_id,))
+                
                 cantidad_cargas = cursor.fetchone()[0]
                 
                 resumen.append({
@@ -685,12 +736,24 @@ def registrar_pago():
                 conn.close()
                 return jsonify({'success': False, 'error': 'Cajero no encontrado o inactivo'}), 404
             
-            # Obtener el total actual de comisiones NO pagadas
-            cursor.execute('''
-                SELECT COALESCE(SUM(monto), 0), COUNT(*)
-                FROM cargas 
-                WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
-            ''', (cajero_id,))
+            # Obtener configuración de deudas
+            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'permitir_deudas'")
+            permitir_deudas = cursor.fetchone()
+            permitir_deudas = bool(int(permitir_deudas[0])) if permitir_deudas else True
+            
+            # Obtener el total actual de comisiones NO pagadas (incluyendo deudas si está permitido)
+            if permitir_deudas:
+                cursor.execute('''
+                    SELECT COALESCE(SUM(monto), 0), COUNT(*)
+                    FROM cargas 
+                    WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
+                ''', (cajero_id,))
+            else:
+                cursor.execute('''
+                    SELECT COALESCE(SUM(monto), 0), COUNT(*)
+                    FROM cargas 
+                    WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
+                ''', (cajero_id,))
             
             total_comisiones, cantidad_cargas = cursor.fetchone()
             
@@ -729,8 +792,8 @@ def registrar_pago():
             # Registrar carga especial en el historial para el pago
             fecha_pago = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute('''
-                INSERT INTO cargas (cajero_id, plataforma, monto, fecha, nota, pagado)
-                VALUES (?, ?, ?, ?, ?, 1)
+                INSERT INTO cargas (cajero_id, plataforma, monto, fecha, nota, pagado, es_deuda)
+                VALUES (?, ?, ?, ?, ?, 1, 0)
             ''', (cajero_id, 'PAGO', -monto_pagado, fecha_pago, f'Pago registrado - {notas}' if notas else 'Pago registrado'))
             
             conn.commit()
@@ -780,7 +843,15 @@ def exportar_excel():
             # Construir query según tipo de reporte
             query_cargas = '''
                 SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
-                       CASE WHEN cg.pagado = 1 THEN 'PAGADO' ELSE 'PENDIENTE' END as estado
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE 1=1
@@ -801,7 +872,7 @@ def exportar_excel():
             writer = csv.writer(output)
             
             # Escribir encabezados
-            writer.writerow(['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Nota', 'Estado'])
+            writer.writerow(['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Nota', 'Estado', 'Tipo'])
             
             # Escribir datos
             for row in cargas_data:
@@ -841,7 +912,15 @@ def get_reporte_diario():
             # Obtener cargas del día
             cursor.execute('''
                 SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
-                       CASE WHEN cg.pagado = 1 THEN 'PAGADO' ELSE 'PENDIENTE' END as estado
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE cg.fecha BETWEEN ? AND ?
@@ -873,7 +952,8 @@ def get_reporte_diario():
                     'monto': row[2],
                     'fecha': row[3],
                     'nota': row[4] or '',
-                    'estado': row[5]
+                    'estado': row[5],
+                    'tipo': row[6]
                 } for row in cargas]
             }
         })
@@ -898,7 +978,15 @@ def get_reporte_semanal():
             # Obtener cargas de la semana
             cursor.execute('''
                 SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
-                       CASE WHEN cg.pagado = 1 THEN 'PAGADO' ELSE 'PENDIENTE' END as estado
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE cg.fecha BETWEEN ? AND ?
@@ -931,7 +1019,8 @@ def get_reporte_semanal():
                     'monto': row[2],
                     'fecha': row[3],
                     'nota': row[4] or '',
-                    'estado': row[5]
+                    'estado': row[5],
+                    'tipo': row[6]
                 } for row in cargas]
             }
         })
@@ -959,7 +1048,15 @@ def get_reporte_mensual():
             # Obtener cargas del mes
             cursor.execute('''
                 SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
-                       CASE WHEN cg.pagado = 1 THEN 'PAGADO' ELSE 'PENDIENTE' END as estado
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE cg.fecha BETWEEN ? AND ?
@@ -992,7 +1089,8 @@ def get_reporte_mensual():
                     'monto': row[2],
                     'fecha': row[3],
                     'nota': row[4] or '',
-                    'estado': row[5]
+                    'estado': row[5],
+                    'tipo': row[6]
                 } for row in cargas]
             }
         })

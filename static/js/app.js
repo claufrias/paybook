@@ -89,7 +89,6 @@ function handleKeyboardShortcuts(event) {
     if (event.key === 'F5') {
         event.preventDefault();
         cargarDatosIniciales();
-        mostrarAlerta('Actualizando', 'Recargando datos...', 'info');
     }
 }
 
@@ -166,7 +165,6 @@ function mostrarLoading(mostrar = true) {
             if (isLoading) {
                 console.warn('⚠️ Loading timeout - forcing hide');
                 mostrarLoading(false);
-                mostrarAlerta('Timeout', 'La operación tardó demasiado', 'warning');
             }
         }, 10000);
         
@@ -194,8 +192,6 @@ function forzarOcultarLoading() {
         clearTimeout(window.loadingTimeout);
         window.loadingTimeout = null;
     }
-    
-    mostrarAlerta('Loading Reset', 'La pantalla de carga ha sido reiniciada', 'info');
 }
 
 // ========== SECTION NAVIGATION ==========
@@ -296,11 +292,6 @@ async function cargarDatosIniciales() {
         if (lastUpdateEl) {
             lastUpdateEl.textContent = `Última actualización: ${ahora.toLocaleTimeString('es-ES')}`;
         }
-        
-        // Mostrar mensaje de bienvenida
-        setTimeout(() => {
-            mostrarAlerta('¡Sistema listo!', 'Todos los cambios se actualizan en tiempo real', 'success');
-        }, 1000);
         
     } catch (error) {
         console.error('❌ Error crítico cargando datos:', error);
@@ -466,9 +457,6 @@ async function agregarCajero() {
             
             actualizarTablaResumen();
             calcularEstadisticas();
-            
-            // Mostrar confirmación
-            mostrarAlerta('Cajero seleccionado', `"${nombre}" ya está seleccionado para nueva carga`, 'info');
             
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
@@ -718,6 +706,8 @@ function actualizarTablaCargas() {
             // Clase según tipo de registro
             if (carga.plataforma === 'PAGO') {
                 tr.className = 'table-success';
+            } else if (carga.es_deuda) {
+                tr.className = 'table-danger';
             } else if (index < 3) {
                 tr.className = 'table-info';
             }
@@ -726,6 +716,8 @@ function actualizarTablaCargas() {
             let icono = 'fa-calendar-alt';
             if (carga.plataforma === 'PAGO') {
                 icono = 'fa-money-bill-wave text-success';
+            } else if (carga.es_deuda) {
+                icono = 'fa-exclamation-triangle text-danger';
             } else if (carga.pagado) {
                 icono = 'fa-check-circle text-warning';
             }
@@ -752,13 +744,13 @@ function actualizarTablaCargas() {
                     </div>
                 </td>
                 <td>
-                    <span class="badge ${getBadgeClass(carga.plataforma)}">
-                        ${carga.plataforma || 'Sin plataforma'}
+                    <span class="badge ${getBadgeClass(carga)}">
+                        ${carga.es_deuda ? '⚠️ DEUDA' : carga.plataforma || 'Sin plataforma'}
                     </span>
                 </td>
                 <td class="text-end">
-                    <span class="fw-bold ${carga.plataforma === 'PAGO' ? 'text-success' : carga.pagado ? 'text-warning' : 'text-gradient'}">
-                        ${carga.plataforma === 'PAGO' ? '-' : ''}$${Math.abs(parseFloat(carga.monto || 0)).toFixed(2)}
+                    <span class="fw-bold ${getTextColorClass(carga)}">
+                        ${carga.plataforma === 'PAGO' ? '-' : carga.es_deuda ? '-' : ''}$${Math.abs(parseFloat(carga.monto || 0)).toFixed(2)}
                     </span>
                 </td>
                 <td class="text-center">
@@ -790,14 +782,23 @@ function actualizarTablaCargas() {
     }
 }
 
-function getBadgeClass(plataforma) {
-    switch(plataforma) {
+function getBadgeClass(carga) {
+    if (carga.es_deuda) return 'bg-danger';
+    if (carga.plataforma === 'PAGO') return 'bg-success';
+    
+    switch(carga.plataforma) {
         case 'Zeus': return 'badge-zeus';
         case 'Gana': return 'badge-gana';
         case 'Ganamos': return 'badge-ganamos';
-        case 'PAGO': return 'bg-success';
         default: return 'bg-secondary';
     }
+}
+
+function getTextColorClass(carga) {
+    if (carga.plataforma === 'PAGO') return 'text-success';
+    if (carga.es_deuda) return 'text-danger';
+    if (carga.pagado) return 'text-warning';
+    return 'text-gradient';
 }
 
 function actualizarContadores() {
@@ -811,7 +812,15 @@ function actualizarContadores() {
     const dataStatusEl = document.getElementById('dataStatus');
     if (dataStatusEl) {
         const totalPendiente = resumen.reduce((sum, item) => sum + item.total, 0);
-        dataStatusEl.textContent = `Cajeros: ${cajeros.filter(c => c.activo).length} | Cargas: ${cargas.length} | Pendiente: $${totalPendiente.toFixed(2)}`;
+        const cargasDeuda = cargas.filter(c => c.es_deuda && !c.pagado).length;
+        let statusText = `Cajeros: ${cajeros.filter(c => c.activo).length} | Cargas: ${cargas.length}`;
+        
+        if (cargasDeuda > 0) {
+            statusText += ` | Deudas: ${cargasDeuda}`;
+        }
+        
+        statusText += ` | Pendiente: $${totalPendiente.toFixed(2)}`;
+        dataStatusEl.textContent = statusText;
     }
 }
 
@@ -831,14 +840,14 @@ async function agregarCarga() {
         return;
     }
     
-    if (!monto || monto <= 0 || isNaN(monto)) {
-        mostrarAlerta('Monto inválido', 'Ingrese un monto válido mayor a 0', 'warning');
+    if (!monto || monto === 0 || isNaN(monto)) {
+        mostrarAlerta('Monto inválido', 'Ingrese un monto válido diferente de 0', 'warning');
         montoInput.focus();
         montoInput.select();
         return;
     }
     
-    if (monto > 1000000) {
+    if (Math.abs(monto) > 1000000) {
         mostrarAlerta('Monto muy alto', 'El monto no puede superar $1,000,000', 'warning');
         return;
     }
@@ -863,13 +872,13 @@ async function agregarCarga() {
         
         if (data.success) {
             const cajeroNombre = cajeroSelect.options[cajeroSelect.selectedIndex].text;
+            const tipo = monto < 0 ? 'Deuda' : 'Carga';
             mostrarAlerta('¡Registro exitoso!', 
-                `Carga de $${monto.toFixed(2)} registrada para ${cajeroNombre} en ${plataforma}`, 
-                'success');
+                `${tipo} de $${Math.abs(monto).toFixed(2)} registrada para ${cajeroNombre} en ${plataforma}`, 
+                monto < 0 ? 'warning' : 'success');
             
             // Reset form
             montoInput.value = '';
-            montoInput.focus();
             
             // Animate success
             const form = document.getElementById('formCarga');
@@ -919,7 +928,8 @@ async function eliminarCarga(id) {
     const carga = cargas.find(c => c.id === id);
     if (!carga) return;
     
-    if (!confirm(`¿Está seguro de eliminar esta carga?\n${carga.cajero} - ${carga.plataforma} - $${carga.monto}\n\n⚠️ Esta acción no se puede deshacer.`)) {
+    const tipo = carga.es_deuda ? 'deuda' : 'carga';
+    if (!confirm(`¿Está seguro de eliminar esta ${tipo}?\n${carga.cajero} - ${carga.plataforma} - $${carga.monto}\n\n⚠️ Esta acción no se puede deshacer.`)) {
         return;
     }
     
@@ -933,7 +943,7 @@ async function eliminarCarga(id) {
         const data = await response.json();
         
         if (data.success) {
-            mostrarAlerta('Eliminado', 'Carga eliminada correctamente', 'success');
+            mostrarAlerta('Eliminado', `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} eliminada correctamente`, 'success');
             
             // Recargar datos en paralelo
             const [nuevasCargas, nuevoResumen, nuevasEstadisticas] = await Promise.all([
@@ -967,7 +977,7 @@ async function eliminarCarga(id) {
 function mostrarModalCarga() {
     const html = `
         <div class="nueva-carga-modal">
-            <h4 class="gradient-text mb-4">Nueva Carga</h4>
+            <h4 class="gradient-text mb-4">Nueva Carga/Deuda</h4>
             <div class="mb-3">
                 <label class="form-label text-muted">Cajero</label>
                 <select id="modalSelectCajero" class="form-select form-select-ig">
@@ -984,8 +994,18 @@ function mostrarModalCarga() {
             </div>
             <div class="mb-3">
                 <label class="form-label text-muted">Monto ($)</label>
-                <input type="number" id="modalMontoCarga" class="form-control form-control-ig" 
-                       step="0.01" min="0.01" placeholder="0.00" autocomplete="off">
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" id="modalMontoCarga" class="form-control form-control-ig" 
+                           step="0.01" placeholder="0.00" autocomplete="off">
+                    <span class="input-group-text">
+                        <small class="text-muted">Negativo = Deuda</small>
+                    </span>
+                </div>
+                <small class="text-muted mt-1 d-block">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Ingrese un monto negativo para registrar una deuda
+                </small>
             </div>
             <div class="mb-3">
                 <label class="form-label text-muted">Nota (opcional)</label>
@@ -1004,7 +1024,7 @@ function mostrarModalCarga() {
             <div class="modal-content ig-card">
                 <div class="modal-header ig-card-header">
                     <h5 class="modal-title gradient-text">
-                        <i class="fas fa-plus me-2"></i>Nueva Carga
+                        <i class="fas fa-plus me-2"></i>Nueva Carga/Deuda
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -1079,14 +1099,14 @@ async function agregarCargaDesdeModal() {
         return;
     }
     
-    if (!monto || monto <= 0 || isNaN(monto)) {
-        mostrarAlerta('Monto inválido', 'Ingrese un monto válido mayor a 0', 'warning');
+    if (!monto || monto === 0 || isNaN(monto)) {
+        mostrarAlerta('Monto inválido', 'Ingrese un monto válido diferente de 0', 'warning');
         montoInput.focus();
         montoInput.select();
         return;
     }
     
-    if (monto > 1000000) {
+    if (Math.abs(monto) > 1000000) {
         mostrarAlerta('Monto muy alto', 'El monto no puede superar $1,000,000', 'warning');
         return;
     }
@@ -1112,9 +1132,10 @@ async function agregarCargaDesdeModal() {
         
         if (data.success) {
             const cajeroNombre = cajeroSelect.options[cajeroSelect.selectedIndex].text;
+            const tipo = monto < 0 ? 'Deuda' : 'Carga';
             mostrarAlerta('¡Registro exitoso!', 
-                `Carga de $${monto.toFixed(2)} registrada para ${cajeroNombre} en ${plataforma}`, 
-                'success');
+                `${tipo} de $${Math.abs(monto).toFixed(2)} registrada para ${cajeroNombre} en ${plataforma}`, 
+                monto < 0 ? 'warning' : 'success');
             
             // Recargar datos en paralelo
             const [nuevasCargas, nuevoResumen, nuevasEstadisticas] = await Promise.all([
@@ -1255,38 +1276,48 @@ function actualizarTablaResumen() {
     resumenOrdenado.forEach((item, index) => {
         const isTop = index === 0 && item.total > 0;
         const tr = document.createElement('tr');
-        tr.className = isTop ? 'table-warning' : '';
+        
+        // Color según total
+        if (item.total < 0) {
+            tr.className = 'table-danger';
+        } else if (isTop) {
+            tr.className = 'table-warning';
+        }
+        
         tr.innerHTML = `
             <td>
                 <div class="d-flex align-items-center">
                     <div class="position-relative me-2">
-                        <div class="story-circle small ${isTop ? 'pulse' : ''}" 
+                        <div class="story-circle small ${isTop && item.total > 0 ? 'pulse' : ''}" 
                              style="width: 36px; height: 36px;">
-                            <i class="fas ${isTop ? 'fa-crown' : 'fa-user'}"></i>
+                            <i class="fas ${item.total < 0 ? 'fa-exclamation-triangle text-danger' : isTop && item.total > 0 ? 'fa-crown' : 'fa-user'}"></i>
                         </div>
                     </div>
                     <div>
                         <div class="fw-medium">${item.cajero}</div>
-                        <small class="text-muted">${item.cargas} cargas pendientes</small>
+                        <small class="text-muted">${item.cargas} ${item.cargas === 1 ? 'carga' : 'cargas'} pendientes</small>
                     </div>
                 </div>
             </td>
             <td class="text-end">
-                <span class="fw-medium">$${item.zeus.toFixed(2)}</span>
+                <span class="fw-medium ${item.zeus < 0 ? 'text-danger' : ''}">$${item.zeus.toFixed(2)}</span>
             </td>
             <td class="text-end">
-                <span class="fw-medium">$${item.gana.toFixed(2)}</span>
+                <span class="fw-medium ${item.gana < 0 ? 'text-danger' : ''}">$${item.gana.toFixed(2)}</span>
             </td>
             <td class="text-end">
-                <span class="fw-medium">$${item.ganamos.toFixed(2)}</span>
+                <span class="fw-medium ${item.ganamos < 0 ? 'text-danger' : ''}">$${item.ganamos.toFixed(2)}</span>
             </td>
             <td class="text-end">
-                <span class="fw-bold text-gradient">$${item.total.toFixed(2)}</span>
+                <span class="fw-bold ${item.total < 0 ? 'text-danger' : item.total === 0 ? 'text-muted' : 'text-gradient'}">
+                    $${item.total.toFixed(2)}
+                </span>
             </td>
             <td class="text-center">
-                <button class="btn btn-success btn-sm hover-lift" 
+                <button class="btn ${item.total <= 0 ? 'btn-secondary' : 'btn-success'} btn-sm hover-lift" 
                         onclick="pagarCajero(${item.cajero_id}, '${item.cajero.replace(/'/g, "\\'")}')"
-                        title="Marcar como pagado">
+                        title="Marcar como pagado"
+                        ${item.total <= 0 ? 'disabled' : ''}>
                     <i class="fas fa-check-circle"></i> Pagar
                 </button>
             </td>
@@ -1316,6 +1347,7 @@ function calcularEstadisticas() {
     const totalGeneralEl = document.getElementById('totalGeneral');
     if (totalGeneralEl) {
         totalGeneralEl.textContent = `$${totalGeneral.toFixed(2)}`;
+        totalGeneralEl.className = totalGeneral < 0 ? 'gradient-text text-danger' : 'gradient-text';
     }
     
     // Today's total (TODAS las cargas)
@@ -1326,28 +1358,45 @@ function calcularEstadisticas() {
     const totalHoyEl = document.getElementById('totalHoy');
     if (totalHoyEl) {
         totalHoyEl.textContent = `$${totalHoy.toFixed(2)}`;
+        totalHoyEl.className = totalHoy < 0 ? 'text-danger' : '';
     }
     
-    // Top cashier
+    // Top cajero
     if (resumen.length > 0) {
-        const top = resumen.reduce((max, item) => item.total > max.total ? item : max, resumen[0]);
-        
-        const topCajeroEl = document.getElementById('topCajero');
-        if (topCajeroEl) {
-            topCajeroEl.textContent = `$${top.total.toFixed(2)}`;
-        }
-        
-        const topCajeroNombreEl = document.getElementById('topCajeroNombre');
-        if (topCajeroNombreEl) {
-            topCajeroNombreEl.innerHTML = `<i class="fas fa-crown me-1"></i> ${top.cajero}`;
+        // Filtrar solo cajeros con total positivo para top
+        const cajerosPositivos = resumen.filter(item => item.total > 0);
+        if (cajerosPositivos.length > 0) {
+            const top = cajerosPositivos.reduce((max, item) => item.total > max.total ? item : max, cajerosPositivos[0]);
+            
+            const topCajeroEl = document.getElementById('topCajero');
+            if (topCajeroEl) {
+                topCajeroEl.textContent = `$${top.total.toFixed(2)}`;
+            }
+            
+            const topCajeroNombreEl = document.getElementById('topCajeroNombre');
+            if (topCajeroNombreEl) {
+                topCajeroNombreEl.innerHTML = `<i class="fas fa-crown me-1"></i> ${top.cajero}`;
+            }
+        } else {
+            // Si no hay cajeros con total positivo
+            const topCajeroEl = document.getElementById('topCajero');
+            if (topCajeroEl) {
+                topCajeroEl.textContent = '$0';
+            }
+            
+            const topCajeroNombreEl = document.getElementById('topCajeroNombre');
+            if (topCajeroNombreEl) {
+                topCajeroNombreEl.innerHTML = `<i class="fas fa-user me-1"></i> Sin datos`;
+            }
         }
     }
     
-    // Average per charge
-    const todasLasCargas = cargas.length > 0 ? 
-        cargas.filter(c => c.plataforma !== 'PAGO').reduce((sum, c) => sum + parseFloat(c.monto || 0), 0) : 0;
-    const promedio = cargas.filter(c => c.plataforma !== 'PAGO').length > 0 ? 
-        todasLasCargas / cargas.filter(c => c.plataforma !== 'PAGO').length : 0;
+    // Average per charge (solo cargas positivas)
+    const cargasPositivas = cargas.filter(c => c.plataforma !== 'PAGO' && c.monto > 0);
+    const todasLasCargas = cargasPositivas.length > 0 ? 
+        cargasPositivas.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0) : 0;
+    const promedio = cargasPositivas.length > 0 ? 
+        todasLasCargas / cargasPositivas.length : 0;
     
     const promedioCargaEl = document.getElementById('promedioCarga');
     if (promedioCargaEl) {
@@ -1859,7 +1908,7 @@ function mostrarModalReportes() {
             <h4 class="gradient-text mb-4">Reportes</h4>
             <div class="row g-4">
                 <div class="col-md-4">
-                    <div class="reporte-card text-center hover-lift" onclick="generarReporteDiario()">
+                    <div class="reporte-card text-center hover-lift" onclick="generarReporteDiario()" style="cursor: pointer;">
                         <div class="story-circle mb-3 mx-auto" style="width: 80px; height: 80px;">
                             <i class="fas fa-calendar-day fa-2x"></i>
                         </div>
@@ -1868,7 +1917,7 @@ function mostrarModalReportes() {
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="reporte-card text-center hover-lift" onclick="generarReporteSemanal()">
+                    <div class="reporte-card text-center hover-lift" onclick="generarReporteSemanal()" style="cursor: pointer;">
                         <div class="story-circle mb-3 mx-auto" style="width: 80px; height: 80px;">
                             <i class="fas fa-calendar-week fa-2x"></i>
                         </div>
@@ -1877,7 +1926,7 @@ function mostrarModalReportes() {
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="reporte-card text-center hover-lift" onclick="generarReporteMensual()">
+                    <div class="reporte-card text-center hover-lift" onclick="generarReporteMensual()" style="cursor: pointer;">
                         <div class="story-circle mb-3 mx-auto" style="width: 80px; height: 80px;">
                             <i class="fas fa-calendar-alt fa-2x"></i>
                         </div>
@@ -2054,6 +2103,7 @@ function mostrarReporteEnModal(tipo, reporte) {
                             <th>Plataforma</th>
                             <th class="text-end">Monto</th>
                             <th>Estado</th>
+                            <th>Tipo</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2073,9 +2123,10 @@ function mostrarReporteEnModal(tipo, reporte) {
                 <tr>
                     <td>${fechaFormateada}</td>
                     <td>${carga.cajero}</td>
-                    <td><span class="badge ${getBadgeClass(carga.plataforma)}">${carga.plataforma}</span></td>
-                    <td class="text-end">$${parseFloat(carga.monto).toFixed(2)}</td>
-                    <td><span class="badge ${carga.estado === 'PAGADO' ? 'bg-success' : 'bg-warning'}">${carga.estado}</span></td>
+                    <td><span class="badge ${carga.tipo === 'DEUDA' ? 'bg-danger' : getBadgeClass({plataforma: carga.plataforma})}">${carga.plataforma}</span></td>
+                    <td class="text-end ${carga.tipo === 'DEUDA' ? 'text-danger' : ''}">$${parseFloat(carga.monto).toFixed(2)}</td>
+                    <td><span class="badge ${carga.estado === 'PAGADO' ? 'bg-success' : carga.estado === 'DEUDA' ? 'bg-danger' : 'bg-warning'}">${carga.estado}</span></td>
+                    <td><span class="badge ${carga.tipo === 'DEUDA' ? 'bg-danger' : 'bg-info'}">${carga.tipo}</span></td>
                 </tr>
             `;
         });
@@ -2202,7 +2253,7 @@ function exportarReporteSemanal() {
 function exportarReporteMensual() {
     const hoy = new Date();
     const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+    const finMes = new Date(hoy.getFullYear(), hoy.month + 1, 0);
     
     document.getElementById('fechaInicio').value = inicioMes.toISOString().slice(0, 16);
     document.getElementById('fechaFin').value = finMes.toISOString().slice(0, 16);
@@ -2453,6 +2504,5 @@ setTimeout(() => {
     if (overlay && overlay.classList.contains('active')) {
         console.warn('⚠️ Emergency: Hiding loading overlay after 20 seconds');
         forzarOcultarLoading();
-        mostrarAlerta('Timeout', 'La carga inicial tardó demasiado. Verifica tu conexión.', 'warning');
     }
 }, 20000);

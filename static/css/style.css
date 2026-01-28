@@ -460,3 +460,28 @@ body {
     70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
     100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
 }
+
+/* Estilo para cursor en botones de reportes */
+.reporte-card {
+    transition: all 0.3s ease;
+    cursor: pointer !important;
+}
+
+.reporte-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Estilos para deudas */
+.table-danger {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.badge-danger {
+    background: linear-gradient(135deg, #dc3545, #a71d2a) !important;
+}
+
+/* Texto rojo para montos negativos */
+.text-danger {
+    color: #ff6b6b !important;
+}
