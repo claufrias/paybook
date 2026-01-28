@@ -556,7 +556,7 @@ async function eliminarCajero(id) {
         const data = await response.json();
         
         if (data.success) {
-            mostrarAlerta('¡Éxito!', data.message || 'Cajero procesado correctamente', 'success');
+            mostrarAlerta('¡Éxito!', data.message || 'Cajero desactivado correctamente', 'success');
             
             // Recargar datos
             cajeros = await cargarCajeros();
@@ -568,6 +568,67 @@ async function eliminarCajero(id) {
             
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo procesar el cajero', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+async function eliminarCajeroCompletamente(id) {
+    const cajero = cajeros.find(c => c.id === id);
+    if (!cajero) return;
+    
+    const confirmacion = confirm(
+        `¿Está SEGURO de ELIMINAR COMPLETAMENTE al cajero "${cajero.nombre}"?\n\n` +
+        `⚠️ ⚠️ ⚠️ ADVERTENCIA CRÍTICA ⚠️ ⚠️ ⚠️\n` +
+        `Esta acción es PERMANENTE y NO SE PUEDE DESHACER.\n` +
+        `Se eliminará TODA la información del cajero.\n\n` +
+        `Solo puede eliminar cajeros que NO tengan cargas registradas.\n` +
+        `Para cajeros con cargas, use la opción "Desactivar".\n\n` +
+        `¿Continuar con la eliminación permanente?`
+    );
+    
+    if (!confirmacion) {
+        return;
+    }
+    
+    mostrarLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/cajeros/${id}/eliminar`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarAlerta('¡Éxito!', data.message || 'Cajero eliminado completamente', 'success');
+            
+            // Recargar datos
+            cajeros = await cargarCajeros();
+            resumen = await cargarResumen();
+            cargas = await cargarCargas();
+            
+            actualizarSelectCajeros();
+            actualizarTablaResumen();
+            actualizarTablaCargas();
+            calcularEstadisticas();
+            
+            // Cerrar modal y recargar
+            const modal = document.getElementById('modalCajeros');
+            if (modal) {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                    setTimeout(() => mostrarModalCajeros(), 500);
+                }
+            }
+            
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo eliminar el cajero', 'error');
         }
     } catch (error) {
         console.error('Error:', error);
@@ -609,6 +670,12 @@ function actualizarTablaCargas() {
     const tbody = document.getElementById('tablaCargas');
     if (!tbody) return;
     
+    // Eliminar mensajes de carga
+    const historialStatus = document.getElementById('historialStatus');
+    if (historialStatus) {
+        historialStatus.textContent = '';
+    }
+    
     if (cargas.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -619,7 +686,7 @@ function actualizarTablaCargas() {
                     <h6>No hay cargas registradas</h6>
                     <small class="text-muted">Agrega tu primera carga usando el formulario</small>
                     <div class="mt-3">
-                        <button class="btn btn-ig btn-sm" onclick="mostrarSeccion('cargas')">
+                        <button class="btn btn-ig btn-sm" onclick="mostrarModalCarga()">
                             <i class="fas fa-plus me-2"></i> Agregar Carga
                         </button>
                     </div>
@@ -648,9 +715,19 @@ function actualizarTablaCargas() {
             
             const tr = document.createElement('tr');
             
-            // Destacar las 3 más recientes
-            if (index < 3) {
+            // Clase según tipo de registro
+            if (carga.plataforma === 'PAGO') {
+                tr.className = 'table-success';
+            } else if (index < 3) {
                 tr.className = 'table-info';
+            }
+            
+            // Icono según tipo
+            let icono = 'fa-calendar-alt';
+            if (carga.plataforma === 'PAGO') {
+                icono = 'fa-money-bill-wave text-success';
+            } else if (carga.pagado) {
+                icono = 'fa-check-circle text-warning';
             }
             
             tr.innerHTML = `
@@ -658,7 +735,7 @@ function actualizarTablaCargas() {
                     <div class="d-flex align-items-center">
                         <div class="bg-dark rounded-circle d-flex align-items-center justify-content-center me-2" 
                              style="width: 32px; height: 32px;">
-                            <i class="fas fa-calendar-alt fa-xs"></i>
+                            <i class="fas ${icono} fa-xs"></i>
                         </div>
                         <div>
                             <div class="fw-medium">${fechaFormateada}</div>
@@ -680,13 +757,17 @@ function actualizarTablaCargas() {
                     </span>
                 </td>
                 <td class="text-end">
-                    <span class="fw-bold text-gradient">$${parseFloat(carga.monto || 0).toFixed(2)}</span>
+                    <span class="fw-bold ${carga.plataforma === 'PAGO' ? 'text-success' : carga.pagado ? 'text-warning' : 'text-gradient'}">
+                        ${carga.plataforma === 'PAGO' ? '-' : ''}$${Math.abs(parseFloat(carga.monto || 0)).toFixed(2)}
+                    </span>
                 </td>
                 <td class="text-center">
+                    ${carga.plataforma !== 'PAGO' ? `
                     <button class="btn btn-outline-danger btn-sm hover-lift" onclick="eliminarCarga(${carga.id})" 
                             title="Eliminar carga">
                         <i class="fas fa-trash"></i>
                     </button>
+                    ` : '<small class="text-muted">PAGO</small>'}
                 </td>
             `;
             
@@ -714,6 +795,7 @@ function getBadgeClass(plataforma) {
         case 'Zeus': return 'badge-zeus';
         case 'Gana': return 'badge-gana';
         case 'Ganamos': return 'badge-ganamos';
+        case 'PAGO': return 'bg-success';
         default: return 'bg-secondary';
     }
 }
@@ -728,7 +810,8 @@ function actualizarContadores() {
     // Data status
     const dataStatusEl = document.getElementById('dataStatus');
     if (dataStatusEl) {
-        dataStatusEl.textContent = `Cajeros: ${cajeros.filter(c => c.activo).length} | Cargas: ${cargas.length} | Total: $${resumen.reduce((sum, item) => sum + item.total, 0).toFixed(2)}`;
+        const totalPendiente = resumen.reduce((sum, item) => sum + item.total, 0);
+        dataStatusEl.textContent = `Cajeros: ${cajeros.filter(c => c.activo).length} | Cargas: ${cargas.length} | Pendiente: $${totalPendiente.toFixed(2)}`;
     }
 }
 
@@ -786,6 +869,7 @@ async function agregarCarga() {
             
             // Reset form
             montoInput.value = '';
+            montoInput.focus();
             
             // Animate success
             const form = document.getElementById('formCarga');
@@ -811,8 +895,14 @@ async function agregarCarga() {
             calcularEstadisticas();
             actualizarContadores();
             
-            // Mostrar sección de historial
-            mostrarSeccion('historial');
+            // Cerrar modal si está abierto
+            const modalCarga = document.getElementById('modalCarga');
+            if (modalCarga) {
+                const bsModal = bootstrap.Modal.getInstance(modalCarga);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+            }
             
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo registrar la carga', 'error');
@@ -873,17 +963,196 @@ async function eliminarCarga(id) {
     }
 }
 
+// ========== MODAL NUEVA CARGA ==========
+function mostrarModalCarga() {
+    const html = `
+        <div class="nueva-carga-modal">
+            <h4 class="gradient-text mb-4">Nueva Carga</h4>
+            <div class="mb-3">
+                <label class="form-label text-muted">Cajero</label>
+                <select id="modalSelectCajero" class="form-select form-select-ig">
+                    <option value="">Seleccione un cajero</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-muted">Plataforma</label>
+                <select id="modalSelectPlataforma" class="form-select form-select-ig">
+                    <option value="Zeus">🔱 Zeus</option>
+                    <option value="Gana">🎯 Gana</option>
+                    <option value="Ganamos">💰 Ganamos</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-muted">Monto ($)</label>
+                <input type="number" id="modalMontoCarga" class="form-control form-control-ig" 
+                       step="0.01" min="0.01" placeholder="0.00" autocomplete="off">
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-muted">Nota (opcional)</label>
+                <input type="text" id="modalNotaCarga" class="form-control form-control-ig" 
+                       placeholder="Nota adicional...">
+            </div>
+        </div>
+    `;
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'modalCarga';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content ig-card">
+                <div class="modal-header ig-card-header">
+                    <h5 class="modal-title gradient-text">
+                        <i class="fas fa-plus me-2"></i>Nueva Carga
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body ig-card-body">
+                    ${html}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-ig" onclick="agregarCargaDesdeModal()">
+                        <i class="fas fa-save me-2"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    // Cargar cajeros en el select del modal
+    const modalSelectCajero = modal.querySelector('#modalSelectCajero');
+    if (modalSelectCajero) {
+        modalSelectCajero.innerHTML = '<option value="">Seleccione un cajero</option>';
+        const cajerosActivos = cajeros.filter(c => c.activo);
+        cajerosActivos.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        
+        cajerosActivos.forEach(cajero => {
+            const option = document.createElement('option');
+            option.value = cajero.id;
+            option.textContent = cajero.nombre;
+            modalSelectCajero.appendChild(option);
+        });
+        
+        // Enfocar el primer campo
+        setTimeout(() => {
+            modalSelectCajero.focus();
+        }, 300);
+    }
+    
+    // Clean up modal on close
+    modal.addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modal);
+    });
+    
+    // Enter key to submit
+    modal.querySelector('#modalMontoCarga').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') agregarCargaDesdeModal();
+    });
+}
+
+async function agregarCargaDesdeModal() {
+    const modal = document.getElementById('modalCarga');
+    if (!modal) return;
+    
+    const cajeroSelect = modal.querySelector('#modalSelectCajero');
+    const plataformaSelect = modal.querySelector('#modalSelectPlataforma');
+    const montoInput = modal.querySelector('#modalMontoCarga');
+    const notaInput = modal.querySelector('#modalNotaCarga');
+    
+    const cajeroId = cajeroSelect.value;
+    const plataforma = plataformaSelect.value;
+    const monto = parseFloat(montoInput.value);
+    const nota = notaInput.value.trim();
+    
+    // Validations
+    if (!cajeroId) {
+        mostrarAlerta('Seleccione cajero', 'Debe seleccionar un cajero de la lista', 'warning');
+        cajeroSelect.focus();
+        return;
+    }
+    
+    if (!monto || monto <= 0 || isNaN(monto)) {
+        mostrarAlerta('Monto inválido', 'Ingrese un monto válido mayor a 0', 'warning');
+        montoInput.focus();
+        montoInput.select();
+        return;
+    }
+    
+    if (monto > 1000000) {
+        mostrarAlerta('Monto muy alto', 'El monto no puede superar $1,000,000', 'warning');
+        return;
+    }
+    
+    mostrarLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/cargas`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                cajero_id: parseInt(cajeroId),
+                plataforma: plataforma,
+                monto: monto,
+                nota: nota
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const cajeroNombre = cajeroSelect.options[cajeroSelect.selectedIndex].text;
+            mostrarAlerta('¡Registro exitoso!', 
+                `Carga de $${monto.toFixed(2)} registrada para ${cajeroNombre} en ${plataforma}`, 
+                'success');
+            
+            // Recargar datos en paralelo
+            const [nuevasCargas, nuevoResumen, nuevasEstadisticas] = await Promise.all([
+                cargarCargas(),
+                cargarResumen(),
+                cargarEstadisticas()
+            ]);
+            
+            cargas = nuevasCargas;
+            resumen = nuevoResumen;
+            estadisticas = nuevasEstadisticas;
+            
+            // Actualizar UI
+            actualizarTablaCargas();
+            actualizarTablaResumen();
+            calcularEstadisticas();
+            actualizarContadores();
+            
+            // Cerrar modal
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+            
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo registrar la carga', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error de conexión', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
 // Quick add charge
 function agregarCargaRapida() {
-    mostrarSeccion('cargas');
-    const montoInput = document.getElementById('montoCarga');
-    if (montoInput) montoInput.focus();
-    
-    // If no cajero selected, show alert
-    const selectCajero = document.getElementById('selectCajero');
-    if (selectCajero && !selectCajero.value) {
-        mostrarAlerta('Seleccione cajero', 'Primero seleccione un cajero para cargar rápido', 'info');
-    }
+    mostrarModalCarga();
 }
 
 // ========== FILTERS ==========
@@ -957,6 +1226,12 @@ function actualizarTablaResumen() {
     const tbody = document.getElementById('tablaResumen');
     if (!tbody) return;
     
+    // Eliminar mensajes de carga
+    const resumenStatus = document.getElementById('resumenStatus');
+    if (resumenStatus) {
+        resumenStatus.textContent = '';
+    }
+    
     if (resumen.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -992,7 +1267,7 @@ function actualizarTablaResumen() {
                     </div>
                     <div>
                         <div class="fw-medium">${item.cajero}</div>
-                        <small class="text-muted">${item.cargas} cargas</small>
+                        <small class="text-muted">${item.cargas} cargas pendientes</small>
                     </div>
                 </div>
             </td>
@@ -1070,8 +1345,9 @@ function calcularEstadisticas() {
     
     // Average per charge
     const todasLasCargas = cargas.length > 0 ? 
-        cargas.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0) : 0;
-    const promedio = cargas.length > 0 ? todasLasCargas / cargas.length : 0;
+        cargas.filter(c => c.plataforma !== 'PAGO').reduce((sum, c) => sum + parseFloat(c.monto || 0), 0) : 0;
+    const promedio = cargas.filter(c => c.plataforma !== 'PAGO').length > 0 ? 
+        todasLasCargas / cargas.filter(c => c.plataforma !== 'PAGO').length : 0;
     
     const promedioCargaEl = document.getElementById('promedioCarga');
     if (promedioCargaEl) {
@@ -1100,6 +1376,11 @@ async function pagarCajero(cajeroId, cajeroNombre) {
         
         mostrarLoading(false);
         
+        if (pendiente <= 0) {
+            mostrarAlerta('Sin pendientes', `${cajeroNombre} no tiene comisiones pendientes`, 'info');
+            return;
+        }
+        
         // Ask how much to pay
         const monto = prompt(
             `${cajeroNombre}\n\nPendiente: $${pendiente.toFixed(2)}\n\n¿Cuánto va a pagar?\n(Deje en blanco para pagar todo):`,
@@ -1120,6 +1401,11 @@ async function pagarCajero(cajeroId, cajeroNombre) {
             return;
         }
         
+        if (montoNum > pendiente) {
+            mostrarAlerta('Error', `El monto no puede superar el pendiente ($${pendiente.toFixed(2)})`, 'error');
+            return;
+        }
+        
         mostrarLoading(true);
         
         // Send payment
@@ -1131,7 +1417,8 @@ async function pagarCajero(cajeroId, cajeroNombre) {
             },
             body: JSON.stringify({
                 cajero_id: cajeroId,
-                monto_pagado: montoNum
+                monto_pagado: montoNum,
+                notas: `Pago registrado desde la interfaz web`
             })
         });
         
@@ -1288,7 +1575,7 @@ async function exportarReporte() {
     try {
         const response = await fetch(url);
         
-        if (response.ok && response.headers.get('content-type') === 'text/csv') {
+        if (response.ok) {
             // Download CSV file
             const blob = await response.blob();
             const urlBlob = window.URL.createObjectURL(blob);
@@ -1419,7 +1706,7 @@ async function mostrarModalCajeros() {
                                 <i class="fas fa-edit"></i>
                             </button>
                             ${cajero.activo ? `
-                                <button class="btn btn-outline-danger" onclick="eliminarCajero(${cajero.id})" title="Desactivar">
+                                <button class="btn btn-outline-warning" onclick="eliminarCajero(${cajero.id})" title="Desactivar">
                                     <i class="fas fa-user-slash"></i>
                                 </button>
                             ` : `
@@ -1427,6 +1714,9 @@ async function mostrarModalCajeros() {
                                     <i class="fas fa-user-check"></i>
                                 </button>
                             `}
+                            <button class="btn btn-outline-danger" onclick="eliminarCajeroCompletamente(${cajero.id})" title="Eliminar completamente">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -1660,158 +1950,185 @@ function mostrarModalReportes() {
     });
 }
 
-function mostrarReporteDiario() {
-    // Create modal with daily report
-    const hoy = new Date().toISOString().split('T')[0];
-    
+// ========== REPORT FUNCTIONS ==========
+async function mostrarReporteDiario() {
     mostrarLoading(true);
     
-    fetch(`${API_BASE}/api/cargas?fecha_inicio=${hoy}T00:00:00&fecha_fin=${hoy}T23:59:59`)
-        .then(response => response.json())
-        .then(data => {
-            mostrarLoading(false);
-            
-            if (data.success) {
-                const cargasHoy = data.data;
-                let html = `
-                    <div class="reporte-detalle">
-                        <h4 class="gradient-text mb-3">Reporte Diario - ${hoy}</h4>
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="stat-card">
-                                    <div class="stat-label">TOTAL CARGAS</div>
-                                    <div class="stat-number">${cargasHoy.length}</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="stat-card">
-                                    <div class="stat-label">MONTO TOTAL</div>
-                                    <div class="stat-number">$${cargasHoy.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0).toFixed(2)}</div>
-                                </div>
-                            </div>
-                        </div>
-                `;
-                
-                if (cargasHoy.length > 0) {
-                    html += `
-                        <div class="table-responsive">
-                            <table class="table table-ig table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Hora</th>
-                                        <th>Cajero</th>
-                                        <th>Plataforma</th>
-                                        <th class="text-end">Monto</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
-                    
-                    cargasHoy.forEach(carga => {
-                        const hora = carga.fecha.split(' ')[1];
-                        html += `
-                            <tr>
-                                <td>${hora}</td>
-                                <td>${carga.cajero}</td>
-                                <td><span class="badge ${getBadgeClass(carga.plataforma)}">${carga.plataforma}</span></td>
-                                <td class="text-end">$${parseFloat(carga.monto).toFixed(2)}</td>
-                            </tr>
-                        `;
-                    });
-                    
-                    html += `
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="text-center py-5">
-                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                            <h6>No hay cargas hoy</h6>
-                        </div>
-                    `;
-                }
-                
-                html += `</div>`;
-                
-                // Show in modal
-                const modal = document.createElement('div');
-                modal.className = 'modal fade';
-                modal.id = 'modalReporteDiario';
-                modal.innerHTML = `
-                    <div class="modal-dialog modal-dialog-centered modal-lg">
-                        <div class="modal-content ig-card">
-                            <div class="modal-header ig-card-header">
-                                <h5 class="modal-title gradient-text">
-                                    <i class="fas fa-calendar-day me-2"></i>Reporte Diario
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body ig-card-body">
-                                ${html}
-                            </div>
-                            <div class="modal-footer">
-                                <button class="btn btn-ig" onclick="exportarReporteDiario()">
-                                    <i class="fas fa-file-excel me-2"></i> Exportar
-                                </button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                            </div>
-                        </div>
+    try {
+        const response = await fetch(`${API_BASE}/api/reportes/diario`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const reporte = data.data;
+            mostrarReporteEnModal('Diario', reporte);
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo generar el reporte', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+async function mostrarReporteSemanal() {
+    mostrarLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/reportes/semanal`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const reporte = data.data;
+            mostrarReporteEnModal('Semanal', reporte);
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo generar el reporte', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+async function mostrarReporteMensual() {
+    mostrarLoading(true);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/reportes/mensual`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const reporte = data.data;
+            mostrarReporteEnModal('Mensual', reporte);
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo generar el reporte', 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+function mostrarReporteEnModal(tipo, reporte) {
+    let html = `
+        <div class="reporte-detalle">
+            <h4 class="gradient-text mb-3">Reporte ${tipo}</h4>
+            <div class="mb-4">
+                ${tipo === 'Diario' ? `
+                    <div class="text-muted">Fecha: ${reporte.fecha}</div>
+                ` : tipo === 'Semanal' ? `
+                    <div class="text-muted">Período: ${reporte.fecha_inicio} al ${reporte.fecha_fin}</div>
+                ` : `
+                    <div class="text-muted">Período: ${reporte.fecha_inicio} al ${reporte.fecha_fin}</div>
+                `}
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-label">TOTAL CARGAS</div>
+                        <div class="stat-number">${reporte.total_cargas}</div>
                     </div>
-                `;
-                
-                document.body.appendChild(modal);
-                const bsModal = new bootstrap.Modal(modal);
-                bsModal.show();
-                
-                modal.addEventListener('hidden.bs.modal', function () {
-                    document.body.removeChild(modal);
-                });
-                
-            } else {
-                mostrarAlerta('Error', data.error || 'No se pudo generar el reporte', 'error');
-            }
-        })
-        .catch(error => {
-            mostrarLoading(false);
-            console.error('Error:', error);
-            mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-label">MONTO TOTAL</div>
+                        <div class="stat-number">$${reporte.monto_total.toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+    `;
+    
+    if (reporte.cargas && reporte.cargas.length > 0) {
+        html += `
+            <div class="table-responsive">
+                <table class="table table-ig table-sm">
+                    <thead>
+                        <tr>
+                            <th>Fecha/Hora</th>
+                            <th>Cajero</th>
+                            <th>Plataforma</th>
+                            <th class="text-end">Monto</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        reporte.cargas.forEach(carga => {
+            const fecha = new Date(carga.fecha);
+            const fechaFormateada = fecha.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).replace(/ de /g, '/');
+            
+            html += `
+                <tr>
+                    <td>${fechaFormateada}</td>
+                    <td>${carga.cajero}</td>
+                    <td><span class="badge ${getBadgeClass(carga.plataforma)}">${carga.plataforma}</span></td>
+                    <td class="text-end">$${parseFloat(carga.monto).toFixed(2)}</td>
+                    <td><span class="badge ${carga.estado === 'PAGADO' ? 'bg-success' : 'bg-warning'}">${carga.estado}</span></td>
+                </tr>
+            `;
         });
-}
-
-function mostrarReporteSemanal() {
-    const hoy = new Date();
-    const inicioSemana = new Date(hoy);
-    inicioSemana.setDate(hoy.getDate() - hoy.getDay());
-    const finSemana = new Date(inicioSemana);
-    finSemana.setDate(inicioSemana.getDate() + 6);
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h6>No hay cargas en este período</h6>
+            </div>
+        `;
+    }
     
-    const inicioStr = inicioSemana.toISOString().slice(0, 10);
-    const finStr = finSemana.toISOString().slice(0, 10);
+    html += `</div>`;
     
-    mostrarAlerta('Reporte Semanal', `Filtrando cargas desde ${inicioStr} hasta ${finStr}`, 'info');
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = `modalReporte${tipo}`;
+    modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content ig-card">
+                <div class="modal-header ig-card-header">
+                    <h5 class="modal-title gradient-text">
+                        <i class="fas fa-calendar-${tipo === 'Diario' ? 'day' : tipo === 'Semanal' ? 'week' : 'alt'} me-2"></i>Reporte ${tipo}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body ig-card-body">
+                    ${html}
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-ig" onclick="exportarReporte${tipo}()">
+                        <i class="fas fa-file-excel me-2"></i> Exportar
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    `;
     
-    // Apply filter
-    document.getElementById('fechaInicio').value = `${inicioStr}T00:00`;
-    document.getElementById('fechaFin').value = `${finStr}T23:59`;
-    filtrarCargas();
-}
-
-function mostrarReporteMensual() {
-    const hoy = new Date();
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
     
-    const inicioStr = inicioMes.toISOString().slice(0, 10);
-    const finStr = finMes.toISOString().slice(0, 10);
-    
-    mostrarAlerta('Reporte Mensual', `Filtrando cargas desde ${inicioStr} hasta ${finStr}`, 'info');
-    
-    // Apply filter
-    document.getElementById('fechaInicio').value = `${inicioStr}T00:00`;
-    document.getElementById('fechaFin').value = `${finStr}T23:59`;
-    filtrarCargas();
+    modal.addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modal);
+    });
 }
 
 function exportarReportePersonalizado() {
@@ -1859,6 +2176,58 @@ function exportarReporteDiario() {
             bsModal.hide();
         }
     }
+}
+
+function exportarReporteSemanal() {
+    const hoy = new Date();
+    const inicioSemana = new Date(hoy);
+    inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+    const finSemana = new Date(inicioSemana);
+    finSemana.setDate(inicioSemana.getDate() + 6);
+    
+    document.getElementById('fechaInicio').value = inicioSemana.toISOString().slice(0, 16);
+    document.getElementById('fechaFin').value = finSemana.toISOString().slice(0, 16);
+    exportarReporte();
+    
+    // Close modal
+    const modal = document.getElementById('modalReporteSemanal');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
+    }
+}
+
+function exportarReporteMensual() {
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+    
+    document.getElementById('fechaInicio').value = inicioMes.toISOString().slice(0, 16);
+    document.getElementById('fechaFin').value = finMes.toISOString().slice(0, 16);
+    exportarReporte();
+    
+    // Close modal
+    const modal = document.getElementById('modalReporteMensual');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
+    }
+}
+
+function generarReporteDiario() {
+    mostrarReporteDiario();
+}
+
+function generarReporteSemanal() {
+    mostrarReporteSemanal();
+}
+
+function generarReporteMensual() {
+    mostrarReporteMensual();
 }
 
 // ========== CONFIGURATION MANAGEMENT ==========
@@ -2002,39 +2371,7 @@ function formatDate(dateString) {
     });
 }
 
-// ========== REPORT FUNCTIONS ==========
-function generarReporteDiario() {
-    const hoy = new Date().toISOString().split('T')[0];
-    document.getElementById('fechaInicio').value = `${hoy}T00:00`;
-    document.getElementById('fechaFin').value = `${hoy}T23:59`;
-    filtrarCargas();
-    mostrarAlerta('Reporte Diario', 'Filtro aplicado para hoy', 'info');
-}
-
-function generarReporteSemanal() {
-    const hoy = new Date();
-    const inicioSemana = new Date(hoy);
-    inicioSemana.setDate(hoy.getDate() - hoy.getDay());
-    const finSemana = new Date(inicioSemana);
-    finSemana.setDate(inicioSemana.getDate() + 6);
-    
-    document.getElementById('fechaInicio').value = inicioSemana.toISOString().slice(0, 16);
-    document.getElementById('fechaFin').value = finSemana.toISOString().slice(0, 16);
-    filtrarCargas();
-    mostrarAlerta('Reporte Semanal', 'Filtro aplicado para esta semana', 'info');
-}
-
-function generarReporteMensual() {
-    const hoy = new Date();
-    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    const finMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-    
-    document.getElementById('fechaInicio').value = inicioMes.toISOString().slice(0, 16);
-    document.getElementById('fechaFin').value = finMes.toISOString().slice(0, 16);
-    filtrarCargas();
-    mostrarAlerta('Reporte Mensual', 'Filtro aplicado para este mes', 'info');
-}
-
+// ========== DIAGNOSTIC ==========
 function diagnostico() {
     const diagnosticos = [];
     
@@ -2044,7 +2381,7 @@ function diagnostico() {
     // Verificar datos
     diagnosticos.push(`✅ Cajeros: ${cajeros.length} (${cajeros.filter(c => c.activo).length} activos)`);
     diagnosticos.push(`✅ Cargas: ${cargas.length}`);
-    diagnosticos.push(`✅ Resumen: ${resumen.length} cajeros con total de $${resumen.reduce((sum, item) => sum + item.total, 0).toFixed(2)}`);
+    diagnosticos.push(`✅ Resumen: ${resumen.length} cajeros con total pendiente de $${resumen.reduce((sum, item) => sum + item.total, 0).toFixed(2)}`);
     
     // Verificar localStorage
     if (typeof(Storage) !== "undefined") {
@@ -2070,6 +2407,7 @@ window.agregarCarga = agregarCarga;
 window.agregarCargaRapida = agregarCargaRapida;
 window.editarCajero = editarCajero;
 window.eliminarCajero = eliminarCajero;
+window.eliminarCajeroCompletamente = eliminarCajeroCompletamente;
 window.eliminarCarga = eliminarCarga;
 window.filtrarCargas = filtrarCargas;
 window.limpiarFiltro = limpiarFiltro;
@@ -2105,6 +2443,7 @@ window.cargarCargas = cargarCargas;
 window.actualizarResumen = cargarResumen;
 window.cargarDatosIniciales = cargarDatosIniciales;
 window.mostrarModalCajeros = mostrarModalCajeros;
+window.mostrarModalCarga = mostrarModalCarga;
 window.mostrarModalReportes = mostrarModalReportes;
 window.reactivarCajero = reactivarCajero;
 

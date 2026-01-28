@@ -117,7 +117,7 @@
                 </div>
                 <small>Cajeros</small>
             </div>
-            <div class="story-item" onclick="mostrarSeccion('cargas')">
+            <div class="story-item" onclick="mostrarModalCarga()">
                 <div class="story-circle pulse">
                     <i class="fas fa-plus"></i>
                 </div>
@@ -210,7 +210,7 @@
                 <!-- Carga Form -->
                 <div class="ig-card mb-4 fade-in" id="formCarga">
                     <div class="ig-card-header d-flex align-items-center">
-                        <div class="story-circle small me-3 pulse">
+                        <div class="story-circle small me-3">
                             <i class="fas fa-bolt"></i>
                         </div>
                         <div>
@@ -326,7 +326,7 @@
                             <small class="text-muted">Total acumulado por plataforma</small>
                             <div class="mt-1">
                                 <small class="text-muted" id="resumenStatus">
-                                    <i class="fas fa-sync fa-spin me-1"></i> Calculando...
+                                    <!-- Mensaje eliminado -->
                                 </small>
                             </div>
                         </div>
@@ -374,7 +374,7 @@
                             <small class="text-muted">Últimas cargas registradas</small>
                             <div class="mt-1">
                                 <small class="text-muted" id="historialStatus">
-                                    <i class="fas fa-sync fa-spin me-1"></i> Cargando...
+                                    <!-- Mensaje eliminado -->
                                 </small>
                             </div>
                         </div>
@@ -429,7 +429,7 @@
     </div>
 
     <!-- Floating Action Button -->
-    <button class="fab" onclick="agregarCargaRapida()" title="Agregar carga rápida">
+    <button class="fab" onclick="mostrarModalCarga()" title="Agregar carga rápida">
         <i class="fas fa-plus"></i>
     </button>
 

@@ -260,8 +260,9 @@ def update_cajero(id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/cajeros/<int:id>', methods=['DELETE'])
-def delete_cajero(id):
+@app.route('/api/cajeros/<int:id>/eliminar', methods=['DELETE'])
+def eliminar_cajero_completamente(id):
+    """Eliminar completamente un cajero (solo si no tiene cargas)"""
     try:
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
@@ -279,13 +280,43 @@ def delete_cajero(id):
             cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ?', (id,))
             tiene_cargas = cursor.fetchone()[0] > 0
             
-            # Primero marcamos como inactivo (más seguro que eliminar)
+            if tiene_cargas:
+                conn.close()
+                return jsonify({'success': False, 'error': 'No se puede eliminar un cajero que tiene cargas registradas. Use desactivar en su lugar.'}), 400
+            
+            # Eliminar completamente
+            cursor.execute('DELETE FROM cajeros WHERE id = ?', (id,))
+            conn.commit()
+            conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cajero "{cajero[1]}" eliminado completamente del sistema'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/cajeros/<int:id>', methods=['DELETE'])
+def delete_cajero(id):
+    """Desactivar cajero (marcar como inactivo)"""
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Verificar si existe
+            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ?', (id,))
+            cajero = cursor.fetchone()
+            
+            if not cajero:
+                conn.close()
+                return jsonify({'success': False, 'error': 'Cajero no encontrado'}), 404
+            
+            # Marcamos como inactivo
             cursor.execute('UPDATE cajeros SET activo = 0 WHERE id = ?', (id,))
             
-            if tiene_cargas:
-                mensaje = f'Cajero "{cajero[1]}" marcado como inactivo (tiene cargas registradas)'
-            else:
-                mensaje = f'Cajero "{cajero[1]}" marcado como inactivo'
+            mensaje = f'Cajero "{cajero[1]}" marcado como inactivo'
             
             conn.commit()
             conn.close()
@@ -314,7 +345,7 @@ def get_cargas():
             limite = request.args.get('limite', 100)
             
             query = '''
-                SELECT cg.id, c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota
+                SELECT cg.id, c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota, cg.pagado
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE 1=1
@@ -349,7 +380,8 @@ def get_cargas():
                 'plataforma': row[2],
                 'monto': row[3],
                 'fecha': row[4],
-                'nota': row[5] or ''
+                'nota': row[5] or '',
+                'pagado': bool(row[6])
             } for row in cargas]
         })
         
@@ -414,7 +446,8 @@ def add_carga():
                 'plataforma': plataforma,
                 'monto': monto,
                 'fecha': fecha,
-                'nota': nota
+                'nota': nota,
+                'pagado': False
             },
             'message': 'Carga registrada exitosamente'
         })
@@ -670,15 +703,37 @@ def registrar_pago():
                 VALUES (?, ?, ?, ?)
             ''', (cajero_id, monto_pagado, total_comisiones, notas))
             
-            # Marcar cargas como pagadas
+            pago_id = cursor.lastrowid
+            
+            # Marcar cargas como pagadas (solo hasta el monto pagado)
+            if monto_pagado >= total_comisiones:
+                # Si paga todo, marcar todas como pagadas
+                cursor.execute('''
+                    UPDATE cargas 
+                    SET pagado = 1 
+                    WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
+                ''', (cajero_id,))
+            else:
+                # Si paga parcialmente, marcar cargas más antiguas primero
+                cursor.execute('''
+                    UPDATE cargas 
+                    SET pagado = 1 
+                    WHERE id IN (
+                        SELECT id FROM cargas 
+                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
+                        ORDER BY fecha ASC
+                        LIMIT ?
+                    )
+                ''', (cajero_id, cantidad_cargas))
+            
+            # Registrar carga especial en el historial para el pago
+            fecha_pago = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute('''
-                UPDATE cargas 
-                SET pagado = 1 
-                WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
-            ''', (cajero_id,))
+                INSERT INTO cargas (cajero_id, plataforma, monto, fecha, nota, pagado)
+                VALUES (?, ?, ?, ?, ?, 1)
+            ''', (cajero_id, 'PAGO', -monto_pagado, fecha_pago, f'Pago registrado - {notas}' if notas else 'Pago registrado'))
             
             conn.commit()
-            pago_id = cursor.lastrowid
             
             # Obtener detalles del pago
             cursor.execute('''
@@ -724,14 +779,16 @@ def exportar_excel():
             
             # Construir query según tipo de reporte
             query_cargas = '''
-                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE WHEN cg.pagado = 1 THEN 'PAGADO' ELSE 'PENDIENTE' END as estado
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
+                WHERE 1=1
             '''
             
             params = []
             if fecha_inicio and fecha_fin:
-                query_cargas += ' WHERE cg.fecha BETWEEN ? AND ?'
+                query_cargas += ' AND cg.fecha BETWEEN ? AND ?'
                 params.extend([fecha_inicio, fecha_fin])
             
             query_cargas += ' ORDER BY cg.fecha DESC'
@@ -744,7 +801,7 @@ def exportar_excel():
             writer = csv.writer(output)
             
             # Escribir encabezados
-            writer.writerow(['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Nota'])
+            writer.writerow(['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Nota', 'Estado'])
             
             # Escribir datos
             for row in cargas_data:
@@ -765,6 +822,180 @@ def exportar_excel():
             )
             
             return response
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ========== API REPORTES ==========
+@app.route('/api/reportes/diario', methods=['GET'])
+def get_reporte_diario():
+    try:
+        hoy = datetime.now().strftime('%Y-%m-%d')
+        fecha_inicio = f'{hoy} 00:00:00'
+        fecha_fin = f'{hoy} 23:59:59'
+        
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Obtener cargas del día
+            cursor.execute('''
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE WHEN cg.pagado = 1 THEN 'PAGADO' ELSE 'PENDIENTE' END as estado
+                FROM cargas cg
+                JOIN cajeros c ON cg.cajero_id = c.id
+                WHERE cg.fecha BETWEEN ? AND ?
+                ORDER BY cg.fecha DESC
+            ''', (fecha_inicio, fecha_fin))
+            
+            cargas = cursor.fetchall()
+            
+            # Calcular totales
+            cursor.execute('''
+                SELECT COUNT(*), COALESCE(SUM(monto), 0)
+                FROM cargas 
+                WHERE fecha BETWEEN ? AND ?
+            ''', (fecha_inicio, fecha_fin))
+            
+            total_cargas, monto_total = cursor.fetchone()
+            
+            conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'fecha': hoy,
+                'total_cargas': total_cargas or 0,
+                'monto_total': monto_total or 0,
+                'cargas': [{
+                    'cajero': row[0],
+                    'plataforma': row[1],
+                    'monto': row[2],
+                    'fecha': row[3],
+                    'nota': row[4] or '',
+                    'estado': row[5]
+                } for row in cargas]
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/reportes/semanal', methods=['GET'])
+def get_reporte_semanal():
+    try:
+        hoy = datetime.now()
+        inicio_semana = hoy - timedelta(days=hoy.weekday())
+        fin_semana = inicio_semana + timedelta(days=6)
+        
+        fecha_inicio = inicio_semana.strftime('%Y-%m-%d 00:00:00')
+        fecha_fin = fin_semana.strftime('%Y-%m-%d 23:59:59')
+        
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Obtener cargas de la semana
+            cursor.execute('''
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE WHEN cg.pagado = 1 THEN 'PAGADO' ELSE 'PENDIENTE' END as estado
+                FROM cargas cg
+                JOIN cajeros c ON cg.cajero_id = c.id
+                WHERE cg.fecha BETWEEN ? AND ?
+                ORDER BY cg.fecha DESC
+            ''', (fecha_inicio, fecha_fin))
+            
+            cargas = cursor.fetchall()
+            
+            # Calcular totales
+            cursor.execute('''
+                SELECT COUNT(*), COALESCE(SUM(monto), 0)
+                FROM cargas 
+                WHERE fecha BETWEEN ? AND ?
+            ''', (fecha_inicio, fecha_fin))
+            
+            total_cargas, monto_total = cursor.fetchone()
+            
+            conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'fecha_inicio': inicio_semana.strftime('%Y-%m-%d'),
+                'fecha_fin': fin_semana.strftime('%Y-%m-%d'),
+                'total_cargas': total_cargas or 0,
+                'monto_total': monto_total or 0,
+                'cargas': [{
+                    'cajero': row[0],
+                    'plataforma': row[1],
+                    'monto': row[2],
+                    'fecha': row[3],
+                    'nota': row[4] or '',
+                    'estado': row[5]
+                } for row in cargas]
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/reportes/mensual', methods=['GET'])
+def get_reporte_mensual():
+    try:
+        hoy = datetime.now()
+        inicio_mes = datetime(hoy.year, hoy.month, 1)
+        if hoy.month == 12:
+            fin_mes = datetime(hoy.year + 1, 1, 1) - timedelta(days=1)
+        else:
+            fin_mes = datetime(hoy.year, hoy.month + 1, 1) - timedelta(days=1)
+        
+        fecha_inicio = inicio_mes.strftime('%Y-%m-%d 00:00:00')
+        fecha_fin = fin_mes.strftime('%Y-%m-%d 23:59:59')
+        
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Obtener cargas del mes
+            cursor.execute('''
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE WHEN cg.pagado = 1 THEN 'PAGADO' ELSE 'PENDIENTE' END as estado
+                FROM cargas cg
+                JOIN cajeros c ON cg.cajero_id = c.id
+                WHERE cg.fecha BETWEEN ? AND ?
+                ORDER BY cg.fecha DESC
+            ''', (fecha_inicio, fecha_fin))
+            
+            cargas = cursor.fetchall()
+            
+            # Calcular totales
+            cursor.execute('''
+                SELECT COUNT(*), COALESCE(SUM(monto), 0)
+                FROM cargas 
+                WHERE fecha BETWEEN ? AND ?
+            ''', (fecha_inicio, fecha_fin))
+            
+            total_cargas, monto_total = cursor.fetchone()
+            
+            conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'fecha_inicio': inicio_mes.strftime('%Y-%m-%d'),
+                'fecha_fin': fin_mes.strftime('%Y-%m-%d'),
+                'total_cargas': total_cargas or 0,
+                'monto_total': monto_total or 0,
+                'cargas': [{
+                    'cajero': row[0],
+                    'plataforma': row[1],
+                    'monto': row[2],
+                    'fecha': row[3],
+                    'nota': row[4] or '',
+                    'estado': row[5]
+                } for row in cargas]
+            }
+        })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
