@@ -200,6 +200,17 @@ def add_cajero():
             cursor = conn.cursor()
             
             try:
+                # Verificar si ya existe un cajero con el mismo nombre (case-insensitive)
+                cursor.execute('SELECT id, nombre FROM cajeros WHERE LOWER(nombre) = LOWER(?)', (nombre,))
+                cajero_existente = cursor.fetchone()
+                
+                if cajero_existente:
+                    conn.close()
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Ya existe un cajero con el nombre "{cajero_existente[1]}"'
+                    }), 400
+                
                 cursor.execute('INSERT INTO cajeros (nombre) VALUES (?)', (nombre,))
                 conn.commit()
                 cajero_id = cursor.lastrowid
@@ -247,13 +258,14 @@ def update_cajero(id):
             cursor = conn.cursor()
             
             # Verificar si existe
-            cursor.execute('SELECT id FROM cajeros WHERE id = ?', (id,))
-            if not cursor.fetchone():
+            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ?', (id,))
+            cajero_actual = cursor.fetchone()
+            if not cajero_actual:
                 conn.close()
                 return jsonify({'success': False, 'error': 'Cajero no encontrado'}), 404
             
-            # Verificar si el nuevo nombre ya existe
-            cursor.execute('SELECT id FROM cajeros WHERE nombre = ? AND id != ?', (nombre, id))
+            # Verificar si el nuevo nombre ya existe (ignorando el cajero actual, case-insensitive)
+            cursor.execute('SELECT id FROM cajeros WHERE LOWER(nombre) = LOWER(?) AND id != ?', (nombre, id))
             if cursor.fetchone():
                 conn.close()
                 return jsonify({'success': False, 'error': 'Ya existe otro cajero con ese nombre'}), 400
@@ -942,9 +954,9 @@ def exportar_pdf():
             cursor.execute(query_cargas, params)
             cargas_data = cursor.fetchall()
             
-            # Calcular totales
-            total_monto = sum(row[2] for row in cargas_data)
+            # Calcular totales CORRECTAMENTE
             total_cargas = len(cargas_data)
+            total_monto = sum(row[2] for row in cargas_data)
             
             conn.close()
         
@@ -977,7 +989,9 @@ def exportar_pdf():
         # Título
         title_text = f"Reporte Paybook - {tipo_reporte.capitalize()}"
         if fecha_inicio and fecha_fin:
-            title_text += f"\nDel {fecha_inicio.split('T')[0]} al {fecha_fin.split('T')[0]}"
+            fecha_inicio_formatted = fecha_inicio.split('T')[0] if 'T' in fecha_inicio else fecha_inicio
+            fecha_fin_formatted = fecha_fin.split('T')[0] if 'T' in fecha_fin else fecha_fin
+            title_text += f"\nDel {fecha_inicio_formatted} al {fecha_fin_formatted}"
         else:
             title_text += f"\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         
@@ -1012,11 +1026,14 @@ def exportar_pdf():
             
             for row in cargas_data:
                 monto = float(row[2])
+                fecha = row[3]
+                fecha_formatted = fecha.split(' ')[0] if ' ' in fecha else fecha
+                
                 data.append([
                     row[0],  # Cajero
                     row[1],  # Plataforma
                     f"${abs(monto):.2f}" + (" (-)" if monto < 0 else ""),  # Monto
-                    row[3].split(' ')[0] if ' ' in row[3] else row[3],  # Fecha
+                    fecha_formatted,  # Fecha
                     row[5],  # Estado
                     row[6]   # Tipo
                 ])
@@ -1313,44 +1330,6 @@ def update_configuracion():
             'message': 'Configuración actualizada exitosamente'
         })
         
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ========== API HERRAMIENTAS ==========
-@app.route('/api/herramientas/calcular-comisiones', methods=['POST'])
-def calcular_comisiones():
-    try:
-        if request.json_data:
-            data = request.json_data
-        else:
-            data = request.get_json()
-        
-        if not data:
-            return jsonify({'success': False, 'error': 'No se recibieron datos'}), 400
-        
-        porcentaje = float(data.get('porcentaje', 10))
-        monto_total = float(data.get('monto_total', 0))
-        
-        if porcentaje < 0 or porcentaje > 100:
-            return jsonify({'success': False, 'error': 'El porcentaje debe estar entre 0 y 100'}), 400
-        
-        if monto_total < 0:
-            return jsonify({'success': False, 'error': 'El monto total no puede ser negativo'}), 400
-        
-        comision = monto_total * (porcentaje / 100)
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'porcentaje': porcentaje,
-                'monto_total': monto_total,
-                'comision': comision,
-                'comision_formateada': f'${comision:,.2f}'
-            }
-        })
-        
-    except ValueError:
-        return jsonify({'success': False, 'error': 'Datos numéricos inválidos'}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

@@ -329,17 +329,6 @@ async function cargarCajeros() {
     }
 }
 
-async function actualizarListaCajeros() {
-    try {
-        await cargarCajeros();
-        actualizarSelectCajeros();
-        mostrarAlerta('Actualizado', 'Lista de cajeros actualizada', 'success');
-    } catch (error) {
-        console.error('Error actualizando cajeros:', error);
-        mostrarAlerta('Error', 'No se pudo actualizar la lista de cajeros', 'error');
-    }
-}
-
 function actualizarSelectCajeros(seleccionarId = null) {
     const select = document.getElementById('selectCajero');
     if (!select) return;
@@ -412,6 +401,18 @@ async function agregarCajero() {
         return;
     }
     
+    // Verificar si ya existe un cajero con el mismo nombre (insensible a mayúsculas)
+    const nombreExistente = cajeros.find(c => 
+        c.nombre.toLowerCase() === nombre.toLowerCase() && c.activo
+    );
+    
+    if (nombreExistente) {
+        mostrarAlerta('Cajero duplicado', `Ya existe un cajero activo con el nombre "${nombreExistente.nombre}"`, 'error');
+        nombreInput.focus();
+        nombreInput.select();
+        return;
+    }
+    
     console.log(`➕ Agregando cajero: "${nombre}"`);
     mostrarLoading(true);
     
@@ -459,7 +460,12 @@ async function agregarCajero() {
             calcularEstadisticas();
             
         } else {
-            mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
+            // Mostrar error específico del servidor
+            if (data.error && data.error.includes('ya existe')) {
+                mostrarAlerta('Cajero duplicado', 'Ya existe un cajero con ese nombre', 'error');
+            } else {
+                mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
+            }
         }
         
     } catch (error) {
@@ -477,6 +483,18 @@ async function editarCajero(id) {
     
     const nuevoNombre = prompt('Ingrese el nuevo nombre del cajero:', cajero.nombre);
     if (!nuevoNombre || nuevoNombre.trim() === '' || nuevoNombre === cajero.nombre) {
+        return;
+    }
+    
+    // Verificar si ya existe un cajero con el nuevo nombre
+    const nombreExistente = cajeros.find(c => 
+        c.id !== id && 
+        c.nombre.toLowerCase() === nuevoNombre.toLowerCase().trim() && 
+        c.activo
+    );
+    
+    if (nombreExistente) {
+        mostrarAlerta('Nombre duplicado', `Ya existe un cajero activo con el nombre "${nombreExistente.nombre}"`, 'error');
         return;
     }
     
@@ -509,7 +527,11 @@ async function editarCajero(id) {
             calcularEstadisticas();
             
         } else {
-            mostrarAlerta('Error', data.error || 'No se pudo actualizar el cajero', 'error');
+            if (data.error && data.error.includes('Ya existe')) {
+                mostrarAlerta('Nombre duplicado', 'Ya existe otro cajero con ese nombre', 'error');
+            } else {
+                mostrarAlerta('Error', data.error || 'No se pudo actualizar el cajero', 'error');
+            }
         }
     } catch (error) {
         console.error('Error:', error);
@@ -1378,18 +1400,6 @@ function calcularEstadisticas() {
             }
         }
     }
-    
-    // Average per charge (solo cargas positivas)
-    const cargasPositivas = cargas.filter(c => c.plataforma !== 'PAGO' && c.monto > 0);
-    const todasLasCargas = cargasPositivas.length > 0 ? 
-        cargasPositivas.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0) : 0;
-    const promedio = cargasPositivas.length > 0 ? 
-        todasLasCargas / cargasPositivas.length : 0;
-    
-    const promedioCargaEl = document.getElementById('promedioCarga');
-    if (promedioCargaEl) {
-        promedioCargaEl.textContent = `$${promedio.toFixed(2)}`;
-    }
 }
 
 // ========== PAYMENTS ==========
@@ -1638,49 +1648,6 @@ async function exportarReporte() {
     } catch (error) {
         console.error('Error:', error);
         mostrarAlerta('Error', 'No se pudo generar el reporte', 'error');
-    } finally {
-        mostrarLoading(false);
-    }
-}
-
-// ========== TOOLS ==========
-async function calcularComisiones() {
-    const porcentaje = prompt('Ingrese el porcentaje de comisión (%):', configuracion.porcentaje_comision || '10');
-    if (!porcentaje || isNaN(parseFloat(porcentaje))) {
-        mostrarAlerta('Error', 'Porcentaje inválido', 'error');
-        return;
-    }
-    
-    const montoTotal = resumen.reduce((sum, item) => sum + item.total, 0);
-    
-    mostrarLoading(true);
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/herramientas/calcular-comisiones`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                porcentaje: parseFloat(porcentaje),
-                monto_total: montoTotal
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const comision = data.data.comision;
-            mostrarAlerta('Cálculo de Comisiones', 
-                `Porcentaje: ${porcentaje}%\nMonto Total: $${montoTotal.toFixed(2)}\nComisión: $${comision.toFixed(2)}`, 
-                'info');
-        } else {
-            mostrarAlerta('Error', data.error || 'No se pudo calcular las comisiones', 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
     } finally {
         mostrarLoading(false);
     }
@@ -2508,7 +2475,6 @@ window.mostrarEstadisticas = function() {
         `Total pendiente: $${total.toFixed(2)}\nCargas totales: ${cargas.length}\nCajeros activos: ${cajeros.filter(c => c.activo).length}`, 
         'info');
 };
-window.calcularComisiones = calcularComisiones;
 window.mostrarConfiguracion = mostrarConfiguracion;
 window.mostrarSeccion = mostrarSeccion;
 window.cerrarAlerta = cerrarAlerta;
@@ -2522,10 +2488,9 @@ window.generarReporteDiario = generarReporteDiario;
 window.generarReporteSemanal = generarReporteSemanal;
 window.generarReporteMensual = generarReporteMensual;
 window.diagnostico = diagnostico;
-window.actualizarListaCajeros = actualizarListaCajeros;
 window.cargarCajeros = cargarCajeros;
 window.cargarCargas = cargarCargas;
-window.actualizarResumen = cargarResumen;
+window.cargarResumen = cargarResumen;
 window.cargarDatosIniciales = cargarDatosIniciales;
 window.mostrarModalCajeros = mostrarModalCajeros;
 window.mostrarModalCarga = mostrarModalCarga;

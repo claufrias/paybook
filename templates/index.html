@@ -70,7 +70,7 @@
                 <button class="btn btn-ig-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fas fa-user-circle me-2"></i> Admin
                 </button>
-                <ul class="dropdown-menu dropdown-menu-dark border-gradient">
+                <ul class="dropdown-menu dropdown-menu-dark border-gradient" style="right: 0; left: auto;">
                     <li><a class="dropdown-item" href="#" onclick="cargarDatosIniciales()"><i class="fas fa-sync-alt me-2"></i> Actualizar Todo</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" onclick="exportarReporte()"><i class="fas fa-file-pdf me-2"></i> Exportar PDF</a></li>
@@ -81,9 +81,7 @@
                     <li><a class="dropdown-item" href="#" onclick="mostrarReporteSemanal()"><i class="fas fa-calendar-week me-2"></i> Reporte Semanal</a></li>
                     <li><a class="dropdown-item" href="#" onclick="mostrarReporteMensual()"><i class="fas fa-calendar-alt me-2"></i> Reporte Mensual</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="calcularComisiones()"><i class="fas fa-calculator me-2"></i> Calcular Comisiones</a></li>
                     <li><a class="dropdown-item" href="#" onclick="mostrarConfiguracion()"><i class="fas fa-cog me-2"></i> Configuración</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="forzarOcultarLoading()"><i class="fas fa-exclamation-triangle me-2"></i> Reset Loading</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-info" href="#" onclick="diagnostico()"><i class="fas fa-stethoscope me-2"></i> Diagnóstico</a></li>
                     <li><a class="dropdown-item text-danger" href="#" onclick="location.reload()"><i class="fas fa-sign-out-alt me-2"></i> Recargar</a></li>
@@ -175,20 +173,9 @@
                             <input type="text" id="nombreCajero" class="form-control form-control-ig" 
                                    placeholder="Ej: Juan Pérez" autocomplete="off">
                         </div>
-                        <div class="row g-2">
-                            <div class="col-8">
-                                <button class="btn btn-ig w-100 hover-lift" onclick="agregarCajero()">
-                                    <i class="fas fa-user-check me-2"></i> Agregar Cajero
-                                </button>
-                            </div>
-                            <div class="col-4">
-                                <button class="btn btn-ig-outline w-100 hover-lift" 
-                                        onclick="actualizarListaCajeros()" 
-                                        title="Actualizar lista de cajeros">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <button class="btn btn-ig w-100 hover-lift" onclick="agregarCajero()">
+                            <i class="fas fa-user-check me-2"></i> Agregar Cajero
+                        </button>
                         <div class="mt-2 text-center">
                             <small class="text-muted" id="cajerosCount">
                                 <i class="fas fa-users me-1"></i> 0 cajeros activos
@@ -279,30 +266,21 @@
             <div class="col-lg-8">
                 <!-- Summary Cards -->
                 <div class="row mb-4" id="seccionResumen">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <div class="stat-card hover-lift">
                             <div class="stat-label">TOTAL HOY</div>
                             <div class="stat-number" id="totalHoy">$0</div>
-                            <div class="text-success small mt-2">
-                                <i class="fas fa-arrow-up me-1"></i> Últimas 24h
+                            <div class="text-success small mt-2" id="totalHoyNombre">
+                                <i class="fas fa-calendar-day me-1"></i> Hoy
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <div class="stat-card hover-lift">
                             <div class="stat-label">TOP CAJERO</div>
                             <div class="stat-number" id="topCajero">$0</div>
                             <div class="text-info small mt-2" id="topCajeroNombre">
                                 <i class="fas fa-user me-1"></i> Sin datos
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <div class="stat-card hover-lift">
-                            <div class="stat-label">PROMEDIO</div>
-                            <div class="stat-number" id="promedioCarga">$0</div>
-                            <div class="text-warning small mt-2">
-                                <i class="fas fa-chart-line me-1"></i> Por carga
                             </div>
                         </div>
                     </div>
@@ -314,17 +292,9 @@
                         <div>
                             <h5 class="mb-0 gradient-text">Resumen por Cajero</h5>
                             <small class="text-muted">Total acumulado por plataforma</small>
-                            <div class="mt-1">
-                                <small class="text-muted" id="resumenStatus">
-                                    <!-- Mensaje eliminado -->
-                                </small>
-                            </div>
                         </div>
                         <div>
                             <span class="badge-ig me-2" id="contadorCajeros">0 cajeros</span>
-                            <button class="btn btn-ig-outline btn-sm hover-lift" onclick="actualizarResumen()">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
                         </div>
                     </div>
                     <div class="ig-card-body">
@@ -362,19 +332,11 @@
                         <div>
                             <h5 class="mb-0 gradient-text">Historial Reciente</h5>
                             <small class="text-muted">Últimas cargas registradas</small>
-                            <div class="mt-1">
-                                <small class="text-muted" id="historialStatus">
-                                    <!-- Mensaje eliminado -->
-                                </small>
-                            </div>
                         </div>
                         <div>
                             <small class="text-muted me-2" id="historialCount">
                                 <i class="fas fa-list me-1"></i> 0 cargas
                             </small>
-                            <button class="btn btn-ig-outline btn-sm hover-lift" onclick="cargarCargas()">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
                         </div>
                     </div>
                     <div class="ig-card-body">
