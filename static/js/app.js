@@ -10,7 +10,6 @@ let resumen = [];
 let estadisticas = {};
 let configuracion = {};
 let isLoading = false;
-let currentModal = null;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
@@ -51,13 +50,6 @@ function setupEventListeners() {
             if (e.key === 'Enter') agregarCarga();
         });
     }
-    
-    // Prevent wheel scroll in modals
-    document.addEventListener('wheel', function(e) {
-        if (currentModal && e.target.closest('.modal')) {
-            e.stopPropagation();
-        }
-    }, { passive: false });
 }
 
 function handleKeyboardShortcuts(event) {
@@ -82,10 +74,10 @@ function handleKeyboardShortcuts(event) {
         if (input) input.focus();
     }
     
-    // Ctrl + E or Cmd + E to export PDF
+    // Ctrl + E or Cmd + E to export
     if ((event.ctrlKey || event.metaKey) && event.key === 'e') {
         event.preventDefault();
-        exportarReportePDF();
+        exportarReporte();
     }
     
     // Escape to clear loading
@@ -337,17 +329,6 @@ async function cargarCajeros() {
     }
 }
 
-async function actualizarListaCajeros() {
-    try {
-        await cargarCajeros();
-        actualizarSelectCajeros();
-        mostrarAlerta('Actualizado', 'Lista de cajeros actualizada', 'success');
-    } catch (error) {
-        console.error('Error actualizando cajeros:', error);
-        mostrarAlerta('Error', 'No se pudo actualizar la lista de cajeros', 'error');
-    }
-}
-
 function actualizarSelectCajeros(seleccionarId = null) {
     const select = document.getElementById('selectCajero');
     if (!select) return;
@@ -420,6 +401,18 @@ async function agregarCajero() {
         return;
     }
     
+    // Verificar si ya existe un cajero con el mismo nombre (insensible a mayúsculas)
+    const nombreExistente = cajeros.find(c => 
+        c.nombre.toLowerCase() === nombre.toLowerCase() && c.activo
+    );
+    
+    if (nombreExistente) {
+        mostrarAlerta('Cajero duplicado', `Ya existe un cajero activo con el nombre "${nombreExistente.nombre}"`, 'error');
+        nombreInput.focus();
+        nombreInput.select();
+        return;
+    }
+    
     console.log(`➕ Agregando cajero: "${nombre}"`);
     mostrarLoading(true);
     
@@ -467,7 +460,12 @@ async function agregarCajero() {
             calcularEstadisticas();
             
         } else {
-            mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
+            // Mostrar error específico del servidor
+            if (data.error && data.error.includes('ya existe')) {
+                mostrarAlerta('Cajero duplicado', 'Ya existe un cajero con ese nombre', 'error');
+            } else {
+                mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
+            }
         }
         
     } catch (error) {
@@ -485,6 +483,18 @@ async function editarCajero(id) {
     
     const nuevoNombre = prompt('Ingrese el nuevo nombre del cajero:', cajero.nombre);
     if (!nuevoNombre || nuevoNombre.trim() === '' || nuevoNombre === cajero.nombre) {
+        return;
+    }
+    
+    // Verificar si ya existe un cajero con el nuevo nombre
+    const nombreExistente = cajeros.find(c => 
+        c.id !== id && 
+        c.nombre.toLowerCase() === nuevoNombre.toLowerCase().trim() && 
+        c.activo
+    );
+    
+    if (nombreExistente) {
+        mostrarAlerta('Nombre duplicado', `Ya existe un cajero activo con el nombre "${nombreExistente.nombre}"`, 'error');
         return;
     }
     
@@ -517,7 +527,11 @@ async function editarCajero(id) {
             calcularEstadisticas();
             
         } else {
-            mostrarAlerta('Error', data.error || 'No se pudo actualizar el cajero', 'error');
+            if (data.error && data.error.includes('Ya existe')) {
+                mostrarAlerta('Nombre duplicado', 'Ya existe otro cajero con ese nombre', 'error');
+            } else {
+                mostrarAlerta('Error', data.error || 'No se pudo actualizar el cajero', 'error');
+            }
         }
     } catch (error) {
         console.error('Error:', error);
@@ -730,8 +744,8 @@ function actualizarTablaCargas() {
                 icono = 'fa-check-circle text-warning';
             }
             
-            // Mostrar siempre la plataforma, incluso para deudas
-            const plataformaTexto = carga.es_deuda ? carga.plataforma : carga.plataforma;
+            // MOSTRAR PLATAFORMA EN LUGAR DE "⚠️ DEUDA"
+            const plataformaMostrar = carga.es_deuda ? carga.plataforma : carga.plataforma;
             
             tr.innerHTML = `
                 <td>
@@ -756,7 +770,7 @@ function actualizarTablaCargas() {
                 </td>
                 <td>
                     <span class="badge ${getBadgeClass(carga)}">
-                        ${plataformaTexto || 'Sin plataforma'}
+                        ${plataformaMostrar || 'Sin plataforma'}
                     </span>
                 </td>
                 <td class="text-end">
@@ -800,7 +814,7 @@ function getBadgeClass(carga) {
     switch(carga.plataforma) {
         case 'Zeus': return 'badge-zeus';
         case 'Gana': return 'badge-gana';
-        case 'Paybook': return 'badge-paybook';
+        case 'Ganamos': return 'badge-ganamos';
         default: return 'bg-secondary';
     }
 }
@@ -1000,7 +1014,7 @@ function mostrarModalCarga() {
                 <select id="modalSelectPlataforma" class="form-select form-select-ig">
                     <option value="Zeus">🔱 Zeus</option>
                     <option value="Gana">🎯 Gana</option>
-                    <option value="Paybook">💰 Paybook</option>
+                    <option value="Ganamos">💰 Ganamos</option>
                 </select>
             </div>
             <div class="mb-3">
@@ -1046,9 +1060,6 @@ function mostrarModalCarga() {
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
     
-    // Track current modal
-    currentModal = modal;
-    
     // Cargar cajeros en el select del modal
     const modalSelectCajero = modal.querySelector('#modalSelectCajero');
     if (modalSelectCajero) {
@@ -1072,7 +1083,6 @@ function mostrarModalCarga() {
     // Clean up modal on close
     modal.addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modal);
-        currentModal = null;
     });
     
     // Enter key to submit
@@ -1306,7 +1316,7 @@ function actualizarTablaResumen() {
                 <span class="fw-medium ${item.gana < 0 ? 'text-danger' : ''}">$${item.gana.toFixed(2)}</span>
             </td>
             <td class="text-end">
-                <span class="fw-medium ${item.paybook < 0 ? 'text-danger' : ''}">$${item.paybook.toFixed(2)}</span>
+                <span class="fw-medium ${item.ganamos < 0 ? 'text-danger' : ''}">$${item.ganamos.toFixed(2)}</span>
             </td>
             <td class="text-end">
                 <span class="fw-bold ${item.total < 0 ? 'text-danger' : item.total === 0 ? 'text-muted' : 'text-gradient'}">
@@ -1350,18 +1360,36 @@ function calcularEstadisticas() {
         totalGeneralEl.className = totalGeneral < 0 ? 'gradient-text text-danger' : 'gradient-text';
     }
     
-    // Today's total (TODAS las cargas)
+    // Today's total (TODAS las cargas del día, incluyendo pagos)
     const hoy = new Date().toISOString().split('T')[0];
-    const cargasHoy = cargas.filter(c => c.fecha && c.fecha.startsWith(hoy));
-    const totalHoy = cargasHoy.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0);
+    const cargasHoy = cargas.filter(c => {
+        if (!c.fecha) return false;
+        return c.fecha.startsWith(hoy);
+    });
+    
+    // Calcular total HOY - todas las cargas del día (positivas y negativas)
+    const totalHoy = cargasHoy.reduce((sum, c) => {
+        const monto = parseFloat(c.monto || 0);
+        // Si es un pago (plataforma = 'PAGO'), se resta porque es negativo
+        // Si es una carga normal, se suma normalmente
+        return sum + monto;
+    }, 0);
     
     const totalHoyEl = document.getElementById('totalHoy');
     if (totalHoyEl) {
-        totalHoyEl.textContent = `$${totalHoy.toFixed(2)}`;
-        totalHoyEl.className = totalHoy < 0 ? 'text-danger' : '';
+        // Usar la misma clase que topCajero para que se vean igual
+        totalHoyEl.textContent = `$${Math.abs(totalHoy).toFixed(2)}`;
+        totalHoyEl.className = 'stat-number'; // Misma clase que topCajero
     }
     
-    // Top cajero
+    const totalHoyNombreEl = document.getElementById('totalHoyNombre');
+    if (totalHoyNombreEl) {
+        const icono = totalHoy < 0 ? 'fa-exclamation-triangle text-danger' : 'fa-calendar-day';
+        const texto = totalHoy < 0 ? 'Deuda hoy' : 'Hoy';
+        totalHoyNombreEl.innerHTML = `<i class="fas ${icono} me-1"></i> ${texto}`;
+    }
+    
+    // Top cajero (de las cargas NO PAGADAS)
     if (resumen.length > 0) {
         // Filtrar solo cajeros con total positivo para top
         const cajerosPositivos = resumen.filter(item => item.total > 0);
@@ -1371,6 +1399,7 @@ function calcularEstadisticas() {
             const topCajeroEl = document.getElementById('topCajero');
             if (topCajeroEl) {
                 topCajeroEl.textContent = `$${top.total.toFixed(2)}`;
+                topCajeroEl.className = 'stat-number'; // Clase uniforme
             }
             
             const topCajeroNombreEl = document.getElementById('topCajeroNombre');
@@ -1382,6 +1411,7 @@ function calcularEstadisticas() {
             const topCajeroEl = document.getElementById('topCajero');
             if (topCajeroEl) {
                 topCajeroEl.textContent = '$0';
+                topCajeroEl.className = 'stat-number'; // Clase uniforme
             }
             
             const topCajeroNombreEl = document.getElementById('topCajeroNombre');
@@ -1389,18 +1419,6 @@ function calcularEstadisticas() {
                 topCajeroNombreEl.innerHTML = `<i class="fas fa-user me-1"></i> Sin datos`;
             }
         }
-    }
-    
-    // Average per charge (solo cargas positivas)
-    const cargasPositivas = cargas.filter(c => c.plataforma !== 'PAGO' && c.monto > 0);
-    const todasLasCargas = cargasPositivas.length > 0 ? 
-        cargasPositivas.reduce((sum, c) => sum + parseFloat(c.monto || 0), 0) : 0;
-    const promedio = cargasPositivas.length > 0 ? 
-        todasLasCargas / cargasPositivas.length : 0;
-    
-    const promedioCargaEl = document.getElementById('promedioCarga');
-    if (promedioCargaEl) {
-        promedioCargaEl.textContent = `$${promedio.toFixed(2)}`;
     }
 }
 
@@ -1595,13 +1613,9 @@ async function verPendientes() {
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
         
-        // Track current modal
-        currentModal = modal;
-        
         // Clean up modal on close
         modal.addEventListener('hidden.bs.modal', function () {
             document.body.removeChild(modal);
-            currentModal = null;
         });
         
     } catch (error) {
@@ -1613,16 +1627,16 @@ async function verPendientes() {
 }
 
 // ========== EXPORT PDF ==========
-async function exportarReportePDF(tipo = null) {
+async function exportarReporte() {
     const fechaInicio = document.getElementById('fechaInicio').value;
     const fechaFin = document.getElementById('fechaFin').value;
     
     let url = `${API_BASE}/api/exportar/pdf`;
     
-    if (tipo) {
-        url += `?tipo_reporte=${tipo}`;
-    } else if (fechaInicio && fechaFin) {
-        url += `?fecha_inicio=${encodeURIComponent(fechaInicio)}&fecha_fin=${encodeURIComponent(fechaFin)}`;
+    if (fechaInicio && fechaFin) {
+        url += `?fecha_inicio=${encodeURIComponent(fechaInicio)}&fecha_fin=${encodeURIComponent(fechaFin)}&tipo_reporte=general`;
+    } else {
+        url += '?tipo_reporte=general';
     }
     
     mostrarLoading(true);
@@ -1636,7 +1650,7 @@ async function exportarReportePDF(tipo = null) {
             const urlBlob = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = urlBlob;
-            link.download = `reporte_${tipo || 'general'}_${new Date().toISOString().slice(0,10)}.pdf`;
+            link.download = `reporte_paybook_${new Date().toISOString().slice(0,10)}.pdf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1654,49 +1668,6 @@ async function exportarReportePDF(tipo = null) {
     } catch (error) {
         console.error('Error:', error);
         mostrarAlerta('Error', 'No se pudo generar el reporte', 'error');
-    } finally {
-        mostrarLoading(false);
-    }
-}
-
-// ========== TOOLS ==========
-async function calcularComisiones() {
-    const porcentaje = prompt('Ingrese el porcentaje de comisión (%):', configuracion.porcentaje_comision || '10');
-    if (!porcentaje || isNaN(parseFloat(porcentaje))) {
-        mostrarAlerta('Error', 'Porcentaje inválido', 'error');
-        return;
-    }
-    
-    const montoTotal = resumen.reduce((sum, item) => sum + item.total, 0);
-    
-    mostrarLoading(true);
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/herramientas/calcular-comisiones`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                porcentaje: parseFloat(porcentaje),
-                monto_total: montoTotal
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const comision = data.data.comision;
-            mostrarAlerta('Cálculo de Comisiones', 
-                `Porcentaje: ${porcentaje}%\nMonto Total: $${montoTotal.toFixed(2)}\nComisión: $${comision.toFixed(2)}`, 
-                'info');
-        } else {
-            mostrarAlerta('Error', data.error || 'No se pudo calcular las comisiones', 'error');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
     } finally {
         mostrarLoading(false);
     }
@@ -1815,13 +1786,9 @@ async function mostrarModalCajeros() {
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
         
-        // Track current modal
-        currentModal = modal;
-        
         // Clean up modal on close
         modal.addEventListener('hidden.bs.modal', function () {
             document.body.removeChild(modal);
-            currentModal = null;
             cargarDatosIniciales(); // Refresh data
         });
         
@@ -1962,7 +1929,7 @@ function mostrarModalReportes() {
                                            value="${new Date().toISOString().slice(0,10)}">
                                 </div>
                                 <div class="col-12 mt-3">
-                                    <button class="btn btn-ig w-100" onclick="exportarReportePDFPersonalizado()">
+                                    <button class="btn btn-ig w-100" onclick="exportarReportePersonalizado()">
                                         <i class="fas fa-file-pdf me-2"></i> Exportar PDF
                                     </button>
                                 </div>
@@ -2003,13 +1970,9 @@ function mostrarModalReportes() {
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
     
-    // Track current modal
-    currentModal = modal;
-    
     // Clean up modal on close
     modal.addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modal);
-        currentModal = null;
     });
 }
 
@@ -2137,10 +2100,10 @@ function mostrarReporteEnModal(tipo, reporte) {
                 <tr>
                     <td>${fechaFormateada}</td>
                     <td>${carga.cajero}</td>
-                    <td><span class="badge ${carga.es_deuda ? 'bg-danger' : getBadgeClass({plataforma: carga.plataforma})}">${carga.plataforma}</span></td>
-                    <td class="text-end ${carga.es_deuda ? 'text-danger' : ''}">$${parseFloat(carga.monto).toFixed(2)}</td>
-                    <td><span class="badge ${carga.pagado ? 'bg-success' : carga.es_deuda ? 'bg-danger' : 'bg-warning'}">${carga.pagado ? 'PAGADO' : carga.es_deuda ? 'DEUDA' : 'PENDIENTE'}</span></td>
-                    <td><span class="badge ${carga.es_deuda ? 'bg-danger' : 'bg-info'}">${carga.es_deuda ? 'DEUDA' : 'CARGA'}</span></td>
+                    <td><span class="badge ${carga.tipo === 'DEUDA' ? 'bg-danger' : getBadgeClass({plataforma: carga.plataforma})}">${carga.plataforma}</span></td>
+                    <td class="text-end ${carga.tipo === 'DEUDA' ? 'text-danger' : ''}">$${parseFloat(carga.monto).toFixed(2)}</td>
+                    <td><span class="badge ${carga.estado === 'PAGADO' ? 'bg-success' : carga.estado === 'DEUDA' ? 'bg-danger' : 'bg-warning'}">${carga.estado}</span></td>
+                    <td><span class="badge ${carga.tipo === 'DEUDA' ? 'bg-danger' : 'bg-info'}">${carga.tipo}</span></td>
                 </tr>
             `;
         });
@@ -2178,7 +2141,7 @@ function mostrarReporteEnModal(tipo, reporte) {
                     ${html}
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-ig" onclick="exportarReportePDF('${tipo.toLowerCase()}')">
+                    <button class="btn btn-ig" onclick="exportarReporte${tipo}Pdf()">
                         <i class="fas fa-file-pdf me-2"></i> Exportar PDF
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -2191,16 +2154,12 @@ function mostrarReporteEnModal(tipo, reporte) {
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
     
-    // Track current modal
-    currentModal = modal;
-    
     modal.addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modal);
-        currentModal = null;
     });
 }
 
-function exportarReportePDFPersonalizado() {
+function exportarReportePersonalizado() {
     const desde = document.getElementById('exportDesde').value;
     const hasta = document.getElementById('exportHasta').value;
     
@@ -2219,7 +2178,7 @@ function exportarReportePDFPersonalizado() {
     document.getElementById('fechaFin').value = `${hasta}T23:59`;
     
     // Export
-    exportarReportePDF();
+    exportarReporte();
     
     // Close modal
     const modal = document.getElementById('modalReportes');
@@ -2228,6 +2187,106 @@ function exportarReportePDFPersonalizado() {
         if (bsModal) {
             bsModal.hide();
         }
+    }
+}
+
+function exportarReporteDiarioPdf() {
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fechaInicio').value = `${hoy}T00:00`;
+    document.getElementById('fechaFin').value = `${hoy}T23:59`;
+    
+    let url = `${API_BASE}/api/exportar/pdf?fecha_inicio=${hoy}T00:00&fecha_fin=${hoy}T23:59&tipo_reporte=diario`;
+    
+    descargarPdf(url);
+    
+    // Close modal
+    const modal = document.getElementById('modalReporteDiario');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
+    }
+}
+
+function exportarReporteSemanalPdf() {
+    const hoy = new Date();
+    const inicioSemana = new Date(hoy);
+    inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+    const finSemana = new Date(inicioSemana);
+    finSemana.setDate(inicioSemana.getDate() + 6);
+    
+    const fechaInicio = inicioSemana.toISOString().split('T')[0];
+    const fechaFin = finSemana.toISOString().split('T')[0];
+    
+    let url = `${API_BASE}/api/exportar/pdf?fecha_inicio=${fechaInicio}T00:00&fecha_fin=${fechaFin}T23:59&tipo_reporte=semanal`;
+    
+    descargarPdf(url);
+    
+    // Close modal
+    const modal = document.getElementById('modalReporteSemanal');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
+    }
+}
+
+function exportarReporteMensualPdf() {
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const finMes = new Date(hoy.getFullYear(), hoy.month + 1, 0);
+    
+    const fechaInicio = inicioMes.toISOString().split('T')[0];
+    const fechaFin = finMes.toISOString().split('T')[0];
+    
+    let url = `${API_BASE}/api/exportar/pdf?fecha_inicio=${fechaInicio}T00:00&fecha_fin=${fechaFin}T23:59&tipo_reporte=mensual`;
+    
+    descargarPdf(url);
+    
+    // Close modal
+    const modal = document.getElementById('modalReporteMensual');
+    if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) {
+            bsModal.hide();
+        }
+    }
+}
+
+async function descargarPdf(url) {
+    mostrarLoading(true);
+    
+    try {
+        const response = await fetch(url);
+        
+        if (response.ok) {
+            // Download PDF file
+            const blob = await response.blob();
+            const urlBlob = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = urlBlob;
+            link.download = `reporte_${new Date().toISOString().slice(0,10)}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(urlBlob);
+            
+            mostrarAlerta('Exportado', 'Reporte descargado correctamente (PDF)', 'success');
+        } else {
+            const data = await response.json();
+            if (data.error) {
+                mostrarAlerta('Error', data.error, 'error');
+            } else {
+                mostrarAlerta('Error', 'No se pudo exportar el reporte', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error', 'No se pudo generar el reporte', 'error');
+    } finally {
+        mostrarLoading(false);
     }
 }
 
@@ -2312,13 +2371,9 @@ async function mostrarConfiguracion() {
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
     
-    // Track current modal
-    currentModal = modal;
-    
     // Remove modal after close
     modal.addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modal);
-        currentModal = null;
     });
 }
 
@@ -2428,7 +2483,7 @@ window.eliminarCajeroCompletamente = eliminarCajeroCompletamente;
 window.eliminarCarga = eliminarCarga;
 window.filtrarCargas = filtrarCargas;
 window.limpiarFiltro = limpiarFiltro;
-window.exportarReportePDF = exportarReportePDF;
+window.exportarReporte = exportarReporte;
 window.mostrarEstadisticas = function() {
     if (cargas.length === 0) {
         mostrarAlerta('Sin datos', 'No hay cargas registradas', 'warning');
@@ -2440,7 +2495,6 @@ window.mostrarEstadisticas = function() {
         `Total pendiente: $${total.toFixed(2)}\nCargas totales: ${cargas.length}\nCajeros activos: ${cajeros.filter(c => c.activo).length}`, 
         'info');
 };
-window.calcularComisiones = calcularComisiones;
 window.mostrarConfiguracion = mostrarConfiguracion;
 window.mostrarSeccion = mostrarSeccion;
 window.cerrarAlerta = cerrarAlerta;
@@ -2454,16 +2508,17 @@ window.generarReporteDiario = generarReporteDiario;
 window.generarReporteSemanal = generarReporteSemanal;
 window.generarReporteMensual = generarReporteMensual;
 window.diagnostico = diagnostico;
-window.actualizarListaCajeros = actualizarListaCajeros;
 window.cargarCajeros = cargarCajeros;
 window.cargarCargas = cargarCargas;
-window.actualizarResumen = cargarResumen;
+window.cargarResumen = cargarResumen;
 window.cargarDatosIniciales = cargarDatosIniciales;
 window.mostrarModalCajeros = mostrarModalCajeros;
 window.mostrarModalCarga = mostrarModalCarga;
 window.mostrarModalReportes = mostrarModalReportes;
 window.reactivarCajero = reactivarCajero;
-window.exportarReportePDFPersonalizado = exportarReportePDFPersonalizado;
+window.exportarReporteDiarioPdf = exportarReporteDiarioPdf;
+window.exportarReporteSemanalPdf = exportarReporteSemanalPdf;
+window.exportarReporteMensualPdf = exportarReporteMensualPdf;
 
 // Emergency hide loading after 20 seconds
 setTimeout(() => {
