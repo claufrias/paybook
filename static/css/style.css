@@ -1,7 +1,8 @@
 /* CashFlow - Instagram Dark Theme */
 :root {
-    --primary-gradient: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-    --secondary-gradient: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+    --primary-gradient: linear-gradient(90deg, #00A6FF 0%, #0088cc 100%);
+    --secondary-gradient: linear-gradient(90deg, #FF0026 0%, #cc0020 100%);
+    --accent-gradient: linear-gradient(90deg, #FFD900 0%, #ffcc00 100%);
     --dark-bg: #121212;
     --darker-bg: #0a0a0a;
     --card-bg: #1e1e1e;
@@ -11,7 +12,9 @@
     --success: #28a745;
     --info: #17a2b8;
     --warning: #ffc107;
-    --danger: #dc3545;
+    --danger: #FF0026;
+    --primary: #00A6FF;
+    --accent: #FFD900;
 }
 
 /* Base Styles */
@@ -108,7 +111,7 @@ body {
 
 .story-circle.pulse {
     animation: pulse 2s infinite;
-    box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+    box-shadow: 0 0 20px rgba(0, 166, 255, 0.5);
 }
 
 @keyframes pulse {
@@ -127,7 +130,7 @@ body {
 }
 
 .ig-card:hover {
-    border-color: rgba(102, 126, 234, 0.3);
+    border-color: rgba(0, 166, 255, 0.3);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
@@ -162,14 +165,14 @@ body {
 
 .btn-ig:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 10px 20px rgba(0, 166, 255, 0.3);
     color: white;
 }
 
 .btn-ig-outline {
     background: transparent;
-    border: 2px solid #667eea;
-    color: #667eea;
+    border: 2px solid #00A6FF;
+    color: #00A6FF;
     border-radius: 12px;
     padding: 0.75rem 1.5rem;
     font-weight: 600;
@@ -177,8 +180,40 @@ body {
 }
 
 .btn-ig-outline:hover {
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(0, 166, 255, 0.1);
     transform: translateY(-2px);
+}
+
+.btn-ig-danger {
+    background: var(--secondary-gradient);
+    border: none;
+    color: white;
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-ig-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(255, 0, 38, 0.3);
+    color: white;
+}
+
+.btn-ig-accent {
+    background: var(--accent-gradient);
+    border: none;
+    color: #000;
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-ig-accent:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(255, 217, 0, 0.3);
+    color: #000;
 }
 
 /* Form Controls */
@@ -193,8 +228,8 @@ body {
 
 .form-control-ig:focus, .form-select-ig:focus {
     background: rgba(255, 255, 255, 0.1);
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    border-color: #00A6FF;
+    box-shadow: 0 0 0 3px rgba(0, 166, 255, 0.2);
     color: var(--text-primary);
 }
 
@@ -209,7 +244,7 @@ body {
 
 .stat-card:hover {
     transform: translateY(-5px);
-    border-color: #667eea;
+    border-color: #00A6FF;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
 }
 
@@ -225,6 +260,20 @@ body {
     font-size: 2rem;
     font-weight: 800;
     background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number-danger {
+    background: var(--secondary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number-accent {
+    background: var(--accent-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -264,18 +313,18 @@ body {
 }
 
 .badge-zeus {
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(90deg, #00A6FF 0%, #0088cc 100%);
     color: white;
 }
 
 .badge-gana {
-    background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+    background: linear-gradient(90deg, #FF0026 0%, #cc0020 100%);
     color: white;
 }
 
 .badge-ganamos {
-    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
-    color: white;
+    background: linear-gradient(90deg, #FFD900 0%, #ffcc00 100%);
+    color: #000;
 }
 
 /* Alerts */
@@ -305,21 +354,21 @@ body {
 }
 
 .alert-ig-error {
-    background: rgba(220, 53, 69, 0.1);
-    border-color: rgba(220, 53, 69, 0.3);
-    color: #dc3545;
+    background: rgba(255, 0, 38, 0.1);
+    border-color: rgba(255, 0, 38, 0.3);
+    color: #FF0026;
 }
 
 .alert-ig-warning {
-    background: rgba(255, 193, 7, 0.1);
-    border-color: rgba(255, 193, 7, 0.3);
-    color: #ffc107;
+    background: rgba(255, 217, 0, 0.1);
+    border-color: rgba(255, 217, 0, 0.3);
+    color: #FFD900;
 }
 
 .alert-ig-info {
-    background: rgba(23, 162, 184, 0.1);
-    border-color: rgba(23, 162, 184, 0.3);
-    color: #17a2b8;
+    background: rgba(0, 166, 255, 0.1);
+    border-color: rgba(0, 166, 255, 0.3);
+    color: #00A6FF;
 }
 
 /* FAB */
@@ -337,7 +386,7 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 166, 255, 0.4);
     cursor: pointer;
     z-index: 1000;
     transition: all 0.3s ease;
@@ -345,7 +394,18 @@ body {
 
 .fab:hover {
     transform: scale(1.1) rotate(90deg);
-    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+    box-shadow: 0 15px 40px rgba(0, 166, 255, 0.6);
+}
+
+.fab-danger {
+    background: var(--secondary-gradient);
+    box-shadow: 0 10px 30px rgba(255, 0, 38, 0.4);
+}
+
+.fab-accent {
+    background: var(--accent-gradient);
+    color: #000;
+    box-shadow: 0 10px 30px rgba(255, 217, 0, 0.4);
 }
 
 /* Animations */
@@ -367,9 +427,9 @@ body {
 }
 
 @keyframes borderPulse {
-    0% { border-color: rgba(102, 126, 234, 0.5); }
-    50% { border-color: rgba(102, 126, 234, 1); }
-    100% { border-color: rgba(102, 126, 234, 0.5); }
+    0% { border-color: rgba(0, 166, 255, 0.5); }
+    50% { border-color: rgba(0, 166, 255, 1); }
+    100% { border-color: rgba(0, 166, 255, 0.5); }
 }
 
 /* Progress Bar */
@@ -381,6 +441,14 @@ body {
 
 .progress-bar {
     background: var(--primary-gradient);
+}
+
+.progress-bar-danger {
+    background: var(--secondary-gradient);
+}
+
+.progress-bar-accent {
+    background: var(--accent-gradient);
 }
 
 /* Custom Scrollbar */
@@ -400,7 +468,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(90deg, #5568d4 0%, #6540a0 100%);
+    background: linear-gradient(90deg, #0099e6 0%, #0077b3 100%);
 }
 
 /* Responsive */
@@ -441,13 +509,31 @@ body {
     background-clip: text;
 }
 
+.text-gradient-danger {
+    background: var(--secondary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.text-gradient-accent {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
 /* Connection Status */
 #connectionStatus .text-success {
     color: #28a745 !important;
 }
 
 #connectionStatus .text-danger {
-    color: #dc3545 !important;
+    color: #FF0026 !important;
+}
+
+#connectionStatus .text-warning {
+    color: #FFD900 !important;
 }
 
 /* Emergency Button */
@@ -456,9 +542,9 @@ body {
 }
 
 @keyframes emergencyPulse {
-    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(255, 0, 38, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 0, 38, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 0, 38, 0); }
 }
 
 /* Estilo para cursor en botones de reportes */
@@ -474,14 +560,36 @@ body {
 
 /* Estilos para deudas */
 .table-danger {
-    background-color: rgba(220, 53, 69, 0.1) !important;
+    background-color: rgba(255, 0, 38, 0.1) !important;
 }
 
 .badge-danger {
-    background: linear-gradient(135deg, #dc3545, #a71d2a) !important;
+    background: var(--secondary-gradient) !important;
+    color: white !important;
 }
 
 /* Texto rojo para montos negativos */
 .text-danger {
-    color: #ff6b6b !important;
+    color: #FF0026 !important;
+}
+
+.text-warning {
+    color: #FFD900 !important;
+}
+
+.text-primary {
+    color: #00A6FF !important;
+}
+
+/* Icon colors */
+.icon-primary {
+    color: #00A6FF;
+}
+
+.icon-danger {
+    color: #FF0026;
+}
+
+.icon-accent {
+    color: #FFD900;
 }

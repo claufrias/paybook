@@ -13,6 +13,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
+import tempfile
 
 app = Flask(__name__)
 CORS(app)
@@ -80,7 +81,7 @@ def init_db():
         INSERT OR IGNORE INTO configuraciones (clave, valor) 
         VALUES ('porcentaje_comision', '10'),
                ('moneda', '$'),
-               ('plataformas', 'Zeus,Gana,Paybook'),
+               ('plataformas', 'Zeus,Gana,Ganamos'),
                ('permitir_deudas', '1')
     ''')
     
@@ -118,16 +119,10 @@ def actualizar_bd():
                 )
             ''')
         
-        # Actualizar plataforma Ganamos a Paybook
-        cursor.execute("UPDATE cargas SET plataforma = 'Paybook' WHERE plataforma = 'Ganamos'")
-        
         # Verificar configuración de deudas
         cursor.execute("SELECT clave FROM configuraciones WHERE clave = 'permitir_deudas'")
         if not cursor.fetchone():
             cursor.execute("INSERT INTO configuraciones (clave, valor) VALUES ('permitir_deudas', '1')")
-        
-        # Actualizar configuraciones para incluir Paybook
-        cursor.execute("UPDATE configuraciones SET valor = 'Zeus,Gana,Paybook' WHERE clave = 'plataformas'")
         
         conn.commit()
         conn.close()
@@ -550,7 +545,7 @@ def get_resumen():
                 montos = cursor.fetchall()
                 
                 # Inicializar en 0
-                totales = {'Zeus': 0, 'Gana': 0, 'Paybook': 0}
+                totales = {'Zeus': 0, 'Gana': 0, 'Ganamos': 0}
                 
                 for plataforma, total in montos:
                     if plataforma in totales:
@@ -571,7 +566,7 @@ def get_resumen():
                     'cajero_id': cajero_id,
                     'zeus': totales['Zeus'],
                     'gana': totales['Gana'],
-                    'paybook': totales['Paybook'],
+                    'ganamos': totales['Ganamos'],
                     'total': total_general,
                     'cargas': cantidad_cargas
                 })
@@ -625,7 +620,7 @@ def get_resumen_pendientes():
                 montos = cursor.fetchall()
                 
                 # Inicializar en 0
-                totales = {'Zeus': 0, 'Gana': 0, 'Paybook': 0}
+                totales = {'Zeus': 0, 'Gana': 0, 'Ganamos': 0}
                 
                 for plataforma, total in montos:
                     if plataforma in totales:
@@ -646,7 +641,7 @@ def get_resumen_pendientes():
                     'cajero_id': cajero_id,
                     'zeus': totales['Zeus'],
                     'gana': totales['Gana'],
-                    'paybook': totales['Paybook'],
+                    'ganamos': totales['Ganamos'],
                     'total': total_general,
                     'cargas': cantidad_cargas
                 })
@@ -839,160 +834,30 @@ def registrar_pago():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== FUNCIONES PARA PDF ==========
-def generar_pdf(datos, titulo, tipo_reporte=None):
-    """Generar PDF con los datos proporcionados"""
-    buffer = io.BytesIO()
-    
-    # Crear documento PDF en formato horizontal
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter))
-    elements = []
-    
-    # Estilos
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=16,
-        spaceAfter=12,
-        alignment=1  # Centrado
-    )
-    
-    # Título
-    elements.append(Paragraph(titulo, title_style))
-    elements.append(Spacer(1, 12))
-    
-    # Información del reporte
-    if tipo_reporte == 'diario':
-        fecha_info = f"Fecha: {datetime.now().strftime('%Y-%m-%d')}"
-    elif tipo_reporte == 'semanal':
-        hoy = datetime.now()
-        inicio_semana = hoy - timedelta(days=hoy.weekday())
-        fin_semana = inicio_semana + timedelta(days=6)
-        fecha_info = f"Período: {inicio_semana.strftime('%Y-%m-%d')} al {fin_semana.strftime('%Y-%m-%d')}"
-    elif tipo_reporte == 'mensual':
-        hoy = datetime.now()
-        inicio_mes = datetime(hoy.year, hoy.month, 1)
-        fecha_info = f"Mes: {inicio_mes.strftime('%B %Y')}"
-    else:
-        fecha_info = f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    
-    elements.append(Paragraph(fecha_info, styles['Normal']))
-    elements.append(Spacer(1, 20))
-    
-    # Crear tabla de datos
-    if isinstance(datos, list) and len(datos) > 0:
-        # Preparar encabezados y datos
-        if 'cajero' in datos[0]:  # Es un resumen
-            encabezados = ['Cajero', '🔱 Zeus', '🎯 Gana', '💰 Paybook', 'Total', 'Estado']
-            tabla_datos = [encabezados]
-            
-            for item in datos:
-                estado = "PAGADO" if item.get('pagado') else "PENDIENTE"
-                fila = [
-                    item['cajero'],
-                    f"${item.get('zeus', 0):.2f}",
-                    f"${item.get('gana', 0):.2f}",
-                    f"${item.get('paybook', 0):.2f}",
-                    f"${item.get('total', 0):.2f}",
-                    estado
-                ]
-                tabla_datos.append(fila)
-                
-        else:  # Es historial de cargas
-            encabezados = ['Fecha', 'Cajero', 'Plataforma', 'Monto', 'Estado', 'Tipo']
-            tabla_datos = [encabezados]
-            
-            for item in datos:
-                fecha = datetime.strptime(item['fecha'], '%Y-%m-%d %H:%M:%S')
-                fecha_formateada = fecha.strftime('%d/%m/%Y %H:%M')
-                
-                if item.get('plataforma') == 'PAGO':
-                    estado = 'PAGO'
-                    tipo = 'PAGO'
-                else:
-                    estado = 'PAGADO' if item.get('pagado') else 'PENDIENTE'
-                    tipo = 'DEUDA' if item.get('es_deuda') else 'CARGA'
-                
-                fila = [
-                    fecha_formateada,
-                    item['cajero'],
-                    item['plataforma'],
-                    f"${float(item['monto']):.2f}",
-                    estado,
-                    tipo
-                ]
-                tabla_datos.append(fila)
-        
-        # Crear tabla
-        tabla = Table(tabla_datos, colWidths=[1.5*inch, 1.5*inch, 1.2*inch, 1*inch, 0.8*inch, 0.8*inch])
-        
-        # Estilo de la tabla
-        estilo_tabla = TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
-        ])
-        
-        tabla.setStyle(estilo_tabla)
-        elements.append(tabla)
-    
-    # Generar PDF
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
-
-# ========== API EXPORTACIÓN PDF ==========
-@app.route('/api/exportar/pdf', methods=['GET'])
-def exportar_pdf():
+# ========== API EXPORTACIÓN ==========
+@app.route('/api/exportar/excel', methods=['GET'])
+def exportar_excel():
     try:
         # Obtener parámetros
         fecha_inicio = request.args.get('fecha_inicio')
         fecha_fin = request.args.get('fecha_fin')
-        tipo_reporte = request.args.get('tipo_reporte', 'general')
         
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
             # Construir query según tipo de reporte
-            if tipo_reporte == 'diario':
-                hoy = datetime.now().strftime('%Y-%m-%d')
-                fecha_inicio = f'{hoy} 00:00:00'
-                fecha_fin = f'{hoy} 23:59:59'
-                titulo = "Reporte Diario - Paybook"
-            elif tipo_reporte == 'semanal':
-                hoy = datetime.now()
-                inicio_semana = hoy - timedelta(days=hoy.weekday())
-                fin_semana = inicio_semana + timedelta(days=6)
-                fecha_inicio = inicio_semana.strftime('%Y-%m-%d 00:00:00')
-                fecha_fin = fin_semana.strftime('%Y-%m-%d 23:59:59')
-                titulo = "Reporte Semanal - Paybook"
-            elif tipo_reporte == 'mensual':
-                hoy = datetime.now()
-                inicio_mes = datetime(hoy.year, hoy.month, 1)
-                if hoy.month == 12:
-                    fin_mes = datetime(hoy.year + 1, 1, 1) - timedelta(days=1)
-                else:
-                    fin_mes = datetime(hoy.year, hoy.month + 1, 1) - timedelta(days=1)
-                fecha_inicio = inicio_mes.strftime('%Y-%m-%d 00:00:00')
-                fecha_fin = fin_mes.strftime('%Y-%m-%d 23:59:59')
-                titulo = "Reporte Mensual - Paybook"
-            else:
-                titulo = "Reporte General - Paybook"
-            
             query_cargas = '''
-                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota, cg.pagado, cg.es_deuda
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE 1=1
@@ -1008,38 +873,193 @@ def exportar_pdf():
             cursor.execute(query_cargas, params)
             cargas_data = cursor.fetchall()
             
-            # Preparar datos para PDF
-            datos = []
+            # Crear CSV en memoria
+            output = io.StringIO()
+            writer = csv.writer(output)
+            
+            # Escribir encabezados
+            writer.writerow(['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Nota', 'Estado', 'Tipo'])
+            
+            # Escribir datos
             for row in cargas_data:
-                datos.append({
-                    'cajero': row[0],
-                    'plataforma': row[1],
-                    'monto': row[2],
-                    'fecha': row[3],
-                    'nota': row[4] or '',
-                    'pagado': bool(row[5]),
-                    'es_deuda': bool(row[6])
-                })
+                writer.writerow(row)
+            
+            # Preparar respuesta
+            output.seek(0)
             
             conn.close()
             
-            # Generar PDF
-            pdf_buffer = generar_pdf(datos, titulo, tipo_reporte)
-            
             # Crear respuesta
-            filename = f'reporte_{tipo_reporte}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+            filename = f'reporte_comisiones_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
             
-            response = send_file(
-                pdf_buffer,
-                as_attachment=True,
-                download_name=filename,
-                mimetype='application/pdf'
+            response = app.response_class(
+                output.getvalue(),
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment; filename={filename}'}
             )
             
             return response
         
     except Exception as e:
-        print(f"Error generando PDF: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/exportar/pdf', methods=['GET'])
+def exportar_pdf():
+    try:
+        # Obtener parámetros
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        tipo_reporte = request.args.get('tipo_reporte', 'general')
+        
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Construir query según tipo de reporte
+            query_cargas = '''
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
+                FROM cargas cg
+                JOIN cajeros c ON cg.cajero_id = c.id
+                WHERE 1=1
+            '''
+            
+            params = []
+            if fecha_inicio and fecha_fin:
+                query_cargas += ' AND cg.fecha BETWEEN ? AND ?'
+                params.extend([fecha_inicio, fecha_fin])
+            
+            query_cargas += ' ORDER BY cg.fecha DESC'
+            
+            cursor.execute(query_cargas, params)
+            cargas_data = cursor.fetchall()
+            
+            # Calcular totales
+            total_monto = sum(row[2] for row in cargas_data)
+            total_cargas = len(cargas_data)
+            
+            conn.close()
+        
+        # Crear PDF
+        buffer = io.BytesIO()
+        
+        # Configurar documento
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(letter),
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+        
+        # Estilos
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Centered
+        )
+        
+        # Contenido
+        elements = []
+        
+        # Título
+        title_text = f"Reporte Paybook - {tipo_reporte.capitalize()}"
+        if fecha_inicio and fecha_fin:
+            title_text += f"\nDel {fecha_inicio.split('T')[0]} al {fecha_fin.split('T')[0]}"
+        else:
+            title_text += f"\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        elements.append(Paragraph(title_text, title_style))
+        elements.append(Spacer(1, 20))
+        
+        # Totales
+        totales_data = [
+            ['Total Cargas:', str(total_cargas)],
+            ['Monto Total:', f"${total_monto:.2f}"],
+            ['Generado:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')]
+        ]
+        
+        totales_table = Table(totales_data, colWidths=[200, 200])
+        totales_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ]))
+        elements.append(totales_table)
+        elements.append(Spacer(1, 20))
+        
+        # Tabla de datos
+        if cargas_data:
+            # Encabezados
+            headers = ['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Estado', 'Tipo']
+            data = [headers]
+            
+            for row in cargas_data:
+                monto = float(row[2])
+                data.append([
+                    row[0],  # Cajero
+                    row[1],  # Plataforma
+                    f"${abs(monto):.2f}" + (" (-)" if monto < 0 else ""),  # Monto
+                    row[3].split(' ')[0] if ' ' in row[3] else row[3],  # Fecha
+                    row[5],  # Estado
+                    row[6]   # Tipo
+                ])
+            
+            # Crear tabla
+            table = Table(data, colWidths=[120, 80, 80, 80, 80, 80])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ecf0f1')),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ]))
+            
+            elements.append(table)
+        else:
+            elements.append(Paragraph("No hay datos para mostrar", styles['Normal']))
+        
+        # Pie de página
+        elements.append(Spacer(1, 30))
+        elements.append(Paragraph("© Paybook - Sistema de Gestión de Comisiones", styles['Normal']))
+        
+        # Construir PDF
+        doc.build(elements)
+        
+        # Preparar respuesta
+        buffer.seek(0)
+        filename = f'reporte_paybook_{tipo_reporte}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        
+        return send_file(
+            buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ========== API REPORTES ==========
@@ -1056,7 +1076,16 @@ def get_reporte_diario():
             
             # Obtener cargas del día
             cursor.execute('''
-                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota, cg.pagado, cg.es_deuda
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE cg.fecha BETWEEN ? AND ?
@@ -1088,8 +1117,8 @@ def get_reporte_diario():
                     'monto': row[2],
                     'fecha': row[3],
                     'nota': row[4] or '',
-                    'pagado': bool(row[5]),
-                    'es_deuda': bool(row[6])
+                    'estado': row[5],
+                    'tipo': row[6]
                 } for row in cargas]
             }
         })
@@ -1113,7 +1142,16 @@ def get_reporte_semanal():
             
             # Obtener cargas de la semana
             cursor.execute('''
-                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota, cg.pagado, cg.es_deuda
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE cg.fecha BETWEEN ? AND ?
@@ -1146,8 +1184,8 @@ def get_reporte_semanal():
                     'monto': row[2],
                     'fecha': row[3],
                     'nota': row[4] or '',
-                    'pagado': bool(row[5]),
-                    'es_deuda': bool(row[6])
+                    'estado': row[5],
+                    'tipo': row[6]
                 } for row in cargas]
             }
         })
@@ -1174,7 +1212,16 @@ def get_reporte_mensual():
             
             # Obtener cargas del mes
             cursor.execute('''
-                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota, cg.pagado, cg.es_deuda
+                SELECT c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota,
+                       CASE 
+                           WHEN cg.pagado = 1 THEN 'PAGADO'
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'PENDIENTE'
+                       END as estado,
+                       CASE 
+                           WHEN cg.es_deuda = 1 THEN 'DEUDA'
+                           ELSE 'CARGA'
+                       END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
                 WHERE cg.fecha BETWEEN ? AND ?
@@ -1207,8 +1254,8 @@ def get_reporte_mensual():
                     'monto': row[2],
                     'fecha': row[3],
                     'nota': row[4] or '',
-                    'pagado': bool(row[5]),
-                    'es_deuda': bool(row[6])
+                    'estado': row[5],
+                    'tipo': row[6]
                 } for row in cargas]
             }
         })
