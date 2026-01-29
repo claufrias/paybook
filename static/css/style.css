@@ -1,47 +1,390 @@
-/* CashFlow - Instagram Dark Theme */
+/* ========== REDCAJEROS - CSS PRINCIPAL ========== */
 :root {
-    --primary-gradient: linear-gradient(90deg, #00A6FF 0%, #0088cc 100%);
-    --secondary-gradient: linear-gradient(90deg, #FF0026 0%, #cc0020 100%);
-    --accent-gradient: linear-gradient(90deg, #FFD900 0%, #ffcc00 100%);
-    --dark-bg: #121212;
-    --darker-bg: #0a0a0a;
-    --card-bg: #1e1e1e;
-    --border-color: #333;
+    --primary-gradient: linear-gradient(45deg, #ff416c, #ff4b2b);
+    --secondary-gradient: linear-gradient(45deg, #3498db, #2980b9);
+    --success-gradient: linear-gradient(45deg, #2ecc71, #27ae60);
+    --warning-gradient: linear-gradient(45deg, #f39c12, #e67e22);
+    --danger-gradient: linear-gradient(45deg, #e74c3c, #c0392b);
+    --dark-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    
+    --bg-dark: #0f0f0f;
+    --bg-darker: #0a0a0a;
+    --bg-card: #1a1a1a;
+    --border-dark: #2a2a2a;
     --text-primary: #ffffff;
     --text-secondary: #b0b0b0;
-    --success: #28a745;
-    --info: #17a2b8;
-    --warning: #ffc107;
-    --danger: #FF0026;
-    --primary: #00A6FF;
-    --accent: #FFD900;
+    --text-muted: #666666;
+    
+    --redcajeros-red: #ff416c;
+    --redcajeros-blue: #3498db;
+    --redcajeros-green: #2ecc71;
+    --redcajeros-purple: #9b59b6;
 }
 
-/* Base Styles */
+/* ========== ESTILOS GENERALES ========== */
 body {
-    background-color: var(--dark-bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-dark);
     color: var(--text-primary);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
 }
 
-/* Loading Overlay */
+/* ========== GRADIENT TEXT ========== */
+.gradient-text {
+    background: linear-gradient(45deg, #ff416c, #ff4b2b, #3498db, #2ecc71);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 300% 300%;
+    animation: gradient 5s ease infinite;
+}
+
+.gradient-text-red {
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.gradient-text-blue {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+@keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ========== CARD STYLES ========== */
+.ig-card {
+    background: rgba(26, 26, 26, 0.8);
+    border: 1px solid var(--border-dark);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.ig-card-header {
+    background: rgba(40, 40, 40, 0.8);
+    border-bottom: 1px solid var(--border-dark);
+    border-radius: 16px 16px 0 0;
+    padding: 1rem 1.5rem;
+}
+
+.ig-card-body {
+    padding: 1.5rem;
+}
+
+.ig-card:hover {
+    border-color: rgba(255, 65, 108, 0.3);
+    box-shadow: 0 10px 30px rgba(255, 65, 108, 0.1);
+    transform: translateY(-2px);
+}
+
+/* ========== BUTTONS ========== */
+.btn-ig {
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-ig-red {
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-ig-blue {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-ig-outline {
+    background: transparent;
+    border: 2px solid #ff416c;
+    color: #ff416c;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-ig:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 65, 108, 0.3);
+}
+
+.btn-ig-red:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 65, 108, 0.3);
+}
+
+.btn-ig-outline:hover {
+    background: rgba(255, 65, 108, 0.1);
+    transform: translateY(-2px);
+}
+
+.hover-lift {
+    transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ========== FORM CONTROLS ========== */
+.form-control-ig {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: 10px;
+    padding: 10px 15px;
+    transition: all 0.3s ease;
+}
+
+.form-control-ig:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #ff416c;
+    box-shadow: 0 0 0 3px rgba(255, 65, 108, 0.1);
+    color: white;
+}
+
+.form-control-ig::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.form-select-ig {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: 10px;
+    padding: 10px 15px;
+    transition: all 0.3s ease;
+}
+
+.form-select-ig:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #ff416c;
+    box-shadow: 0 0 0 3px rgba(255, 65, 108, 0.1);
+    color: white;
+}
+
+/* ========== STORIES NAVIGATION ========== */
+.nav-stories {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    padding: 15px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.nav-stories::-webkit-scrollbar {
+    display: none;
+}
+
+.story-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 70px;
+}
+
+.story-item:hover {
+    transform: translateY(-5px);
+}
+
+.story-item:hover .story-circle {
+    transform: scale(1.1);
+}
+
+.story-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    border: 3px solid var(--bg-dark);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.story-circle.small {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+}
+
+.story-circle::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #ff416c, #ff4b2b, #3498db, #2ecc71);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.story-item:hover .story-circle::after {
+    opacity: 1;
+}
+
+.story-item small {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ========== PULSE ANIMATION ========== */
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 65, 108, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 65, 108, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 65, 108, 0);
+    }
+}
+
+/* ========== STAT CARDS ========== */
+.stat-card {
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.8), rgba(40, 40, 40, 0.8));
+    border: 1px solid var(--border-dark);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0.5rem 0;
+}
+
+/* ========== TABLES ========== */
+.table-ig {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
+    --bs-table-border-color: var(--border-dark);
+}
+
+.table-ig > thead {
+    border-bottom: 2px solid var(--border-dark);
+}
+
+.table-ig > tbody > tr {
+    transition: all 0.3s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.table-ig > tbody > tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+    transform: translateX(5px);
+}
+
+.table-ig th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 1px;
+}
+
+/* ========== BADGES ========== */
+.badge-ig {
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.badge-zeus {
+    background: linear-gradient(45deg, #8e44ad, #9b59b6);
+    color: white;
+}
+
+.badge-gana {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    color: white;
+}
+
+.badge-ganamos {
+    background: linear-gradient(45deg, #2ecc71, #27ae60);
+    color: white;
+}
+
+/* ========== LOADING OVERLAY ========== */
 .loading-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    right: 0;
+    bottom: 0;
     background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(10px);
     display: flex;
-    justify-content: center;
     align-items: center;
-    z-index: 99999;
+    justify-content: center;
+    z-index: 9999;
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
 }
 
 .loading-overlay.active {
@@ -51,14 +394,7 @@ body {
 
 .loading-content {
     text-align: center;
-    background: rgba(30, 30, 30, 0.9);
-    padding: 2.5rem;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    max-width: 320px;
-    width: 90%;
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 0.5s ease;
 }
 
 @keyframes fadeIn {
@@ -66,518 +402,166 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Story Circles */
-.nav-stories {
-    display: flex;
-    justify-content: center;
-    gap: 1.5rem;
-    padding: 1rem 0;
-    overflow-x: auto;
-}
-
-.story-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    cursor: pointer;
-    transition: transform 0.2s;
-    min-width: 60px;
-}
-
-.story-item:hover {
-    transform: translateY(-2px);
-}
-
-.story-circle {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: var(--primary-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.2rem;
-    margin-bottom: 0.5rem;
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
-}
-
-.story-circle.small {
-    width: 40px;
-    height: 40px;
-    font-size: 1rem;
-}
-
-.story-circle.pulse {
-    animation: pulse 2s infinite;
-    box-shadow: 0 0 20px rgba(0, 166, 255, 0.5);
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-/* Cards */
-.ig-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.ig-card:hover {
-    border-color: rgba(0, 166, 255, 0.3);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.ig-card-header {
-    padding: 1.25rem 1.5rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.ig-card-body {
-    padding: 1.5rem;
-}
-
-/* Gradient Text */
-.gradient-text {
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Buttons */
-.btn-ig {
-    background: var(--primary-gradient);
-    border: none;
-    color: white;
-    border-radius: 12px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-ig:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(0, 166, 255, 0.3);
-    color: white;
-}
-
-.btn-ig-outline {
-    background: transparent;
-    border: 2px solid #00A6FF;
-    color: #00A6FF;
-    border-radius: 12px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-ig-outline:hover {
-    background: rgba(0, 166, 255, 0.1);
-    transform: translateY(-2px);
-}
-
-.btn-ig-danger {
-    background: var(--secondary-gradient);
-    border: none;
-    color: white;
-    border-radius: 12px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-ig-danger:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(255, 0, 38, 0.3);
-    color: white;
-}
-
-.btn-ig-accent {
-    background: var(--accent-gradient);
-    border: none;
-    color: #000;
-    border-radius: 12px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-ig-accent:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(255, 217, 0, 0.3);
-    color: #000;
-}
-
-/* Form Controls */
-.form-control-ig, .form-select-ig {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    border-radius: 12px;
-    padding: 0.75rem 1rem;
-    transition: all 0.3s ease;
-}
-
-.form-control-ig:focus, .form-select-ig:focus {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: #00A6FF;
-    box-shadow: 0 0 0 3px rgba(0, 166, 255, 0.2);
-    color: var(--text-primary);
-}
-
-/* Stat Cards - VERSIÓN UNIFICADA */
-.stat-card {
-    background: var(--card-bg);
-    border-radius: 16px;
-    padding: 2rem 1.5rem;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-    height: 180px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    text-align: center;
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-    border-color: #00A6FF;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-}
-
-.stat-label {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 0.75rem;
-    font-weight: 600;
-}
-
-.stat-number {
-    font-size: 2.5rem !important;
-    font-weight: 800 !important;
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 0.5rem;
-    font-family: 'Inter', sans-serif;
-    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
-}
-
-.stat-card .text-success,
-.stat-card .text-info {
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.stat-number-danger {
-    background: var(--secondary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.stat-number-accent {
-    background: var(--accent-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Tables */
-.table-ig {
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-.table-ig thead th {
-    border-bottom: 2px solid var(--border-color);
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    font-size: 0.875rem;
-    letter-spacing: 0.5px;
-}
-
-.table-ig tbody tr {
-    transition: all 0.2s ease;
-}
-
-.table-ig tbody tr:hover {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-/* Badges */
-.badge-ig {
-    background: var(--primary-gradient);
-    color: white;
-    padding: 0.35rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.875rem;
-    font-weight: 600;
-}
-
-.badge-zeus {
-    background: linear-gradient(90deg, #00A6FF 0%, #0088cc 100%);
-    color: white;
-}
-
-.badge-gana {
-    background: linear-gradient(90deg, #FF0026 0%, #cc0020 100%);
-    color: white;
-}
-
-.badge-ganamos {
-    background: linear-gradient(90deg, #FFD900 0%, #ffcc00 100%);
-    color: #000;
-}
-
-/* Alerts */
+/* ========== ALERTS ========== */
 .alert-ig {
+    padding: 1rem 1.5rem;
     border-radius: 12px;
-    border: 1px solid;
-    padding: 1rem 1.25rem;
     margin-bottom: 1rem;
     animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from { opacity: 0; transform: translateX(-20px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-.alert-ig.hiding {
-    opacity: 0;
-    transform: translateX(20px);
-    transition: all 0.3s ease;
+    border: none;
+    backdrop-filter: blur(10px);
 }
 
 .alert-ig-success {
-    background: rgba(40, 167, 69, 0.1);
-    border-color: rgba(40, 167, 69, 0.3);
-    color: #28a745;
+    background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(39, 174, 96, 0.1));
+    border-left: 4px solid #2ecc71;
+    color: #2ecc71;
 }
 
 .alert-ig-error {
-    background: rgba(255, 0, 38, 0.1);
-    border-color: rgba(255, 0, 38, 0.3);
-    color: #FF0026;
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.2), rgba(192, 57, 43, 0.1));
+    border-left: 4px solid #e74c3c;
+    color: #e74c3c;
 }
 
 .alert-ig-warning {
-    background: rgba(255, 217, 0, 0.1);
-    border-color: rgba(255, 217, 0, 0.3);
-    color: #FFD900;
+    background: linear-gradient(135deg, rgba(241, 196, 15, 0.2), rgba(243, 156, 18, 0.1));
+    border-left: 4px solid #f1c40f;
+    color: #f1c40f;
 }
 
 .alert-ig-info {
-    background: rgba(0, 166, 255, 0.1);
-    border-color: rgba(0, 166, 255, 0.3);
-    color: #00A6FF;
+    background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(41, 128, 185, 0.1));
+    border-left: 4px solid #3498db;
+    color: #3498db;
 }
 
-/* FAB */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ========== BORDER GRADIENT ========== */
+.border-gradient {
+    position: relative;
+    border: 2px solid transparent;
+    border-radius: 16px;
+}
+
+.border-gradient::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 18px;
+    background: linear-gradient(45deg, #ff416c, #ff4b2b, #3498db, #2ecc71);
+    z-index: -1;
+    animation: gradient 3s ease infinite;
+    background-size: 300% 300%;
+}
+
+/* ========== FLOATING ACTION BUTTON ========== */
 .fab {
     position: fixed;
-    bottom: 2rem;
-    right: 2rem;
+    bottom: 30px;
+    right: 30px;
     width: 60px;
     height: 60px;
     border-radius: 50%;
-    background: var(--primary-gradient);
-    color: white;
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
     border: none;
+    color: white;
+    font-size: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    box-shadow: 0 10px 30px rgba(0, 166, 255, 0.4);
     cursor: pointer;
-    z-index: 1000;
+    box-shadow: 0 5px 20px rgba(255, 65, 108, 0.3);
     transition: all 0.3s ease;
+    z-index: 1000;
 }
 
 .fab:hover {
     transform: scale(1.1) rotate(90deg);
-    box-shadow: 0 15px 40px rgba(0, 166, 255, 0.6);
+    box-shadow: 0 10px 30px rgba(255, 65, 108, 0.5);
 }
 
-.fab-danger {
-    background: var(--secondary-gradient);
-    box-shadow: 0 10px 30px rgba(255, 0, 38, 0.4);
+/* ========== MODAL STYLES ========== */
+.modal-content.ig-card {
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-dark);
 }
 
-.fab-accent {
-    background: var(--accent-gradient);
-    color: #000;
-    box-shadow: 0 10px 30px rgba(255, 217, 0, 0.4);
+.modal-header.ig-card-header {
+    background: rgba(40, 40, 40, 0.95);
 }
 
-/* Animations */
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .nav-stories {
+        gap: 15px;
+        justify-content: flex-start;
+        padding: 10px;
+    }
+    
+    .story-circle {
+        width: 50px;
+        height: 50px;
+        font-size: 1rem;
+    }
+    
+    .story-item {
+        min-width: 60px;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+    }
+    
+    .fab {
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+}
+
+/* ========== UTILITY CLASSES ========== */
+.text-gradient {
+    background: linear-gradient(45deg, #ff416c, #ff4b2b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
 .fade-in {
     animation: fadeIn 0.5s ease;
 }
 
-.hover-lift {
-    transition: transform 0.2s ease;
+.shadow-ig {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
-.hover-lift:hover {
-    transform: translateY(-2px);
+.hiding {
+    animation: slideOut 0.3s ease forwards;
 }
 
-.border-gradient {
-    border-image: var(--primary-gradient) 1;
-    animation: borderPulse 2s infinite;
-}
-
-@keyframes borderPulse {
-    0% { border-color: rgba(0, 166, 255, 0.5); }
-    50% { border-color: rgba(0, 166, 255, 1); }
-    100% { border-color: rgba(0, 166, 255, 0.5); }
-}
-
-/* Progress Bar */
-.progress {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.progress-bar {
-    background: var(--primary-gradient);
-}
-
-.progress-bar-danger {
-    background: var(--secondary-gradient);
-}
-
-.progress-bar-accent {
-    background: var(--accent-gradient);
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--primary-gradient);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(90deg, #0099e6 0%, #0077b3 100%);
-}
-
-/* Status Indicators */
-.text-gradient {
-    background: var(--primary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.text-gradient-danger {
-    background: var(--secondary-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.text-gradient-accent {
-    background: var(--accent-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Connection Status */
-#connectionStatus .text-success {
-    color: #28a745 !important;
-}
-
-#connectionStatus .text-danger {
-    color: #FF0026 !important;
-}
-
-#connectionStatus .text-warning {
-    color: #FFD900 !important;
-}
-
-/* Emergency Button */
-#emergencyReset {
-    animation: emergencyPulse 1.5s infinite;
-}
-
-@keyframes emergencyPulse {
-    0% { box-shadow: 0 0 0 0 rgba(255, 0, 38, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(255, 0, 38, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 0, 38, 0); }
-}
-
-/* Estilo para cursor en botones de reportes */
-.reporte-card {
-    transition: all 0.3s ease;
-    cursor: pointer !important;
-}
-
-.reporte-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* Estilos para deudas */
-.table-danger {
-    background-color: rgba(255, 0, 38, 0.1) !important;
-}
-
-.badge-danger {
-    background: var(--secondary-gradient) !important;
-    color: white !important;
-}
-
-/* Texto rojo para montos negativos */
-.text-danger {
-    color: #FF0026 !important;
-}
-
-.text-warning {
-    color: #FFD900 !important;
-}
-
-.text-primary {
-    color: #00A6FF !important;
-}
-
-/* Icon colors */
-.icon-primary {
-    color: #00A6FF;
-}
-
-.icon-danger {
-    color: #FF0026;
-}
-
-.icon-accent {
-    color: #FFD900;
+@keyframes slideOut {
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+        height: 0;
+        margin: 0;
+        padding: 0;
+    }
 }

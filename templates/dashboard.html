@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔴 RedCajeros - Dashboard</title>
+    
+    <!-- Bootstrap 5 Dark -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.1.3/dist/css/bootstrap-night.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Nuestro CSS personalizado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        .subscription-alert {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 65, 108, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 65, 108, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 65, 108, 0); }
+        }
+        
+        .pago-modal {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .banco-info {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .banco-info h6 {
+            color: #fff;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+        
+        .banco-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px 0;
+            border-bottom: 1px dashed rgba(255,255,255,0.05);
+        }
+        
+        .banco-detail:last-child {
+            border-bottom: none;
+        }
+        
+        .banco-label {
+            color: #bbb;
+            font-size: 0.9rem;
+        }
+        
+        .banco-value {
+            color: #fff;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .whatsapp-btn {
+            background: linear-gradient(45deg, #25D366, #128C7E);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .whatsapp-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3);
+            color: white;
+        }
+        
+        .codigo-pago {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 15px 0;
+            letter-spacing: 1px;
+        }
+        
+        .pago-steps {
+            counter-reset: step;
+        }
+        
+        .pago-step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .pago-step:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .step-number {
+            background: linear-gradient(45deg, #ff416c, #ff4b2b);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+        
+        .step-desc {
+            color: #bbb;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="story-circle mb-4 pulse" style="width: 80px; height: 80px; border: none; background: linear-gradient(45deg, #ff416c, #ff4b2b);">
+                <i class="fas fa-users fa-2x"></i>
+            </div>
+            <h4 class="gradient-text-red mb-3">RedCajeros</h4>
+            <p class="text-muted">Cargando...</p>
+        </div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top" style="background: rgba(15, 15, 15, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--dark-border);">
+        <div class="container-fluid">
+            <!-- Logo -->
+            <a class="navbar-brand" href="/dashboard">
+                <div class="d-flex align-items-center">
+                    <div class="story-circle small me-3" style="background: linear-gradient(45deg, #ff416c, #ff4b2b);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h4 class="gradient-text-red mb-0">RedCajeros</h4>
+                        <small class="text-muted">Dashboard</small>
+                    </div>
+                </div>
+            </a>
+            
+            <!-- User Info -->
+            <div class="d-none d-lg-flex align-items-center">
+                <div class="me-4 text-center">
+                    <div class="text-muted small">MI PLAN</div>
+                    <div class="gradient-text-red fw-bold" id="userPlan">Cargando...</div>
+                </div>
+                <div class="me-4 text-center">
+                    <div class="text-muted small">EXPIRA</div>
+                    <div class="gradient-text fw-bold" id="userExpira">...</div>
+                </div>
+            </div>
+            
+            <!-- User Menu -->
+            <div class="dropdown">
+                <button class="btn btn-ig-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-user-circle me-2"></i> <span id="userName">Usuario</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark border-gradient" style="right: 0; left: auto;">
+                    <li><a class="dropdown-item" href="#" onclick="cargarDatosIniciales()"><i class="fas fa-sync-alt me-2"></i> Actualizar</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mostrarMiPerfil()"><i class="fas fa-user me-2"></i> Mi Perfil</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mostrarSuscripcion()"><i class="fas fa-crown me-2"></i> Mi Suscripción</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportarReporte()"><i class="fas fa-file-pdf me-2"></i> Exportar PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="verPendientes()"><i class="fas fa-clock me-2"></i> Ver Pendientes</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Quick Navigation Stories -->
+    <div class="container mt-3">
+        <div class="nav-stories">
+            <div class="story-item" onclick="mostrarSeccion('resumen')">
+                <div class="story-circle" style="background: linear-gradient(45deg, #ff416c, #ff4b2b);">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <small>Resumen</small>
+            </div>
+            <div class="story-item" onclick="mostrarModalCajeros()">
+                <div class="story-circle" style="background: linear-gradient(45deg, #3498db, #2980b9);">
+                    <i class="fas fa-users"></i>
+                </div>
+                <small>Cajeros</small>
+            </div>
+            <div class="story-item" onclick="mostrarModalCarga()">
+                <div class="story-circle pulse" style="background: linear-gradient(45deg, #2ecc71, #27ae60);">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <small>Nueva Carga</small>
+            </div>
+            <div class="story-item" onclick="mostrarSeccion('historial')">
+                <div class="story-circle" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">
+                    <i class="fas fa-history"></i>
+                </div>
+                <small>Historial</small>
+            </div>
+            <div class="story-item" onclick="mostrarModalReportes()">
+                <div class="story-circle" style="background: linear-gradient(45deg, #e74c3c, #c0392b);">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <small>Reportes</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Alert -->
+    <div class="container mt-3">
+        <div class="subscription-alert d-none" id="subscriptionAlert">
+            <div class="ig-card border-warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="gradient-text-red mb-1"><i class="fas fa-exclamation-triangle me-2"></i>Suscripción</h6>
+                        <p class="mb-0 text-muted small" id="subscriptionMessage">Tu prueba gratuita expira pronto</p>
+                    </div>
+                    <button class="btn btn-ig-red btn-sm" onclick="mostrarSuscripcion()">
+                        <i class="fas fa-crown me-1"></i> Renovar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container py-4">
+        <!-- Alert Container -->
+        <div id="alertContainer" class="mb-3"></div>
+        
+        <!-- Data Status Bar -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="ig-card py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">
+                                <i class="fas fa-database me-1"></i>
+                                <span id="dataStatus">Cargando datos...</span>
+                            </small>
+                        </div>
+                        <div>
+                            <small class="text-muted" id="lastUpdate">
+                                <i class="fas fa-clock me-1"></i>
+                                Última actualización: --
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Left Column - Forms -->
+            <div class="col-lg-4">
+                <!-- Cajero Form -->
+                <div class="ig-card mb-4 fade-in" id="formCajero">
+                    <div class="ig-card-header d-flex align-items-center">
+                        <div class="story-circle small me-3" style="background: linear-gradient(45deg, #3498db, #2980b9);">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 gradient-text">Nuevo Cajero</h5>
+                            <small class="text-muted">Agregar cajero a tu red</small>
+                        </div>
+                    </div>
+                    <div class="ig-card-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Nombre del Cajero</label>
+                            <input type="text" id="nombreCajero" class="form-control form-control-ig" 
+                                   placeholder="Ej: Juan Pérez" autocomplete="off">
+                        </div>
+                        <button class="btn btn-ig w-100 hover-lift" onclick="agregarCajero()">
+                            <i class="fas fa-user-check me-2"></i> Agregar Cajero
+                        </button>
+                        <div class="mt-2 text-center">
+                            <small class="text-muted" id="cajerosCount">
+                                <i class="fas fa-users me-1"></i> 0 cajeros activos
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Carga Form -->
+                <div class="ig-card mb-4 fade-in" id="formCarga">
+                    <div class="ig-card-header d-flex align-items-center">
+                        <div class="story-circle small me-3" style="background: linear-gradient(45deg, #2ecc71, #27ae60);">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 gradient-text">Nueva Carga</h5>
+                            <small class="text-muted">Registrar comisión</small>
+                        </div>
+                    </div>
+                    <div class="ig-card-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Cajero</label>
+                            <select id="selectCajero" class="form-select form-select-ig">
+                                <option value="">Cargando cajeros...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Plataforma</label>
+                            <select id="selectPlataforma" class="form-select form-select-ig">
+                                <option value="Zeus">🔱 Zeus</option>
+                                <option value="Gana">🎯 Gana</option>
+                                <option value="Ganamos">💰 Ganamos</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Monto ($)</label>
+                            <input type="number" id="montoCarga" class="form-control form-control-ig" 
+                                   step="0.01" min="0.01" placeholder="0.00" autocomplete="off">
+                        </div>
+                        <button class="btn btn-ig w-100 hover-lift" onclick="agregarCarga()">
+                            <i class="fas fa-save me-2"></i> Guardar Carga
+                        </button>
+                        <div class="mt-2 text-center">
+                            <small class="text-muted" id="cargasCount">
+                                <i class="fas fa-list me-1"></i> 0 cargas registradas
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="ig-card fade-in" id="formFiltros">
+                    <div class="ig-card-header d-flex align-items-center">
+                        <div class="story-circle small me-3" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">
+                            <i class="fas fa-filter"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 gradient-text">Filtros</h5>
+                            <small class="text-muted">Buscar por fecha</small>
+                        </div>
+                    </div>
+                    <div class="ig-card-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Desde</label>
+                            <input type="datetime-local" id="fechaInicio" class="form-control form-control-ig">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Hasta</label>
+                            <input type="datetime-local" id="fechaFin" class="form-control form-control-ig">
+                        </div>
+                        <div class="row g-2">
+                            <div class="col">
+                                <button class="btn btn-ig-outline w-100 hover-lift" onclick="filtrarCargas()">
+                                    <i class="fas fa-search me-2"></i> Buscar
+                                </button>
+                            </div>
+                            <div class="col">
+                                <button class="btn btn-outline-secondary w-100 hover-lift" onclick="limpiarFiltro()">
+                                    <i class="fas fa-broom me-2"></i> Limpiar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Data -->
+            <div class="col-lg-8">
+                <!-- Summary Cards -->
+                <div class="row mb-4" id="seccionResumen">
+                    <div class="col-md-6 mb-3">
+                        <div class="stat-card hover-lift">
+                            <div class="stat-label">TOTAL HOY</div>
+                            <div class="stat-number" id="totalHoy">$0</div>
+                            <div class="text-success small mt-2" id="totalHoyNombre">
+                                <i class="fas fa-calendar-day me-1"></i> Hoy
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="stat-card hover-lift">
+                            <div class="stat-label">TOP CAJERO</div>
+                            <div class="stat-number" id="topCajero">$0</div>
+                            <div class="text-info small mt-2" id="topCajeroNombre">
+                                <i class="fas fa-user me-1"></i> Sin datos
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Table -->
+                <div class="ig-card mb-4 fade-in" id="seccionTablaResumen">
+                    <div class="ig-card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 gradient-text">Resumen por Cajero</h5>
+                            <small class="text-muted">Total acumulado por plataforma</small>
+                        </div>
+                        <div>
+                            <span class="badge-ig me-2" id="contadorCajeros">0 cajeros</span>
+                        </div>
+                    </div>
+                    <div class="ig-card-body">
+                        <div class="table-responsive">
+                            <table class="table table-ig table-hover">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-user me-2"></i>Cajero</th>
+                                        <th class="text-end">🔱 Zeus</th>
+                                        <th class="text-end">🎯 Gana</th>
+                                        <th class="text-end">💰 Ganamos</th>
+                                        <th class="text-end">🏆 Total</th>
+                                        <th class="text-center"><i class="fas fa-money-bill-wave me-2"></i>Pagar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaResumen">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-5">
+                                            <div class="mb-3">
+                                                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                            </div>
+                                            <h6>Cargando resumen...</h6>
+                                            <small class="text-muted">Por favor espere</small>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Table -->
+                <div class="ig-card fade-in" id="seccionHistorial">
+                    <div class="ig-card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0 gradient-text">Historial Reciente</h5>
+                            <small class="text-muted">Últimas cargas registradas</small>
+                        </div>
+                        <div>
+                            <small class="text-muted me-2" id="historialCount">
+                                <i class="fas fa-list me-1"></i> 0 cargas
+                            </small>
+                        </div>
+                    </div>
+                    <div class="ig-card-body">
+                        <div class="table-responsive">
+                            <table class="table table-ig table-hover">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-calendar me-2"></i>Fecha/Hora</th>
+                                        <th><i class="fas fa-user me-2"></i>Cajero</th>
+                                        <th><i class="fas fa-gamepad me-2"></i>Plataforma</th>
+                                        <th class="text-end"><i class="fas fa-money-bill me-2"></i>Monto</th>
+                                        <th class="text-center"><i class="fas fa-cog me-2"></i>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaCargas">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-5">
+                                            <div class="mb-3">
+                                                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                            </div>
+                                            <h6>Cargando datos...</h6>
+                                            <small class="text-muted">Por favor espere</small>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="5" class="text-center pt-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Se muestran las últimas 50 cargas
+                                            </small>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button class="fab" onclick="mostrarModalCarga()" title="Agregar carga rápida" style="background: linear-gradient(45deg, #2ecc71, #27ae60);">
+        <i class="fas fa-plus"></i>
+    </button>
+
+    <!-- Footer -->
+    <footer class="py-3 mt-5 border-top border-dark">
+        <div class="container text-center">
+            <small class="text-muted">
+                <i class="fas fa-code me-1"></i> RedCajeros v3.0 | 
+                <i class="fas fa-mobile-alt ms-3 me-1"></i> Sistema Multi-Usuario |
+                <i class="fas fa-user-shield ms-3 me-1"></i> <span id="userEmail">usuario@email.com</span>
+            </small>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Nuestro JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    
+    <!-- Dashboard Script -->
+    <script>
+        // Variables globales
+        let userData = null;
+        let cargas = [];
+        let cajeros = [];
+        let resumen = [];
+        let estadisticas = {};
+        let isLoading = false;
+        
+        // Cargar datos del usuario
+        async function cargarUsuario() {
+            try {
+                const response = await fetch('/api/user/info');
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        // Suscripción expirada
+                        window.location.href = '/?expired=true';
+                        return;
+                    }
+                    throw new Error('Error cargando usuario');
+                }
+                
+                const data = await response.json();
+                if (data.success) {
+                    userData = data.user;
+                    actualizarUIUsuario();
+                    verificarSuscripcion();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                window.location.href = '/';
+            }
+        }
+        
+        function actualizarUIUsuario() {
+            if (!userData) return;
+            
+            // Actualizar navbar
+            document.getElementById('userName').textContent = userData.nombre || userData.email.split('@')[0];
+            document.getElementById('userEmail').textContent = userData.email;
+            document.getElementById('userPlan').textContent = userData.plan.toUpperCase();
+            
+            // Formatear fecha de expiración
+            if (userData.fecha_expiracion) {
+                const fecha = new Date(userData.fecha_expiracion);
+                const ahora = new Date();
+                const diasRestantes = Math.ceil((fecha - ahora) / (1000 * 60 * 60 * 24));
+                
+                document.getElementById('userExpira').textContent = diasRestantes > 0 ? 
+                    `${diasRestantes} días` : 'Expirado';
+                
+                document.getElementById('userExpira').className = diasRestantes > 0 ? 
+                    'gradient-text fw-bold' : 'text-danger fw-bold';
+            }
+        }
+        
+        function verificarSuscripcion() {
+            if (!userData || !userData.fecha_expiracion) return;
+            
+            const fechaExpiracion = new Date(userData.fecha_expiracion);
+            const ahora = new Date();
+            const diasRestantes = Math.ceil((fechaExpiracion - ahora) / (1000 * 60 * 60 * 24));
+            
+            const alert = document.getElementById('subscriptionAlert');
+            const message = document.getElementById('subscriptionMessage');
+            
+            if (diasRestantes <= 3 && diasRestantes > 0) {
+                // Pronto a expirar
+                alert.classList.remove('d-none');
+                message.textContent = `Tu suscripción expira en ${diasRestantes} días. Renueva para continuar.`;
+            } else if (diasRestantes <= 0) {
+                // Expirado
+                alert.classList.remove('d-none');
+                message.textContent = 'Tu suscripción ha expirado. Renueva para continuar usando RedCajeros.';
+            } else {
+                alert.classList.add('d-none');
+            }
+        }
+        
+        // Suscripción/Pagos
+        async function mostrarSuscripcion() {
+            const html = `
+                <div class="pago-modal">
+                    <h4 class="gradient-text-red mb-4">Mi Suscripción</h4>
+                    
+                    <div class="ig-card mb-4">
+                        <div class="ig-card-header">
+                            <h6 class="mb-0">Estado Actual</h6>
+                        </div>
+                        <div class="ig-card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small class="text-muted">Plan</small>
+                                    <div class="fw-bold">${userData?.plan.toUpperCase() || 'TRIAL'}</div>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Expira</small>
+                                    <div class="fw-bold ${userData?.fecha_expiracion ? '' : 'text-danger'}">
+                                        ${userData?.fecha_expiracion ? new Date(userData.fecha_expiracion).toLocaleDateString() : 'Expirado'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="ig-card">
+                        <div class="ig-card-header">
+                            <h6 class="mb-0">Planes Disponibles</h6>
+                        </div>
+                        <div class="ig-card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="plan-card text-center p-3 hover-lift" onclick="solicitarPago('basic')" style="cursor: pointer; border: 2px solid #3498db; border-radius: 10px;">
+                                        <h5 class="gradient-text">Básico</h5>
+                                        <div class="plan-price">$9.99<span class="text-muted small">/mes</span></div>
+                                        <ul class="list-unstyled mt-3 small text-start">
+                                            <li><i class="fas fa-check text-success me-2"></i> Hasta 15 cajeros</li>
+                                            <li><i class="fas fa-check text-success me-2"></i> Cargas ilimitadas</li>
+                                            <li><i class="fas fa-check text-success me-2"></i> Reportes básicos</li>
+                                            <li><i class="fas fa-check text-success me-2"></i> Soporte por email</li>
+                                        </ul>
+                                        <button class="btn btn-ig w-100 mt-3">Seleccionar</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="plan-card text-center p-3 hover-lift" onclick="solicitarPago('premium')" style="cursor: pointer; border: 2px solid #ff416c; border-radius: 10px; background: rgba(255, 65, 108, 0.1);">
+                                        <h5 class="gradient-text-red">Premium</h5>
+                                        <div class="plan-price">$19.99<span class="text-muted small">/mes</span></div>
+                                        <ul class="list-unstyled mt-3 small text-start">
+                                            <li><i class="fas fa-check text-success me-2"></i> Cajeros ilimitados</li>
+                                            <li><i class="fas fa-check text-success me-2"></i> Reportes avanzados</li>
+                                            <li><i class="fas fa-check text-success me-2"></i> Exportar PDF/Excel</li>
+                                            <li><i class="fas fa-check text-success me-2"></i> Soporte prioritario</li>
+                                        </ul>
+                                        <button class="btn btn-ig-red w-100 mt-3">Seleccionar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Crear modal
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'modalSuscripcion';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content ig-card">
+                        <div class="modal-header ig-card-header">
+                            <h5 class="modal-title gradient-text-red">
+                                <i class="fas fa-crown me-2"></i>Gestión de Suscripción
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body ig-card-body">
+                            ${html}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            modal.addEventListener('hidden.bs.modal', function () {
+                document.body.removeChild(modal);
+            });
+        }
+        
+        async function solicitarPago(plan) {
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/pagos/solicitar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: plan })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Cerrar modal anterior
+                    const modal = document.getElementById('modalSuscripcion');
+                    if (modal) {
+                        const bsModal = bootstrap.Modal.getInstance(modal);
+                        if (bsModal) bsModal.hide();
+                    }
+                    
+                    // Mostrar modal de pago
+                    mostrarModalPago(data.data);
+                } else {
+                    mostrarAlerta('Error', data.error, 'error');
+                }
+            } catch (error) {
+                mostrarAlerta('Error', 'Error de conexión', 'error');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+        
+        function mostrarModalPago(pagoData) {
+            const html = `
+                <div class="pago-modal">
+                    <h4 class="gradient-text-red mb-4">Completar Pago</h4>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instrucciones de pago manual:</strong>
+                        <ol class="mt-2 mb-0">
+                            <li>Haz transferencia a la cuenta indicada</li>
+                            <li>Envía el comprobante por WhatsApp</li>
+                            <li>Incluye tu código único</li>
+                            <li>Tu cuenta se activará en minutos</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="banco-info">
+                        <h6><i class="fas fa-bank me-2"></i>Datos Bancarios</h6>
+                        
+                        <div class="banco-detail">
+                            <span class="banco-label">Banco:</span>
+                            <span class="banco-value">${pagoData.banco}</span>
+                        </div>
+                        
+                        <div class="banco-detail">
+                            <span class="banco-label">Cuenta:</span>
+                            <span class="banco-value">${pagoData.cuenta_bancaria}</span>
+                        </div>
+                        
+                        <div class="banco-detail">
+                            <span class="banco-label">Titular:</span>
+                            <span class="banco-value">${pagoData.titular}</span>
+                        </div>
+                        
+                        <div class="banco-detail">
+                            <span class="banco-label">Monto a transferir:</span>
+                            <span class="banco-value">$${pagoData.monto.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center my-4">
+                        <div class="codigo-pago">
+                            ${pagoData.codigo}
+                        </div>
+                        <small class="text-muted">Este es tu código único. Inclúyelo en tu mensaje.</small>
+                    </div>
+                    
+                    <div class="pago-steps">
+                        <div class="pago-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <div class="step-title">Haz la transferencia</div>
+                                <div class="step-desc">Transfiere $${pagoData.monto.toFixed(2)} a la cuenta de arriba</div>
+                            </div>
+                        </div>
+                        
+                        <div class="pago-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <div class="step-title">Toma screenshot</div>
+                                <div class="step-desc">Captura el comprobante de transferencia</div>
+                            </div>
+                        </div>
+                        
+                        <div class="pago-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <div class="step-title">Envía por WhatsApp</div>
+                                <div class="step-desc">Haz clic en el botón verde abajo</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="${pagoData.whatsapp_url}" class="whatsapp-btn w-100" target="_blank">
+                            <i class="fab fa-whatsapp fa-lg"></i>
+                            Abrir WhatsApp para Enviar Comprobante
+                        </a>
+                        
+                        <p class="mt-3 text-muted small">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            Si no tienes WhatsApp en este dispositivo, envía el screenshot al número: 
+                            <strong>${pagoData.whatsapp}</strong>
+                        </p>
+                    </div>
+                </div>
+            `;
+            
+            // Crear modal
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'modalPago';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content ig-card">
+                        <div class="modal-header ig-card-header">
+                            <h5 class="modal-title gradient-text-red">
+                                <i class="fas fa-money-bill-wave me-2"></i>Completar Pago - ${pagoData.plan.toUpperCase()}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body ig-card-body">
+                            ${html}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-ig-red" onclick="verificarEstadoPago()">
+                                <i class="fas fa-sync-alt me-2"></i> Verificar Estado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            modal.addEventListener('hidden.bs.modal', function () {
+                document.body.removeChild(modal);
+            });
+        }
+        
+        async function verificarEstadoPago() {
+            mostrarLoading(true);
+            
+            try {
+                const response = await fetch('/api/pagos/estado');
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.data && data.data.estado === 'verificado') {
+                        mostrarAlerta('¡Pago Verificado!', 'Tu suscripción ha sido activada. Gracias!', 'success');
+                        
+                        // Recargar datos del usuario
+                        await cargarUsuario();
+                        
+                        // Cerrar modal
+                        const modal = document.getElementById('modalPago');
+                        if (modal) {
+                            const bsModal = bootstrap.Modal.getInstance(modal);
+                            if (bsModal) bsModal.hide();
+                        }
+                    } else {
+                        mostrarAlerta('Pago Pendiente', 'Tu pago aún está en verificación. Te contactaremos por WhatsApp cuando esté listo.', 'info');
+                    }
+                }
+            } catch (error) {
+                mostrarAlerta('Error', 'Error verificando estado', 'error');
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+        
+        // Cerrar sesión
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/';
+            } catch (error) {
+                window.location.href = '/';
+            }
+        }
+        
+        // Inicializar dashboard
+        document.addEventListener('DOMContentLoaded', async function() {
+            await cargarUsuario();
+            await cargarDatosIniciales();
+            
+            // Verificar estado de pago cada 30 segundos si hay modal abierto
+            setInterval(() => {
+                if (document.getElementById('modalPago')) {
+                    verificarEstadoPago();
+                }
+            }, 30000);
+        });
+    </script>
+</body>
+</html>
