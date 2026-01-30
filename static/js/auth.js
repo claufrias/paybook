@@ -144,11 +144,8 @@ function checkAuth() {
     const userData = localStorage.getItem('redcajeros_user');
     
     if (!userData) {
-        // No hay usuario, redirigir a login
-        if (!window.location.pathname.includes('/login') && 
-            !window.location.pathname.includes('/register')) {
-            window.location.href = '/login';
-        }
+        // No hay usuario en localStorage
+        // NO redirigir automáticamente, dejar que Flask maneje
         return null;
     }
     
@@ -158,10 +155,10 @@ function checkAuth() {
     } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('redcajeros_user');
-        window.location.href = '/login';
         return null;
     }
 }
+
 
 async function cargarDatosUsuario() {
     try {
@@ -907,17 +904,17 @@ async function guardarPerfil() {
 
 // Verificar autenticación al cargar
 document.addEventListener('DOMContentLoaded', function() {
-    if (window.location.pathname === '/login' || window.location.pathname === '/register') {
-        // En páginas de auth, verificar si ya está logueado
+    // SOLO verificar autenticación en páginas específicas
+    const path = window.location.pathname;
+    
+    if (path === '/login' || path === '/register') {
+        // En páginas de auth, si hay usuario, redirigir
         const user = checkAuth();
         if (user) {
             window.location.href = user.rol === 'admin' ? '/admin' : '/dashboard';
         }
-    } else if (!window.location.pathname.includes('/login') && 
-               !window.location.pathname.includes('/register')) {
-        // En otras páginas, requerir autenticación
-        checkAuth();
     }
+    // En otras páginas, Flask ya maneja la redirección
 });
 
 // Exportar funciones globalmente

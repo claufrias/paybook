@@ -284,10 +284,22 @@ def actualizar_bd():
 
 @app.route('/login')
 def login_page():
+    """Página de login - si ya está autenticado, redirige"""
+    if current_user.is_authenticated:
+        if current_user.rol == 'admin':
+            return redirect(url_for('admin_panel'))
+        else:
+            return redirect(url_for('dashboard'))
     return render_template('login.html')
 
 @app.route('/register')
 def register_page():
+    """Página de registro - si ya está autenticado, redirige"""
+    if current_user.is_authenticated:
+        if current_user.rol == 'admin':
+            return redirect(url_for('admin_panel'))
+        else:
+            return redirect(url_for('dashboard'))
     return render_template('register.html')
 
 @app.route('/dashboard')
@@ -733,6 +745,8 @@ def handle_json():
 @app.route('/')
 def index():
     if current_user.is_authenticated:
+        if current_user.is_admin():
+            return redirect(url_for('admin_panel'))
         return redirect(url_for('dashboard'))
     return render_template('login.html')
 
