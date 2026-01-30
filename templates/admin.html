@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔴 RedCajeros - Panel Admin</title>
+    <title>RedCajeros - Panel Admin</title>
     
     <!-- Bootstrap 5 Dark -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.1.3/dist/css/bootstrap-night.min.css" rel="stylesheet">
@@ -14,392 +14,220 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Nuestro CSS personalizado -->
+    <!-- Nuestro CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    
-    <style>
-        .admin-header {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border-bottom: 3px solid #ff416c;
-            padding: 20px 0;
-            margin-bottom: 30px;
-        }
-        
-        .admin-card {
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-        
-        .admin-card:hover {
-            transform: translateY(-5px);
-            border-color: #ff416c;
-            box-shadow: 0 10px 20px rgba(255, 65, 108, 0.2);
-        }
-        
-        .pago-item {
-            border-left: 4px solid #ffa726;
-            padding-left: 15px;
-            margin-bottom: 15px;
-            transition: all 0.3s ease;
-        }
-        
-        .pago-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-left-color: #2ecc71;
-        }
-        
-        .pago-pendiente {
-            border-left-color: #ffa726;
-        }
-        
-        .pago-verificado {
-            border-left-color: #2ecc71;
-        }
-        
-        .pago-rechazado {
-            border-left-color: #e74c3c;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, #ff416c, #ff4b2b);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        
-        .quick-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-        
-        .quick-action-btn {
-            flex: 1;
-            min-width: 200px;
-            padding: 15px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            text-align: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .quick-action-btn:hover {
-            background: rgba(255, 65, 108, 0.2);
-            border-color: #ff416c;
-            transform: translateY(-2px);
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-box {
-            background: linear-gradient(135deg, #2c3e50, #34495e);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            background: linear-gradient(45deg, #ff416c, #ff4b2b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 10px 0;
-        }
-        
-        .stat-label {
-            color: #bbb;
-            font-size: 0.9rem;
-        }
-        
-        .admin-table {
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .admin-table th {
-            background: rgba(255, 65, 108, 0.2);
-            border: none;
-            font-weight: 600;
-            color: #fff;
-        }
-        
-        .admin-table td {
-            border-color: rgba(255, 255, 255, 0.1);
-            vertical-align: middle;
-        }
-        
-        .badge-admin {
-            background: linear-gradient(45deg, #ff416c, #ff4b2b);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        
-        .badge-trial {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        
-        .badge-active {
-            background: linear-gradient(45deg, #2ecc71, #27ae60);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        
-        .badge-expired {
-            background: linear-gradient(45deg, #e74c3c, #c0392b);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        
-        .whatsapp-link {
-            color: #25D366;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-        
-        .whatsapp-link:hover {
-            color: #128C7E;
-            text-decoration: underline;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-        
-        .action-btn {
-            width: 35px;
-            height: 35px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-verify {
-            background: linear-gradient(45deg, #2ecc71, #27ae60);
-            color: white;
-        }
-        
-        .btn-reject {
-            background: linear-gradient(45deg, #e74c3c, #c0392b);
-            color: white;
-        }
-        
-        .btn-whatsapp {
-            background: linear-gradient(45deg, #25D366, #128C7E);
-            color: white;
-        }
-        
-        .btn-edit {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-        }
-        
-        .action-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-    </style>
 </head>
 <body>
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-content">
-            <div class="story-circle mb-4 pulse" style="width: 80px; height: 80px; border: none; background: linear-gradient(45deg, #ff416c, #ff4b2b);">
+            <div class="story-circle mb-4 pulse" style="width: 80px; height: 80px; border: none;">
                 <i class="fas fa-user-shield fa-2x"></i>
             </div>
-            <h4 class="gradient-text-red mb-3">Panel Admin</h4>
-            <p class="text-muted">Cargando datos del sistema...</p>
-        </div>
-    </div>
-
-    <!-- Admin Header -->
-    <div class="admin-header">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="gradient-text-red mb-2">
-                        <i class="fas fa-user-shield me-2"></i>Panel de Administración
-                    </h1>
-                    <p class="text-muted mb-0">Gestión completa del sistema RedCajeros</p>
-                </div>
-                <div class="text-end">
-                    <button class="btn btn-ig-outline me-2" onclick="window.location.href='/dashboard'">
-                        <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
-                    </button>
-                    <button class="btn btn-ig-red" onclick="cargarDatosAdmin()">
-                        <i class="fas fa-sync-alt me-2"></i> Actualizar
-                    </button>
-                </div>
+            <h4 class="gradient-text mb-3">Cargando...</h4>
+            <p class="text-muted">Por favor espere</p>
+            <div class="progress mt-3" style="height: 4px; width: 200px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     style="width: 100%"></div>
             </div>
         </div>
     </div>
 
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top" style="background: rgba(15, 15, 15, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--dark-border);">
+        <div class="container-fluid">
+            <!-- Logo -->
+            <a class="navbar-brand" href="/admin">
+                <div class="d-flex align-items-center">
+                    <div class="story-circle small me-3" style="background: linear-gradient(45deg, #dc3545, #ff6b6b);">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div>
+                        <h4 class="gradient-text mb-0">RedCajeros</h4>
+                        <small class="text-muted">Panel Administrativo</small>
+                    </div>
+                </div>
+            </a>
+            
+            <!-- Admin Menu -->
+            <div class="dropdown">
+                <button class="btn btn-ig-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <div class="story-circle small me-2" style="background: linear-gradient(45deg, #dc3545, #ff6b6b);">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    Administrador
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark border-gradient">
+                    <li class="dropdown-item disabled">
+                        <small class="text-muted">admin@redcajeros.com</small>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="cargarPagosPendientesAdmin()">
+                        <i class="fas fa-sync-alt me-2"></i> Actualizar
+                    </a></li>
+                    <li><a class="dropdown-item" href="/dashboard">
+                        <i class="fas fa-tachometer-alt me-2"></i> Ir al Dashboard
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="logout()">
+                        <i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
     <!-- Main Content -->
-    <div class="container">
+    <div class="container py-4 admin-panel">
         <!-- Alert Container -->
         <div id="alertContainer" class="mb-3"></div>
         
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <div class="quick-action-btn" onclick="mostrarPagosPendientes()">
-                <i class="fas fa-clock fa-2x mb-2"></i>
-                <div>Pagos Pendientes</div>
-                <small class="text-muted" id="pendientesCount">0</small>
+        <!-- Admin Header -->
+        <div class="admin-header">
+            <div>
+                <h1 class="gradient-text mb-2">Panel Administrativo</h1>
+                <p class="text-muted mb-0">Gestión de usuarios y pagos manuales</p>
             </div>
-            
-            <div class="quick-action-btn" onclick="mostrarUsuarios()">
-                <i class="fas fa-users fa-2x mb-2"></i>
-                <div>Usuarios Activos</div>
-                <small class="text-muted" id="usuariosCount">0</small>
-            </div>
-            
-            <div class="quick-action-btn" onclick="mostrarEstadisticas()">
-                <i class="fas fa-chart-bar fa-2x mb-2"></i>
-                <div>Estadísticas</div>
-                <small class="text-muted">Ver reportes</small>
-            </div>
-            
-            <div class="quick-action-btn" onclick="mostrarConfiguracion()">
-                <i class="fas fa-cog fa-2x mb-2"></i>
-                <div>Configuración</div>
-                <small class="text-muted">Ajustes del sistema</small>
+            <div>
+                <button class="btn btn-ig" onclick="cargarPagosPendientesAdmin()">
+                    <i class="fas fa-sync-alt me-2"></i> Actualizar
+                </button>
             </div>
         </div>
-
-        <!-- Stats Grid -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-box">
-                <div class="stat-label">INGRESOS ESTE MES</div>
-                <div class="stat-number" id="ingresosMes">$0</div>
-                <small class="text-muted">Total verificados</small>
+        
+        <!-- Admin Stats -->
+        <div class="admin-stats-grid">
+            <div class="admin-stat-card">
+                <div class="admin-stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="admin-stat-value" id="adminTotalUsuarios">0</div>
+                <div class="admin-stat-label">Usuarios Totales</div>
             </div>
             
-            <div class="stat-box">
-                <div class="stat-label">USUARIOS TOTALES</div>
-                <div class="stat-number" id="usuariosTotales">0</div>
-                <small class="text-muted">Registrados en el sistema</small>
+            <div class="admin-stat-card">
+                <div class="admin-stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="admin-stat-value" id="adminPagosPendientes">0</div>
+                <div class="admin-stat-label">Pagos Pendientes</div>
             </div>
             
-            <div class="stat-box">
-                <div class="stat-label">USUARIOS ACTIVOS</div>
-                <div class="stat-number" id="usuariosActivos">0</div>
-                <small class="text-muted">Con suscripción vigente</small>
+            <div class="admin-stat-card">
+                <div class="admin-stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="admin-stat-value" id="adminPagosVerificados">0</div>
+                <div class="admin-stat-label">Pagos Verificados</div>
             </div>
             
-            <div class="stat-box">
-                <div class="stat-label">EN TRIAL</div>
-                <div class="stat-number" id="usuariosTrial">0</div>
-                <small class="text-muted">Período de prueba</small>
+            <div class="admin-stat-card">
+                <div class="admin-stat-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="admin-stat-value" id="adminIngresos">$0</div>
+                <div class="admin-stat-label">Ingresos Totales</div>
             </div>
         </div>
-
-        <!-- Tabs Navigation -->
-        <ul class="nav nav-tabs mb-4" id="adminTabs">
-            <li class="nav-item">
-                <button class="nav-link active" onclick="mostrarTab('pagos')">
-                    <i class="fas fa-money-bill-wave me-2"></i>Pagos Pendientes
+        
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="pagos-tab" data-bs-toggle="tab" data-bs-target="#pagos" type="button" role="tab">
+                    <i class="fas fa-credit-card me-2"></i> Pagos Pendientes
                 </button>
             </li>
-            <li class="nav-item">
-                <button class="nav-link" onclick="mostrarTab('usuarios')">
-                    <i class="fas fa-users me-2"></i>Usuarios
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="usuarios-tab" data-bs-toggle="tab" data-bs-target="#usuarios" type="button" role="tab">
+                    <i class="fas fa-users me-2"></i> Todos los Usuarios
                 </button>
             </li>
-            <li class="nav-item">
-                <button class="nav-link" onclick="mostrarTab('config')">
-                    <i class="fas fa-cog me-2"></i>Configuración
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config" type="button" role="tab">
+                    <i class="fas fa-cog me-2"></i> Configuración
                 </button>
             </li>
         </ul>
-
-        <!-- Tabs Content -->
-        <div id="tabContent">
-            <!-- Pagos Pendientes Tab (default) -->
-            <div id="tabPagos">
+        
+        <!-- Tab Content -->
+        <div class="tab-content" id="adminTabContent">
+            <!-- Pagos Pendientes Tab -->
+            <div class="tab-pane fade show active" id="pagos" role="tabpanel">
                 <div class="ig-card">
                     <div class="ig-card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 gradient-text-red">
-                            <i class="fas fa-clock me-2"></i>Pagos Pendientes de Verificación
-                        </h5>
-                        <small class="text-muted" id="pagosPendientesCount">0 pagos por verificar</small>
+                        <div>
+                            <h5 class="mb-0 gradient-text">Pagos Pendientes de Verificación</h5>
+                            <small class="text-muted">Usuarios que enviaron comprobantes</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-warning" id="contadorPagosPendientes">0 pendientes</span>
+                        </div>
                     </div>
                     <div class="ig-card-body">
-                        <div id="pagosPendientesList">
-                            <div class="text-center py-5">
-                                <div class="mb-3">
-                                    <i class="fas fa-spinner fa-spin fa-2x"></i>
-                                </div>
-                                <h6>Cargando pagos pendientes...</h6>
-                                <small class="text-muted">Por favor espere</small>
-                            </div>
+                        <div class="table-responsive">
+                            <table class="table table-ig table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Usuario</th>
+                                        <th>Teléfono</th>
+                                        <th class="text-end">Monto</th>
+                                        <th>Plan</th>
+                                        <th>Fecha</th>
+                                        <th>Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaPagosPendientes">
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-5">
+                                            <div class="mb-3">
+                                                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                            </div>
+                                            <h6>Cargando pagos pendientes...</h6>
+                                            <small class="text-muted">Por favor espere</small>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Usuarios Tab (hidden by default) -->
-            <div id="tabUsuarios" class="d-none">
+            
+            <!-- Usuarios Tab -->
+            <div class="tab-pane fade" id="usuarios" role="tabpanel">
                 <div class="ig-card">
-                    <div class="ig-card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 gradient-text-red">
-                            <i class="fas fa-users me-2"></i>Usuarios Registrados
-                        </h5>
-                        <button class="btn btn-ig-red btn-sm" onclick="exportarUsuariosCSV()">
-                            <i class="fas fa-download me-2"></i> Exportar CSV
-                        </button>
+                    <div class="ig-card-header">
+                        <h5 class="mb-0 gradient-text">Todos los Usuarios Registrados</h5>
+                        <small class="text-muted">Gestión completa de usuarios</small>
                     </div>
                     <div class="ig-card-body">
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <input type="text" id="buscarUsuario" class="form-control form-control-ig" 
+                                       placeholder="Buscar por nombre o email...">
+                                <button class="btn btn-ig-outline" onclick="buscarUsuarios()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="table-responsive">
-                            <table class="table admin-table">
+                            <table class="table table-ig table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Usuario</th>
+                                        <th>Nombre</th>
                                         <th>Email</th>
+                                        <th>Teléfono</th>
                                         <th>Plan</th>
                                         <th>Expiración</th>
                                         <th>Estado</th>
-                                        <th>Registro</th>
-                                        <th>Acciones</th>
+                                        <th class="text-center">Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody id="usuariosList">
+                                <tbody id="tablaUsuarios">
                                     <tr>
-                                        <td colspan="7" class="text-center py-5">
+                                        <td colspan="7" class="text-center text-muted py-5">
                                             <div class="mb-3">
                                                 <i class="fas fa-spinner fa-spin fa-2x"></i>
                                             </div>
@@ -413,93 +241,91 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Configuración Tab (hidden by default) -->
-            <div id="tabConfig" class="d-none">
-                <div class="ig-card">
-                    <div class="ig-card-header">
-                        <h5 class="mb-0 gradient-text-red">
-                            <i class="fas fa-cog me-2"></i>Configuración del Sistema
-                        </h5>
-                    </div>
-                    <div class="ig-card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="ig-card">
-                                    <div class="ig-card-header">
-                                        <h6 class="mb-0">Información del Admin</h6>
-                                    </div>
-                                    <div class="ig-card-body">
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted">Email de Admin</label>
-                                            <input type="email" id="configAdminEmail" class="form-control form-control-ig" 
-                                                   value="admin@redcajeros.com" readonly>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted">WhatsApp para Pagos</label>
-                                            <input type="text" id="configAdminWhatsapp" class="form-control form-control-ig" 
-                                                   placeholder="584121234567">
-                                            <small class="text-muted">Número donde recibirás comprobantes</small>
-                                        </div>
-                                    </div>
-                                </div>
+            
+            <!-- Configuración Tab -->
+            <div class="tab-pane fade" id="config" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="ig-card mb-4">
+                            <div class="ig-card-header">
+                                <h5 class="mb-0 gradient-text">Configuración del Sistema</h5>
+                                <small class="text-muted">Ajustes generales</small>
                             </div>
-                            
-                            <div class="col-md-6">
-                                <div class="ig-card">
-                                    <div class="ig-card-header">
-                                        <h6 class="mb-0">Datos Bancarios</h6>
-                                    </div>
-                                    <div class="ig-card-body">
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted">Nombre del Banco</label>
-                                            <input type="text" id="configBancoNombre" class="form-control form-control-ig" 
-                                                   placeholder="Tu Banco">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted">Número de Cuenta</label>
-                                            <input type="text" id="configBancoCuenta" class="form-control form-control-ig" 
-                                                   placeholder="0102-1234-5678-9012">
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted">Nombre del Titular</label>
-                                            <input type="text" id="configBancoTitular" class="form-control form-control-ig" 
-                                                   placeholder="Tu Nombre">
-                                        </div>
-                                    </div>
+                            <div class="ig-card-body">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">WhatsApp Admin</label>
+                                    <input type="text" id="configWhatsapp" class="form-control form-control-ig" 
+                                           placeholder="584241234567">
+                                    <small class="text-muted">Tu número para recibir comprobantes</small>
                                 </div>
-                            </div>
-                            
-                            <div class="col-12">
-                                <div class="ig-card">
-                                    <div class="ig-card-header">
-                                        <h6 class="mb-0">Precios de Planes</h6>
-                                    </div>
-                                    <div class="ig-card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label class="form-label text-muted">Plan Básico (USD/mes)</label>
-                                                    <input type="number" id="configPrecioBasico" class="form-control form-control-ig" 
-                                                           step="0.01" value="9.99">
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label class="form-label text-muted">Plan Premium (USD/mes)</label>
-                                                    <input type="number" id="configPrecioPremium" class="form-control form-control-ig" 
-                                                           step="0.01" value="19.99">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Banco - Nombre</label>
+                                    <input type="text" id="configBancoNombre" class="form-control form-control-ig" 
+                                           placeholder="Ej: Mercantil">
                                 </div>
-                            </div>
-                            
-                            <div class="col-12">
-                                <button class="btn btn-ig-red w-100" onclick="guardarConfiguracion()">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Banco - Cuenta</label>
+                                    <input type="text" id="configBancoCuenta" class="form-control form-control-ig" 
+                                           placeholder="0105-1234-5678-9012">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Banco - Titular</label>
+                                    <input type="text" id="configBancoTitular" class="form-control form-control-ig" 
+                                           placeholder="Tu Nombre">
+                                </div>
+                                
+                                <button class="btn btn-ig w-100" onclick="guardarConfiguracion()">
                                     <i class="fas fa-save me-2"></i> Guardar Configuración
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="ig-card mb-4">
+                            <div class="ig-card-header">
+                                <h5 class="mb-0 gradient-text">Precios de Planes</h5>
+                                <small class="text-muted">Actualizar precios mensuales</small>
+                            </div>
+                            <div class="ig-card-body">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Plan Básico ($)</label>
+                                    <input type="number" step="0.01" id="configPrecioBasico" 
+                                           class="form-control form-control-ig" value="9.99">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Plan Premium ($)</label>
+                                    <input type="number" step="0.01" id="configPrecioPremium" 
+                                           class="form-control form-control-ig" value="19.99">
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Los cambios en precios solo afectan a nuevos pagos
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="ig-card">
+                            <div class="ig-card-header">
+                                <h5 class="mb-0 gradient-text">Herramientas del Sistema</h5>
+                            </div>
+                            <div class="ig-card-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-info" onclick="exportarBackup()">
+                                        <i class="fas fa-database me-2"></i> Exportar Backup
+                                    </button>
+                                    <button class="btn btn-outline-warning" onclick="limpiarCache()">
+                                        <i class="fas fa-broom me-2"></i> Limpiar Cache
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="reiniciarSistema()">
+                                        <i class="fas fa-redo me-2"></i> Reiniciar Sistema
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -512,9 +338,9 @@
     <footer class="py-3 mt-5 border-top border-dark">
         <div class="container text-center">
             <small class="text-muted">
-                <i class="fas fa-user-shield me-1"></i> RedCajeros Admin Panel | 
-                <i class="fas fa-code ms-3 me-1"></i> Sistema Multi-Usuario |
-                <i class="fas fa-clock ms-3 me-1"></i> <span id="lastUpdateAdmin">--:--</span>
+                <i class="fas fa-server me-1"></i> RedCajeros Admin v3.0 | 
+                <i class="fas fa-shield-alt ms-3 me-1"></i> Modo Administrador |
+                <i class="fas fa-clock ms-3 me-1"></i> ${new Date().toLocaleTimeString()}
             </small>
         </div>
     </footer>
@@ -522,415 +348,324 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Admin JavaScript -->
+    <!-- Nuestro JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
     <script>
-        // Variables globales
-        let adminData = null;
         let pagosPendientes = [];
-        let usuariosList = [];
+        let todosUsuarios = [];
         
-        // Mostrar/ocultar tabs
-        function mostrarTab(tabName) {
-            // Ocultar todos los tabs
-            document.getElementById('tabPagos').classList.add('d-none');
-            document.getElementById('tabUsuarios').classList.add('d-none');
-            document.getElementById('tabConfig').classList.add('d-none');
-            
-            // Remover active de todos los botones
-            document.querySelectorAll('#adminTabs .nav-link').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Mostrar tab seleccionado
-            document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.remove('d-none');
-            
-            // Activar botón correspondiente
-            document.querySelector(`#adminTabs button[onclick="mostrarTab('${tabName}')"]`).classList.add('active');
-            
-            // Cargar datos específicos del tab
-            if (tabName === 'pagos') {
-                cargarPagosPendientes();
-            } else if (tabName === 'usuarios') {
-                cargarUsuarios();
-            } else if (tabName === 'config') {
-                cargarConfiguracion();
-            }
-        }
-        
-        // Cargar datos del admin
-        async function cargarUsuarioAdmin() {
-            try {
-                const response = await fetch('/api/user/info');
-                if (!response.ok) throw new Error('Error de autenticación');
-                
-                const data = await response.json();
-                if (data.success && data.user.es_admin) {
-                    adminData = data.user;
-                    cargarDatosAdmin();
-                } else {
-                    window.location.href = '/dashboard';
-                }
-            } catch (error) {
-                window.location.href = '/';
-            }
-        }
-        
-        // Cargar datos generales del admin
-        async function cargarDatosAdmin() {
+        // Cargar datos del panel admin
+        async function cargarPanelAdmin() {
             mostrarLoading(true);
             
             try {
-                // Cargar estadísticas
-                const statsResponse = await fetch('/api/admin/estadisticas');
-                const statsData = await statsResponse.json();
+                // Cargar pagos pendientes
+                const responsePagos = await fetch(`${API_BASE}/api/admin/pagos/pendientes`);
+                const dataPagos = await responsePagos.json();
                 
-                if (statsData.success) {
-                    actualizarEstadisticas(statsData.data);
+                if (dataPagos.success) {
+                    pagosPendientes = dataPagos.data;
+                    actualizarTablaPagosPendientes();
+                    actualizarEstadisticasAdmin();
                 }
                 
-                // Cargar pagos pendientes
-                await cargarPagosPendientes();
-                
-                // Actualizar timestamp
-                document.getElementById('lastUpdateAdmin').textContent = 
-                    `Actualizado: ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+                // Cargar usuarios (simulado por ahora)
+                // En una implementación real, harías otra API call
+                setTimeout(() => {
+                    // Simular carga de usuarios
+                    todosUsuarios = [
+                        {
+                            id: 1,
+                            nombre: 'Administrador',
+                            email: 'admin@redcajeros.com',
+                            telefono: '584241234567',
+                            plan: 'premium',
+                            expiracion: '2026-12-31 23:59:59',
+                            activo: true
+                        }
+                    ];
+                    actualizarTablaUsuarios();
+                    mostrarLoading(false);
+                }, 1000);
                 
             } catch (error) {
-                mostrarAlertaAdmin('Error', 'Error cargando datos del sistema', 'error');
-            } finally {
+                console.error('Error cargando panel admin:', error);
+                mostrarAlerta('Error', 'No se pudieron cargar los datos', 'error');
                 mostrarLoading(false);
             }
         }
         
-        function actualizarEstadisticas(data) {
-            // Actualizar stats grid
-            document.getElementById('ingresosMes').textContent = `$${data.pagos.este_mes_monto.toFixed(2)}`;
-            document.getElementById('usuariosTotales').textContent = data.usuarios.total;
-            document.getElementById('usuariosActivos').textContent = data.usuarios.activos;
-            document.getElementById('usuariosTrial').textContent = data.usuarios.trial;
+        function actualizarTablaPagosPendientes() {
+            const tbody = document.getElementById('tablaPagosPendientes');
+            if (!tbody) return;
             
-            // Actualizar quick actions
-            document.getElementById('pendientesCount').textContent = data.pagos.pendientes;
-            document.getElementById('usuariosCount').textContent = data.usuarios.activos;
-        }
-        
-        // Cargar pagos pendientes
-        async function cargarPagosPendientes() {
-            try {
-                const response = await fetch('/api/admin/pagos/pendientes');
-                const data = await response.json();
-                
-                if (data.success) {
-                    pagosPendientes = data.data;
-                    renderPagosPendientes();
-                }
-            } catch (error) {
-                console.error('Error cargando pagos pendientes:', error);
-            }
-        }
-        
-        function renderPagosPendientes() {
-            const container = document.getElementById('pagosPendientesList');
-            
-            if (!pagosPendientes || pagosPendientes.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <div class="mb-3">
-                            <i class="fas fa-check-circle fa-3x text-success"></i>
-                        </div>
-                        <h6>¡Todo al día!</h6>
-                        <small class="text-muted">No hay pagos pendientes de verificación</small>
-                    </div>
+            if (pagosPendientes.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <div class="mb-3">
+                                <i class="fas fa-check-circle fa-3x text-success"></i>
+                            </div>
+                            <h6>¡Todo al día!</h6>
+                            <small class="text-muted">No hay pagos pendientes de verificación</small>
+                        </td>
+                    </tr>
                 `;
                 return;
             }
             
-            let html = '';
+            tbody.innerHTML = '';
             
             pagosPendientes.forEach(pago => {
-                const fechaSolicitud = new Date(pago.fecha_solicitud);
-                const hora = fechaSolicitud.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                const fecha = fechaSolicitud.toLocaleDateString('es-ES');
+                const fecha = new Date(pago.fecha_solicitud);
+                const fechaFormateada = fecha.toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
                 
-                html += `
-                    <div class="pago-item pago-pendiente mb-3 p-3">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="user-avatar">
-                                        ${pago.usuario.nombre ? pago.usuario.nombre.charAt(0).toUpperCase() : 'U'}
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-0">${pago.usuario.nombre || 'Usuario'}</h6>
-                                        <small class="text-muted">${pago.usuario.email}</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <small class="text-muted">Código:</small>
-                                        <div class="fw-bold font-monospace">${pago.codigo}</div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted">Plan:</small>
-                                        <div class="fw-bold">${pago.plan.toUpperCase()}</div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted">Monto:</small>
-                                        <div class="fw-bold text-success">$${pago.monto.toFixed(2)}</div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted">Solicitado:</small>
-                                        <div class="fw-bold">${fecha} ${hora}</div>
-                                    </div>
-                                </div>
-                                
-                                ${pago.usuario.telefono ? `
-                                <div class="mt-2">
-                                    <small class="text-muted">Contacto:</small>
-                                    <div>
-                                        <a href="https://wa.me/${pago.usuario.telefono}" 
-                                           class="whatsapp-link" target="_blank">
-                                            <i class="fab fa-whatsapp me-1"></i>
-                                            ${pago.usuario.telefono}
-                                        </a>
-                                    </div>
-                                </div>
-                                ` : ''}
-                            </div>
-                            
-                            <div class="action-buttons ms-3">
-                                <button class="action-btn btn-verify" 
-                                        onclick="verificarPago('${pago.codigo}')"
-                                        title="Verificar pago">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                <button class="action-btn btn-reject" 
-                                        onclick="rechazarPago('${pago.codigo}')"
-                                        title="Rechazar pago">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                ${pago.usuario.telefono ? `
-                                <button class="action-btn btn-whatsapp" 
-                                        onclick="contactarWhatsApp('${pago.usuario.telefono}', '${pago.codigo}')"
-                                        title="Contactar por WhatsApp">
-                                    <i class="fab fa-whatsapp"></i>
-                                </button>
-                                ` : ''}
-                            </div>
+                const tr = document.createElement('tr');
+                tr.className = 'payment-row';
+                tr.innerHTML = `
+                    <td>
+                        <code class="fw-bold">${pago.codigo}</code>
+                    </td>
+                    <td>
+                        <div>
+                            <div class="fw-medium">${pago.usuario_nombre || 'Sin nombre'}</div>
+                            <small class="text-muted">${pago.usuario_email}</small>
                         </div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-            document.getElementById('pagosPendientesCount').textContent = 
-                `${pagosPendientes.length} pagos por verificar`;
-        }
-        
-        // Cargar usuarios
-        async function cargarUsuarios() {
-            try {
-                // En una implementación real, tendrías una API para esto
-                // Por ahora usaremos una simulación
-                const response = await fetch('/api/admin/usuarios'); // Esta ruta habría que crearla
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        usuariosList = data.data;
-                        renderUsuarios();
-                    }
-                }
-            } catch (error) {
-                console.error('Error cargando usuarios:', error);
-                // Mostrar datos de ejemplo para demostración
-                mostrarUsuariosDemo();
-            }
-        }
-        
-        function mostrarUsuariosDemo() {
-            const container = document.getElementById('usuariosList');
-            container.innerHTML = `
-                <tr>
-                    <td colspan="7" class="text-center py-5">
-                        <div class="mb-3">
-                            <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
-                        </div>
-                        <h6>Función en desarrollo</h6>
-                        <small class="text-muted">La gestión completa de usuarios estará disponible en la próxima actualización</small>
-                        <div class="mt-3">
-                            <button class="btn btn-ig-red btn-sm" onclick="cargarDatosAdmin()">
-                                <i class="fas fa-sync-alt me-2"></i> Actualizar
+                    </td>
+                    <td>
+                        ${pago.usuario_telefono ? `
+                        <a href="https://wa.me/${pago.usuario_telefono}" target="_blank" class="text-info">
+                            <i class="fab fa-whatsapp me-1"></i>${pago.usuario_telefono}
+                        </a>
+                        ` : '<span class="text-muted">Sin teléfono</span>'}
+                    </td>
+                    <td class="text-end fw-bold">$${parseFloat(pago.monto).toFixed(2)}</td>
+                    <td>
+                        <span class="badge ${pago.plan === 'premium' ? 'badge-premium' : 'badge-basic'}">
+                            ${pago.plan}
+                        </span>
+                    </td>
+                    <td>
+                        <small class="text-muted">${fechaFormateada}</small>
+                    </td>
+                    <td>
+                        <span class="payment-status-badge payment-status-pendiente">
+                            ${pago.estado}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-success" onclick="verificarPagoAdmin('${pago.codigo}')" 
+                                    title="Verificar pago">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn btn-danger" onclick="rechazarPagoAdmin('${pago.codigo}')" 
+                                    title="Rechazar pago">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <button class="btn btn-info" onclick="contactarUsuario('${pago.usuario_email}', '${pago.usuario_telefono}')" 
+                                    title="Contactar usuario">
+                                <i class="fas fa-envelope"></i>
                             </button>
                         </div>
                     </td>
-                </tr>
-            `;
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // Actualizar contador
+            const contador = document.getElementById('contadorPagosPendientes');
+            if (contador) {
+                contador.textContent = `${pagosPendientes.length} pendientes`;
+                contador.className = pagosPendientes.length > 0 ? 'badge bg-warning' : 'badge bg-success';
+            }
         }
         
-        // Cargar configuración
-        async function cargarConfiguracion() {
-            try {
-                const response = await fetch('/api/configuracion');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        // Llenar campos con valores actuales
-                        // Esto es un ejemplo - necesitarías crear la API correspondiente
-                    }
+        function actualizarTablaUsuarios() {
+            const tbody = document.getElementById('tablaUsuarios');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            todosUsuarios.forEach(usuario => {
+                const expiracion = new Date(usuario.expiracion);
+                const ahora = new Date();
+                const diasRestantes = Math.ceil((expiracion - ahora) / (1000 * 60 * 60 * 24));
+                
+                let estadoBadge = 'bg-success';
+                let estadoText = 'Activo';
+                
+                if (!usuario.activo) {
+                    estadoBadge = 'bg-secondary';
+                    estadoText = 'Inactivo';
+                } else if (diasRestantes < 0) {
+                    estadoBadge = 'bg-danger';
+                    estadoText = 'Expirado';
+                } else if (diasRestantes <= 3) {
+                    estadoBadge = 'bg-warning';
+                    estadoText = 'Por expirar';
                 }
-            } catch (error) {
-                console.error('Error cargando configuración:', error);
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${usuario.nombre}</td>
+                    <td>
+                        <div>${usuario.email}</div>
+                        <small class="text-muted">ID: ${usuario.id}</small>
+                    </td>
+                    <td>${usuario.telefono || '<span class="text-muted">N/A</span>'}</td>
+                    <td>
+                        <span class="badge ${usuario.plan === 'premium' ? 'badge-premium' : usuario.plan === 'basic' ? 'badge-basic' : 'badge-trial'}">
+                            ${usuario.plan}
+                        </span>
+                    </td>
+                    <td>
+                        <div>${expiracion.toLocaleDateString('es-ES')}</div>
+                        <small class="text-muted">${diasRestantes > 0 ? `${diasRestantes} días` : 'Expirado'}</small>
+                    </td>
+                    <td>
+                        <span class="badge ${estadoBadge}">${estadoText}</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="editarUsuario(${usuario.id})" 
+                                    title="Editar usuario">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-${usuario.activo ? 'warning' : 'success'}" 
+                                    onclick="${usuario.activo ? `desactivarUsuario(${usuario.id})` : `activarUsuario(${usuario.id})`}" 
+                                    title="${usuario.activo ? 'Desactivar' : 'Activar'}">
+                                <i class="fas fa-user-${usuario.activo ? 'slash' : 'check'}"></i>
+                            </button>
+                            <button class="btn btn-outline-info" onclick="verDetallesUsuario(${usuario.id})" 
+                                    title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function actualizarEstadisticasAdmin() {
+            // Total usuarios
+            document.getElementById('adminTotalUsuarios').textContent = todosUsuarios.length;
+            
+            // Pagos pendientes
+            document.getElementById('adminPagosPendientes').textContent = pagosPendientes.length;
+            
+            // Pagos verificados (simulado)
+            document.getElementById('adminPagosVerificados').textContent = '0';
+            
+            // Ingresos totales (simulado)
+            const ingresos = pagosPendientes.reduce((sum, pago) => sum + parseFloat(pago.monto), 0);
+            document.getElementById('adminIngresos').textContent = `$${ingresos.toFixed(2)}`;
+        }
+        
+        function cargarPagosPendientesAdmin() {
+            cargarPanelAdmin();
+            mostrarAlerta('Actualizando', 'Recargando datos del panel...', 'info');
+        }
+        
+        function buscarUsuarios() {
+            const termino = document.getElementById('buscarUsuario').value.toLowerCase();
+            // Filtrar usuarios localmente
+            // En una implementación real, harías una búsqueda en el backend
+            alert(`Buscando: ${termino}\n\nEn una implementación completa, esto buscaría en la base de datos.`);
+        }
+        
+        function contactarUsuario(email, telefono) {
+            let mensaje = `Contactar usuario:\n\nEmail: ${email}`;
+            if (telefono) {
+                mensaje += `\nTeléfono: ${telefono}`;
+                mensaje += `\n\n¿Qué deseas hacer?\n1. Enviar email\n2. Llamar/WhatsApp\n3. Ver historial`;
+            }
+            alert(mensaje);
+        }
+        
+        function editarUsuario(id) {
+            alert(`Editar usuario ID: ${id}\n\nEn una implementación completa, esto abriría un formulario de edición.`);
+        }
+        
+        function desactivarUsuario(id) {
+            if (confirm('¿Desactivar este usuario?\n\nEl usuario no podrá acceder al sistema hasta que sea reactivado.')) {
+                alert(`Usuario ${id} desactivado (simulado)`);
             }
         }
         
-        // Funciones de acciones
-        async function verificarPago(codigo) {
-            if (!confirm(`¿Verificar el pago ${codigo}?\n\nEl usuario recibirá 30 días adicionales de servicio.`)) {
-                return;
-            }
+        function activarUsuario(id) {
+            alert(`Usuario ${id} activado (simulado)`);
+        }
+        
+        function verDetallesUsuario(id) {
+            alert(`Detalles usuario ID: ${id}\n\nEn una implementación completa, esto mostraría el historial completo del usuario.`);
+        }
+        
+        async function guardarConfiguracion() {
+            const config = {
+                whatsapp_admin: document.getElementById('configWhatsapp').value,
+                banco_nombre: document.getElementById('configBancoNombre').value,
+                banco_cuenta: document.getElementById('configBancoCuenta').value,
+                banco_titular: document.getElementById('configBancoTitular').value,
+                precio_basico: document.getElementById('configPrecioBasico').value,
+                precio_premium: document.getElementById('configPrecioPremium').value
+            };
             
             mostrarLoading(true);
             
             try {
-                const response = await fetch(`/api/admin/pagos/verificar/${codigo}`, {
-                    method: 'POST'
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    mostrarAlertaAdmin('✅ Pago Verificado', data.message, 'success');
-                    await cargarDatosAdmin();
-                } else {
-                    mostrarAlertaAdmin('Error', data.error, 'error');
-                }
-            } catch (error) {
-                mostrarAlertaAdmin('Error', 'Error de conexión', 'error');
-            } finally {
-                mostrarLoading(false);
-            }
-        }
-        
-        async function rechazarPago(codigo) {
-            const motivo = prompt(`¿Rechazar el pago ${codigo}?\n\nIngresa el motivo del rechazo:`);
-            if (motivo === null) return;
-            
-            mostrarLoading(true);
-            
-            try {
-                const response = await fetch(`/api/admin/pagos/rechazar/${codigo}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ motivo: motivo })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    mostrarAlertaAdmin('❌ Pago Rechazado', data.message, 'warning');
-                    await cargarDatosAdmin();
-                } else {
-                    mostrarAlertaAdmin('Error', data.error, 'error');
-                }
-            } catch (error) {
-                mostrarAlertaAdmin('Error', 'Error de conexión', 'error');
-            } finally {
-                mostrarLoading(false);
-            }
-        }
-        
-        function contactarWhatsApp(telefono, codigo) {
-            const mensaje = `Hola! 👋\n\nSoy el administrador de RedCajeros.\n\nHe visto tu solicitud de pago con código:\n*${codigo}*\n\n¿Necesitas ayuda con el proceso?\n\nSaludos!`;
-            const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
-            window.open(url, '_blank');
-        }
-        
-        function guardarConfiguracion() {
-            mostrarLoading(true);
-            
-            // Simular guardado
-            setTimeout(() => {
-                mostrarAlertaAdmin('✅ Configuración Guardada', 'Los cambios se han aplicado correctamente', 'success');
-                mostrarLoading(false);
-            }, 1000);
-        }
-        
-        function exportarUsuariosCSV() {
-            // Simular exportación
-            mostrarAlertaAdmin('⏳ Exportando...', 'La exportación de usuarios comenzará pronto', 'info');
-        }
-        
-        // Funciones de utilidad
-        function mostrarLoading(mostrar = true) {
-            const overlay = document.getElementById('loadingOverlay');
-            if (!overlay) return;
-            
-            if (mostrar) {
-                overlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            } else {
-                overlay.classList.remove('active');
-                document.body.style.overflow = 'auto';
-            }
-        }
-        
-        function mostrarAlertaAdmin(titulo, mensaje, tipo = 'info') {
-            const alerta = document.createElement('div');
-            alerta.className = `alert-ig ${tipo === 'error' ? 'alert-ig-error' : tipo === 'success' ? 'alert-ig-success' : 'alert-ig-info'} fade-in`;
-            alerta.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <i class="fas ${tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} fa-lg me-3"></i>
-                    <div class="flex-grow-1">
-                        <h6 class="mb-1 fw-bold">${titulo}</h6>
-                        <small>${mensaje}</small>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-2" onclick="this.parentElement.parentElement.remove()"></button>
-                </div>
-            `;
-            
-            const container = document.getElementById('alertContainer');
-            if (container) {
-                container.prepend(alerta);
-                
+                // En una implementación real, enviarías esto al backend
                 setTimeout(() => {
-                    if (alerta.parentNode) alerta.remove();
-                }, 5000);
+                    mostrarAlerta('Configuración guardada', 'Los cambios se aplicaron correctamente', 'success');
+                    mostrarLoading(false);
+                }, 1000);
+            } catch (error) {
+                mostrarAlerta('Error', 'No se pudo guardar la configuración', 'error');
+                mostrarLoading(false);
             }
         }
         
-        // Shortcuts de teclado
-        document.addEventListener('keydown', function(event) {
-            // F5 para actualizar
-            if (event.key === 'F5') {
-                event.preventDefault();
-                cargarDatosAdmin();
-            }
-            
-            // Ctrl+R para actualizar
-            if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
-                event.preventDefault();
-                cargarDatosAdmin();
-            }
-            
-            // Escape para cancelar loading
-            if (event.key === 'Escape') {
-                mostrarLoading(false);
-            }
-        });
+        function exportarBackup() {
+            alert('Exportando backup de la base de datos...\n\nEn una implementación real, esto descargaría un archivo SQL.');
+        }
         
-        // Inicializar panel admin
+        function limpiarCache() {
+            if (confirm('¿Limpiar caché del sistema?\n\nEsto puede mejorar el rendimiento.')) {
+                mostrarAlerta('Cache limpiado', 'El caché del sistema ha sido limpiado', 'success');
+            }
+        }
+        
+        function reiniciarSistema() {
+            if (confirm('⚠️ ¿REINICIAR SISTEMA?\n\nEsta acción reiniciará todos los servicios.\n¿Estás seguro?')) {
+                mostrarAlerta('Sistema reiniciando', 'El sistema se está reiniciando...', 'warning');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            }
+        }
+        
+        // Cargar datos al iniciar
         document.addEventListener('DOMContentLoaded', function() {
-            cargarUsuarioAdmin();
+            cargarPanelAdmin();
             
-            // Auto-actualizar cada 60 segundos
-            setInterval(() => {
-                if (!document.hidden) {
-                    cargarPagosPendientes();
-                    document.getElementById('lastUpdateAdmin').textContent = 
-                        `Actualizado: ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+            // Verificar que sea admin
+            const userData = localStorage.getItem('user');
+            if (userData) {
+                const usuario = JSON.parse(userData);
+                if (usuario.email !== 'admin@redcajeros.com') {
+                    window.location.href = '/dashboard';
                 }
-            }, 60000);
+            } else {
+                window.location.href = '/login';
+            }
         });
     </script>
 </body>
