@@ -43,9 +43,16 @@ CORS(app)
 
 # Configuración Flask-Login
 app.secret_key = os.environ.get('SECRET_KEY', 'redcajeros-secret-key-2026')
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config['SESSION_COOKIE_SECURE'] = False  # True en producción con HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
+login_manager.session_protection = 'strong'  # Cambiado de 'basic'
 
 # Ruta de la base de datos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -65,20 +72,24 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT id, email, nombre, plan, fecha_expiracion 
-        FROM usuarios 
-        WHERE id = ? AND activo = 1
-    ''', (user_id,))
-    
-    user_data = cursor.fetchone()
-    conn.close()
-    
-    if user_data:
-        return User(user_data[0], user_data[1], user_data[2], user_data[3], user_data[4])
-    return None
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, email, nombre, plan, fecha_expiracion 
+            FROM usuarios 
+            WHERE id = ? AND activo = 1
+        ''', (user_id,))
+        
+        user_data = cursor.fetchone()
+        conn.close()
+        
+        if user_data:
+            return User(user_data[0], user_data[1], user_data[2], user_data[3], user_data[4])
+        return None
+    except Exception as e:
+        print(f"❌ Error en user_loader: {e}")
+        return None
 
 # ========== UTILIDADES ==========
 def hash_password(password):
