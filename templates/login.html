@@ -151,14 +151,11 @@
         
         // Auto-focus en email
         document.addEventListener('DOMContentLoaded', function() {
-            // Si ya existe la sesión local, saltar directamente al dashboard
-            if (localStorage.getItem('redcajeros_user')) {
-                window.location.href = '/dashboard';
-            }
-            
-            // Auto-focus
             const emailInput = document.getElementById('loginEmail');
             if (emailInput) emailInput.focus();
+            
+            // Limpiamos datos viejos por si acaso el servidor nos mandó aquí por sesión expirada
+            localStorage.removeItem('redcajeros_user'); 
         });
     </script>
 </body>

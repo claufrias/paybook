@@ -27,26 +27,25 @@ function verificarAutenticacion() {
     const userData = localStorage.getItem('redcajeros_user');
     const path = window.location.pathname;
 
-    // 1. Si el usuario YA ESTÁ logueado y trata de ir a login/register, mándalo al dashboard
-    if (userData) {
-        try {
-            usuarioActual = JSON.parse(userData);
-            if (path === '/' || path.includes('login') || path.includes('register')) {
-                window.location.href = '/dashboard';
-                return; // Detener ejecución
-            }
-            // Si está en una página válida, cargar datos
-            if (typeof cargarDatosIniciales === 'function') cargarDatosIniciales();
-        } catch (e) {
-            localStorage.removeItem('redcajeros_user');
+    // 1. Si estamos en Dashboard/Admin, NO redirigir a login todavía.
+    // Dejamos que cargarDatosIniciales() haga la llamada a la API.
+    // Si la API falla (401), ELLA nos redirigirá al login.
+    if (path.includes('dashboard') || path.includes('admin')) {
+        // Solo verificamos visualmente, pero confiamos en la API
+        if (!userData) {
+            console.warn('No hay datos locales, pero dejamos al servidor decidir.');
         }
-    } 
-    // 2. Si NO está logueado, SOLO redirigir si intenta entrar al dashboard o admin
-    else {
-        if (path.includes('dashboard') || path.includes('admin')) {
-            window.location.href = '/login';
-        }
+        return; 
     }
+
+    // 2. Si estamos en Login/Registro y hay datos locales
+    if (userData && (path === '/' || path.includes('login') || path.includes('register'))) {
+        // NO redirigir automáticamente. Flask ya lo hubiera hecho si la cookie fuera válida.
+        // Si estamos aquí y tenemos localStorage, significa que la cookie murió pero el storage no.
+        // Así que limpiamos el storage para evitar confusiones.
+        console.log('Sesión local huérfana detectada, limpiando...');
+        localStorage.removeItem('redcajeros_user');
+    } 
 }
 
 function mostrarLogin() {

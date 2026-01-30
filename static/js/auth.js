@@ -176,14 +176,14 @@ async function cargarDatosUsuario() {
             
             return data.user;
         } else {
-            // Token inválido, forzar logout
+            // Token inválido, forzar logout COMPLETO
             console.warn('⚠️ Sesión inválida, forzando logout');
             localStorage.removeItem('redcajeros_user');
+            localStorage.removeItem('user'); // Por si acaso usaste esta clave antes
             currentUser = null;
             
-            // Solo redirigir si no estamos en login/register
-            if (!window.location.pathname.includes('/login') && 
-                !window.location.pathname.includes('/register')) {
+            // Solo redirigir si NO estamos ya en login
+            if (!window.location.pathname.includes('/login')) {
                 window.location.href = '/login';
             }
             return null;
