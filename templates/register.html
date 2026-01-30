@@ -204,7 +204,10 @@
         
         // Auto-focus en nombre
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('registerNombre').focus();
+            // Si ya hay sesión en localStorage, no debería estar aquí
+            if (localStorage.getItem('redcajeros_user')) {
+                window.location.href = '/dashboard';
+            }
         });
     </script>
 </body>

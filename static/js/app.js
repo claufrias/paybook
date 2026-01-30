@@ -24,27 +24,26 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function verificarAutenticacion() {
-    // Usamos la misma clave que auth.js
     const userData = localStorage.getItem('redcajeros_user');
-    
+    const path = window.location.pathname;
+
+    // 1. Si el usuario YA ESTÁ logueado y trata de ir a login/register, mándalo al dashboard
     if (userData) {
         try {
             usuarioActual = JSON.parse(userData);
-            console.log(`✅ Usuario detectado localmente: ${usuarioActual.email}`);
-            
-            // Si estamos en login/register, redirigir al dashboard
-            const path = window.location.pathname;
             if (path === '/' || path.includes('login') || path.includes('register')) {
                 window.location.href = '/dashboard';
+                return; // Detener ejecución
             }
+            // Si está en una página válida, cargar datos
+            if (typeof cargarDatosIniciales === 'function') cargarDatosIniciales();
         } catch (e) {
-            console.error('Error parseando sesión:', e);
             localStorage.removeItem('redcajeros_user');
         }
-    } else {
-        // Solo redirigir si NO estamos en páginas públicas
-        const path = window.location.pathname;
-        if (path !== '/' && !path.includes('login') && !path.includes('register')) {
+    } 
+    // 2. Si NO está logueado, SOLO redirigir si intenta entrar al dashboard o admin
+    else {
+        if (path.includes('dashboard') || path.includes('admin')) {
             window.location.href = '/login';
         }
     }

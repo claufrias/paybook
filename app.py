@@ -369,43 +369,28 @@ def api_login():
     try:
         data = request.json
         if not data:
-            return jsonify({'success': False, 'error': 'No se enviaron datos'}), 400
+            return jsonify({'success': False, 'error': 'Datos no recibidos'}), 400
             
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
 
-        if not email or not password:
-            return jsonify({'success': False, 'error': 'Email y contraseña son requeridos'}), 400
-
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            # Buscamos al usuario por email
             cursor.execute('SELECT id, email, password, nombre, rol FROM usuarios WHERE email = ?', (email,))
             user_data = cursor.fetchone()
             conn.close()
 
         if user_data:
-            stored_password = user_data[2]
-            # Verificación del password (asumiendo que usas SHA-256 según el esquema previo)
-            # Si usas otro método de hash, ajusta esta línea
+            # Verificación por Hash SHA256
             hashed_input = hashlib.sha256(password.encode()).hexdigest()
-            
-            if hashed_input == stored_password:
-                # 1. Crear el objeto usuario para Flask-Login
-                user = User(
-                    id=user_data[0], 
-                    email=user_data[1], 
-                    password=user_data[2], 
-                    nombre=user_data[3], 
-                    rol=user_data[4]
-                )
+            if hashed_input == user_data[2]:
+                # Crear objeto usuario
+                user = User(user_data[0], user_data[1], user_data[2], user_data[3], user_data[4])
                 
-                # 2. Iniciar sesión en el servidor (Crea la Cookie)
-                # El parámetro remember=True mantiene la sesión al cerrar el navegador
+                # INICIAR SESIÓN EN FLASK (Vital para Railway)
                 login_user(user, remember=True)
                 
-                # 3. Responder al frontend con los datos que necesita guardar en localStorage
                 return jsonify({
                     'success': True,
                     'user': {
@@ -415,15 +400,12 @@ def api_login():
                         'rol': user.rol
                     }
                 })
-            else:
-                return jsonify({'success': False, 'error': 'Contraseña incorrecta'}), 401
-        else:
-            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+            
+        return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
     except Exception as e:
-        print(f"❌ Error en login: {str(e)}")
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
+        print(f"Error: {e}")
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
 
 @app.route('/api/auth/logout')
 @login_required
