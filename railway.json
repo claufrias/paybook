@@ -4,19 +4,9 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python app.py",
+    "startCommand": "gunicorn app:app --bind 0.0.0.0:$PORT",
     "restartPolicyType": "ON_FAILURE",
-    "healthcheckPath": "/status",
-    "healthcheckTimeout": 60
-  },
-  "env": {
-    "SECRET_KEY": {
-      "description": "Clave secreta para Flask",
-      "generator": "secret"
-    },
-    "PORT": {
-      "description": "Puerto para la aplicación",
-      "value": "5000"
-    }
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 30
   }
 }
