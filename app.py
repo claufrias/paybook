@@ -1411,17 +1411,18 @@ def server_error(error):
 # ========== INICIAR APLICACIÓN ==========
 
 if __name__ == '__main__':
-    # Inicializar base de datos
-    init_db()
-    actualizar_bd()
-    
+    # 1. Asegurar que las tablas existan ANTES de arrancar
+    try:
+        print("🛠️ Inicializando base de datos...")
+        init_db()  # Esto crea las tablas si no existen
+        print("✅ Tablas creadas/verificadas.")
+        
+        print("🔄 Actualizando esquema (si es necesario)...")
+        actualizar_bd() # Esto añade columnas nuevas si actualizaste la app
+        print("✅ Esquema actualizado.")
+    except Exception as e:
+        print(f"❌ ERROR CRÍTICO inicializando BD: {e}")
+
     port = int(os.environ.get("PORT", 5000))
-    print(f"🚀 Iniciando RedCajeros v3.0...")
-    print(f"📁 Base de datos: {DB_PATH}")
-    print(f"🌐 Puerto: {port}")
-    print("\n⚠️  Para detener: Presiona Ctrl+C\n")
-    print("🔑 Credenciales admin por defecto:")
-    print("   Email: admin@redcajeros.com")
-    print("   Contraseña: admin123")
-    print("\n")
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # Importante: host="0.0.0.0" es obligatorio para Railway
+    app.run(host="0.0.0.0", port=port)
