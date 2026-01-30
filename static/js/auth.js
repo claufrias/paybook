@@ -140,9 +140,12 @@ function checkAuth() {
     const userData = localStorage.getItem('redcajeros_user');
     
     if (!userData) {
-        // No hay usuario en localStorage
-        // NO redirigir automáticamente, dejar que Flask maneje
-        return null;
+        // No hay usuario, redirigir a login
+        if (!window.location.pathname.includes('/login') && 
+            !window.location.pathname.includes('/register')) {
+            window.location.href = '/login';
+        }
+        return false;
     }
     
     try {
@@ -151,6 +154,36 @@ function checkAuth() {
     } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('redcajeros_user');
+        if (!window.location.pathname.includes('/login') && 
+            !window.location.pathname.includes('/register')) {
+            window.location.href = '/login';
+        }
+        return false;
+    }
+}
+
+// AGREGAR esta nueva función para verificar autenticación asíncrona
+async function verifyAuth() {
+    try {
+        const response = await fetch('/api/auth/me');
+        const data = await response.json();
+        
+        if (data.success) {
+            // Actualizar localStorage con datos frescos
+            localStorage.setItem('redcajeros_user', JSON.stringify(data.user));
+            currentUser = data.user;
+            return data.user;
+        } else {
+            // Token inválido, forzar logout
+            localStorage.removeItem('redcajeros_user');
+            if (!window.location.pathname.includes('/login') && 
+                !window.location.pathname.includes('/register')) {
+                window.location.href = '/login';
+            }
+            return null;
+        }
+    } catch (error) {
+        console.error('Error verificando autenticación:', error);
         return null;
     }
 }

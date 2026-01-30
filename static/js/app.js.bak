@@ -238,25 +238,23 @@ function handleKeyboardShortcuts(event) {
 }
 
 // ========== ALERT SYSTEM ==========
-
 function mostrarAlerta(titulo, mensaje, tipo = 'info') {
     const tipos = {
-        success: 'alert-ig-success',
-        error: 'alert-ig-error',
-        warning: 'alert-ig-warning',
-        info: 'alert-ig-info'
+        'success': 'alert-ig-success',
+        'error': 'alert-ig-error',
+        'warning': 'alert-ig-warning',
+        'info': 'alert-ig-info'
     };
-
+    
     const iconos = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
+        'success': 'fa-check-circle',
+        'error': 'fa-exclamation-circle',
+        'warning': 'fa-exclamation-triangle',
+        'info': 'fa-info-circle'
     };
-
+    
     const alerta = document.createElement('div');
     alerta.className = `alert-ig ${tipos[tipo]} fade-in`;
-
     alerta.innerHTML = `
         <div class="d-flex align-items-center">
             <i class="fas ${iconos[tipo]} fa-lg me-3"></i>
@@ -267,60 +265,64 @@ function mostrarAlerta(titulo, mensaje, tipo = 'info') {
             <button type="button" class="btn-close btn-close-white ms-2" onclick="cerrarAlerta(this)"></button>
         </div>
     `;
-
+    
     const container = document.getElementById('alertContainer');
-    if (!container) return;
-
-    container.prepend(alerta);
-
-    setTimeout(() => {
-        alerta.classList.add('hiding');
-        setTimeout(() => alerta.remove(), 300);
-    }, 5000);
+    if (container) {
+        container.prepend(alerta);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alerta.parentNode) {
+                alerta.classList.add('hiding');
+                setTimeout(() => {
+                    if (alerta.parentNode) alerta.remove();
+                }, 300);
+            }
+        }, 5000);
+    }
 }
-
-
 
 function cerrarAlerta(btn) {
     const alerta = btn.closest('.alert-ig');
-    if (!alerta) return;
-
-    alerta.classList.add('hiding');
-    setTimeout(() => alerta.remove(), 300);
+    if (alerta) {
+        alerta.classList.add('hiding');
+        setTimeout(() => {
+            if (alerta.parentNode) alerta.remove();
+        }, 300);
+    }
 }
 
-
 // ========== LOADING OVERLAY ==========
-
 function mostrarLoading(mostrar = true) {
     isLoading = mostrar;
     const overlay = document.getElementById('loadingOverlay');
     if (!overlay) return;
-
+    
     if (mostrar) {
         overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
-
-        if (window.loadingTimeout) clearTimeout(window.loadingTimeout);
-
+        
+        // Safety timeout
+        if (window.loadingTimeout) {
+            clearTimeout(window.loadingTimeout);
+        }
         window.loadingTimeout = setTimeout(() => {
             if (isLoading) {
-                console.warn('⚠️ Timeout de loading, forzando cierre');
+                console.warn('⚠️ Loading timeout - forcing hide');
                 mostrarLoading(false);
             }
         }, 10000);
-
+        
     } else {
         overlay.classList.remove('active');
         document.body.style.overflow = 'auto';
-
+        
         if (window.loadingTimeout) {
             clearTimeout(window.loadingTimeout);
             window.loadingTimeout = null;
         }
     }
 }
-
 
 function forzarOcultarLoading() {
     isLoading = false;
@@ -423,45 +425,79 @@ function actualizarInfoSuscripcion() {
 }
 
 // ========== LOAD INITIAL DATA ==========
-
 async function cargarDatosIniciales() {
     if (isLoading) {
         console.log('⚠️ Ya está cargando, ignorando llamada duplicada');
         return;
     }
-
-    console.log('🚀 Cargando datos iniciales...');
+    
+    console.log('🚀 Cargando datos del usuario...');
     mostrarLoading(true);
-
+    
     try {
+        // Verificar autenticación primero
+        if (!usuarioActual) {
+            await verificarAutenticacion();
+            return;
+        }
+        
+        // Cargar datos en paralelo
         const [cajerosData, cargasData, resumenData, estadisticasData] = await Promise.allSettled([
             cargarCajeros(),
             cargarCargas(),
             cargarResumen(),
             cargarEstadisticas()
         ]);
-
-        if (cajerosData.status === 'fulfilled') cajeros = cajerosData.value || [];
-        if (cargasData.status === 'fulfilled') cargas = cargasData.value || [];
-        if (resumenData.status === 'fulfilled') resumen = resumenData.value || [];
-        if (estadisticasData.status === 'fulfilled') estadisticas = estadisticasData.value || {};
-
+        
+        // Procesar resultados
+        if (cajerosData.status === 'fulfilled') {
+            cajeros = cajerosData.value || [];
+            console.log(`✅ ${cajeros.length} cajeros cargados`);
+        }
+        
+        if (cargasData.status === 'fulfilled') {
+            cargas = cargasData.value || [];
+            console.log(`✅ ${cargas.length} cargas cargadas`);
+        }
+        
+        if (resumenData.status === 'fulfilled') {
+            resumen = resumenData.value || [];
+            console.log(`✅ Resumen de ${resumen.length} cajeros cargado`);
+        }
+        
+        if (estadisticasData.status === 'fulfilled') {
+            estadisticas = estadisticasData.value || {};
+            console.log('✅ Estadísticas cargadas');
+        }
+        
+        // Actualizar UI
         actualizarTodaLaUI();
-
+        
+        // Actualizar timestamp
         const ahora = new Date();
         const lastUpdateEl = document.getElementById('lastUpdate');
         if (lastUpdateEl) {
             lastUpdateEl.textContent = `Última actualización: ${ahora.toLocaleTimeString('es-ES')}`;
         }
-
+        
     } catch (error) {
-        console.error('❌ Error crítico cargando datos:', error);
-        mostrarAlerta('Error', 'No se pudieron cargar los datos.', 'error');
+        console.error('❌ Error cargando datos:', error);
+        
+        // Si es error de autenticación, redirigir a login
+        if (error.message.includes('401') || error.message.includes('No autenticado')) {
+            mostrarAlerta('Sesión expirada', 'Por favor inicia sesión nuevamente', 'error');
+            setTimeout(() => {
+                logout();
+            }, 2000);
+        } else {
+            mostrarAlerta('Error', 'No se pudieron cargar los datos', 'error');
+        }
     } finally {
-        setTimeout(() => mostrarLoading(false), 1000);
+        setTimeout(() => {
+            mostrarLoading(false);
+        }, 1000);
     }
 }
-
 
 function actualizarTodaLaUI() {
     actualizarSelectCajeros();
