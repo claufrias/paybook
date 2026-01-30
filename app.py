@@ -415,16 +415,43 @@ def api_logout():
 @app.route('/api/auth/me')
 @login_required
 def api_get_user():
-    return jsonify({
-        'success': True,
-        'user': {
-            'id': current_user.id,
-            'email': current_user.email,
-            'nombre': current_user.nombre,
-            'plan': current_user.plan,
-            'rol': current_user.rol
-        }
-    })
+    try:
+        # Obtener datos actualizados de la BD
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT email, nombre, plan, rol, fecha_expiracion 
+                FROM usuarios 
+                WHERE id = ? AND activo = 1
+            ''', (current_user.id,))
+            
+            user_data = cursor.fetchone()
+            conn.close()
+            
+            if not user_data:
+                return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+            
+            email, nombre, plan, rol, expiracion = user_data
+            
+            # Verificar si la suscripción está activa
+            if expiracion and datetime.strptime(expiracion, '%Y-%m-%d %H:%M:%S') < datetime.now():
+                plan = 'expired'
+            
+            return jsonify({
+                'success': True,
+                'user': {
+                    'id': current_user.id,
+                    'email': email,
+                    'nombre': nombre,
+                    'plan': plan,
+                    'rol': rol,
+                    'expiracion': expiracion
+                }
+            })
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ========== SISTEMA DE PAGOS MANUALES ==========
 

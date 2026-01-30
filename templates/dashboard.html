@@ -424,99 +424,75 @@
     <!-- Inicialización -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Dashboard cargado, verificando autenticación...');
+            
+            // Función para inicializar después de verificar auth
+            function initializeDashboard(user) {
+                if (!user) {
+                    console.log('❌ No hay usuario, redirigiendo a login...');
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                console.log('✅ Usuario autenticado:', user.email);
+                
+                // Si es admin pero está en dashboard, redirigir
+                if (user.rol === 'admin' && !window.location.pathname.includes('/admin')) {
+                    console.log('👑 Usuario es admin, redirigiendo...');
+                    window.location.href = '/admin';
+                    return;
+                }
+                
+                // Cargar datos del usuario (actualizar UI)
+                cargarDatosUsuario().then(user => {
+                    if (user) {
+                        // Inicializar aplicación solo si tenemos usuario
+                        inicializarApp();
+                    }
+                });
+            }
+            
             // Verificar autenticación
-            checkAuth();
-            
-            // Cargar datos del usuario
-            cargarDatosUsuario();
-            
-            // Inicializar aplicación
-            inicializarApp();
+            checkAuth().then(user => {
+                initializeDashboard(user);
+            }).catch(error => {
+                console.error('Error en checkAuth:', error);
+                window.location.href = '/login';
+            });
         });
         
         function inicializarApp() {
-            // Cargar datos iniciales
+            console.log('🚀 Inicializando aplicación...');
+            
+            // Set default dates
+            const ahora = new Date();
+            const inicioDia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0);
+            const finDia = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 23, 59);
+            
+            const fechaInicio = document.getElementById('fechaInicio');
+            const fechaFin = document.getElementById('fechaFin');
+            
+            if (fechaInicio) {
+                fechaInicio.value = inicioDia.toISOString().slice(0, 16);
+            }
+            
+            if (fechaFin) {
+                fechaFin.value = finDia.toISOString().slice(0, 16);
+            }
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Load initial data
             cargarDatosIniciales();
             
             // Actualizar UI periódicamente
-            setInterval(actualizarEstadoSuscripcion, 60000); // Cada minuto
+            setInterval(actualizarEstadoSuscripcion, 60000);
         }
         
-        function cargarDatosUsuario() {
-            fetch('/api/auth/me')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const user = data.user;
-                        document.getElementById('userName').textContent = user.nombre;
-                        document.getElementById('userEmail').textContent = user.email;
-                        document.getElementById('userPlan').textContent = `Plan: ${user.plan.toUpperCase()}`;
-                        document.getElementById('footerPlan').textContent = user.plan.toUpperCase();
-                        
-                        // Actualizar estado de suscripción
-                        actualizarEstadoSuscripcion();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error cargando datos del usuario:', error);
-                });
-        }
-        
-        function actualizarEstadoSuscripcion() {
-            fetch('/api/auth/me')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const user = data.user;
-                        
-                        // Actualizar información del plan
-                        let planText = '';
-                        let expirationText = '';
-                        let buttonText = '';
-                        let buttonClass = 'btn-ig';
-                        
-                        if (user.plan === 'trial') {
-                            planText = `Prueba gratuita (${user.plan})`;
-                            // Calcular días restantes
-                            if (user.expiracion) {
-                                const expDate = new Date(user.expiracion);
-                                const hoy = new Date();
-                                const diasRestantes = Math.ceil((expDate - hoy) / (1000 * 60 * 60 * 24));
-                                expirationText = `${diasRestantes} días restantes`;
-                            }
-                            buttonText = 'Actualizar Plan';
-                        } else if (user.plan === 'expired') {
-                            planText = 'Suscripción expirada';
-                            expirationText = '¡Renueva para continuar!';
-                            buttonText = 'Renovar Ahora';
-                            buttonClass = 'btn btn-danger';
-                        } else {
-                            planText = `Plan: ${user.plan.toUpperCase()}`;
-                            if (user.expiracion) {
-                                const expDate = new Date(user.expiracion);
-                                expirationText = `Expira: ${expDate.toLocaleDateString()}`;
-                            }
-                            buttonText = 'Actualizar';
-                        }
-                        
-                        document.getElementById('planInfo').textContent = planText;
-                        document.getElementById('expirationInfo').innerHTML = `<i class="fas fa-calendar me-1"></i> ${expirationText}`;
-                        
-                        const upgradeBtn = document.getElementById('upgradeButton');
-                        upgradeBtn.textContent = buttonText;
-                        upgradeBtn.className = `btn btn-sm ${buttonClass}`;
-                        
-                        // Mostrar/ocultar sección según suscripción
-                        if (user.plan === 'expired') {
-                            document.getElementById('subscriptionStatusContainer').classList.add('subscription-expired');
-                            document.querySelectorAll('.ig-card:not(#formCajero)').forEach(card => {
-                                card.style.opacity = '0.5';
-                                card.style.pointerEvents = 'none';
-                            });
-                        }
-                    }
-                });
-        }
+        // Sobrescribir la función del app.js original para que no interfiera
+        window.cargarDatosIniciales = cargarDatosIniciales;
+        window.setupEventListeners = setupEventListeners;
     </script>
 </body>
 </html>

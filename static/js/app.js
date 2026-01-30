@@ -194,7 +194,7 @@ function setupEventListeners() {
     // Keyboard shortcuts
     document.addEventListener('keydown', handleKeyboardShortcuts);
     
-    // Form submissions (solo si existen los elementos)
+    // Form submissions - SOLO si existen los elementos
     const nombreCajeroInput = document.getElementById('nombreCajero');
     const montoCargaInput = document.getElementById('montoCarga');
     
@@ -210,8 +210,18 @@ function setupEventListeners() {
         });
     }
     
-    // Actualizar UI con datos de usuario
-    actualizarUIUsuario();
+    // Actualizar UI del usuario si está disponible
+    setTimeout(() => {
+        const userData = localStorage.getItem('redcajeros_user');
+        if (userData) {
+            try {
+                const user = JSON.parse(userData);
+                actualizarUIUsuario(user);
+            } catch (e) {
+                console.error('Error parseando usuario:', e);
+            }
+        }
+    }, 100);
 }
 
 function handleKeyboardShortcuts(event) {

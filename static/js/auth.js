@@ -166,6 +166,11 @@ function checkAuth() {
 async function cargarDatosUsuario() {
     try {
         const response = await fetch('/api/auth/me');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -179,36 +184,74 @@ async function cargarDatosUsuario() {
             return data.user;
         } else {
             // Token inválido, forzar logout
+            console.warn('⚠️ Sesión inválida, forzando logout');
             localStorage.removeItem('redcajeros_user');
-            window.location.href = '/login';
+            currentUser = null;
+            
+            // Solo redirigir si no estamos en login/register
+            if (!window.location.pathname.includes('/login') && 
+                !window.location.pathname.includes('/register')) {
+                window.location.href = '/login';
+            }
             return null;
         }
     } catch (error) {
         console.error('Error cargando datos de usuario:', error);
+        
+        // No redirigir en error de red, solo mostrar warning
+        console.warn('⚠️ No se pudo verificar sesión, usando datos locales');
+        
+        // Intentar usar datos locales
+        const localUser = localStorage.getItem('redcajeros_user');
+        if (localUser) {
+            try {
+                currentUser = JSON.parse(localUser);
+                actualizarUIUsuario(currentUser);
+                return currentUser;
+            } catch (e) {
+                console.error('Error parseando usuario local:', e);
+            }
+        }
+        
         return null;
     }
 }
 
 function actualizarUIUsuario(user) {
-    // Actualizar elementos de UI si existen
+    if (!user) {
+        console.warn('⚠️ actualizarUIUsuario: user es undefined');
+        return;
+    }
+    
+    // Actualizar elementos de UI si existen - CON VERIFICACIÓN
     const userNameElements = document.querySelectorAll('#userName, .user-name');
     const userEmailElements = document.querySelectorAll('#userEmail, .user-email');
     const userPlanElements = document.querySelectorAll('#userPlan, .user-plan');
     
     userNameElements.forEach(el => {
-        if (el) el.textContent = user.nombre || user.email.split('@')[0];
+        if (el && user.nombre) {
+            el.textContent = user.nombre;
+        } else if (el && user.email) {
+            el.textContent = user.email.split('@')[0];
+        }
     });
     
     userEmailElements.forEach(el => {
-        if (el) el.textContent = user.email;
+        if (el && user.email) {
+            el.textContent = user.email;
+        }
     });
     
     userPlanElements.forEach(el => {
-        if (el) el.textContent = `Plan: ${user.plan.toUpperCase()}`;
+        if (el && user.plan) {
+            el.textContent = `Plan: ${user.plan.toUpperCase()}`;
+        }
     });
     
-    // Actualizar estado de suscripción
-    actualizarEstadoSuscripcionUI(user);
+    // Actualizar estado de suscripción si existe
+    if (document.getElementById('planInfo')) {
+        actualizarEstadoSuscripcionUI(user);
+    }
 }
 
 function actualizarEstadoSuscripcionUI(user) {
