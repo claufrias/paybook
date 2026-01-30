@@ -1,8 +1,6 @@
-Flask==2.3.3
-Flask-Login==0.6.3  # Actualizado a 0.6.3
+Flask==2.2.5
+Flask-Login==0.6.2
+Werkzeug==2.2.3
 Flask-CORS==4.0.0
-Werkzeug==2.3.7
-email-validator==2.1.0
-python-dotenv==1.0.0
-reportlab==4.0.4
-sqlite3
+reportlab==3.6.13
+python-dotenv==0.21.1
