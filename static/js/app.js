@@ -24,33 +24,28 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function verificarAutenticacion() {
-    // Verificar si hay sesión activa
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    // Usamos la misma clave que auth.js
+    const userData = localStorage.getItem('redcajeros_user');
     
-    if (token && userData) {
+    if (userData) {
         try {
             usuarioActual = JSON.parse(userData);
-            console.log(`✅ Usuario autenticado: ${usuarioActual.email}`);
-            
-            // Cargar datos del usuario
-            cargarDatosIniciales();
+            console.log(`✅ Usuario detectado localmente: ${usuarioActual.email}`);
             
             // Si estamos en login/register, redirigir al dashboard
-            if (window.location.pathname === '/' || 
-                window.location.pathname.includes('login') || 
-                window.location.pathname.includes('register')) {
+            const path = window.location.pathname;
+            if (path === '/' || path.includes('login') || path.includes('register')) {
                 window.location.href = '/dashboard';
             }
         } catch (e) {
-            console.error('Error cargando sesión:', e);
-            mostrarLogin();
+            console.error('Error parseando sesión:', e);
+            localStorage.removeItem('redcajeros_user');
         }
     } else {
-        // Si no está autenticado y no está en página pública
-        if (!window.location.pathname.includes('login') && 
-            !window.location.pathname.includes('register')) {
-            mostrarLogin();
+        // Solo redirigir si NO estamos en páginas públicas
+        const path = window.location.pathname;
+        if (path !== '/' && !path.includes('login') && !path.includes('register')) {
+            window.location.href = '/login';
         }
     }
 }

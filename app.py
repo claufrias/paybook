@@ -284,12 +284,9 @@ def actualizar_bd():
 
 @app.route('/login')
 def login_page():
-    """Página de login - si ya está autenticado, redirige"""
+    # Si ya está logueado en Flask, mandarlo al dashboard directamente
     if current_user.is_authenticated:
-        if current_user.rol == 'admin':
-            return redirect(url_for('admin_panel'))
-        else:
-            return redirect(url_for('dashboard'))
+        return redirect(url_for('dashboard_page'))
     return render_template('login.html')
 
 @app.route('/register')
@@ -304,7 +301,7 @@ def register_page():
 
 @app.route('/dashboard')
 @login_required
-def dashboard():
+def dashboard_page():
     return render_template('dashboard.html')
 
 @app.route('/api/auth/register', methods=['POST'])
@@ -370,53 +367,63 @@ def api_register():
 @app.route('/api/auth/login', methods=['POST'])
 def api_login():
     try:
-        data = request.get_json()
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No se enviaron datos'}), 400
+            
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
-        
+
+        if not email or not password:
+            return jsonify({'success': False, 'error': 'Email y contraseña son requeridos'}), 400
+
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT id, email, password_hash, nombre, plan, rol, fecha_expiracion 
-                FROM usuarios 
-                WHERE email = ? AND activo = 1
-            ''', (email,))
-            
+            # Buscamos al usuario por email
+            cursor.execute('SELECT id, email, password, nombre, rol FROM usuarios WHERE email = ?', (email,))
             user_data = cursor.fetchone()
             conn.close()
+
+        if user_data:
+            stored_password = user_data[2]
+            # Verificación del password (asumiendo que usas SHA-256 según el esquema previo)
+            # Si usas otro método de hash, ajusta esta línea
+            hashed_input = hashlib.sha256(password.encode()).hexdigest()
             
-            if not user_data:
-                return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 401
-            
-            user_id, user_email, stored_hash, nombre, plan, rol, expiracion = user_data
-            
-            # Verificar contraseña
-            if hash_password(password) != stored_hash:
+            if hashed_input == stored_password:
+                # 1. Crear el objeto usuario para Flask-Login
+                user = User(
+                    id=user_data[0], 
+                    email=user_data[1], 
+                    password=user_data[2], 
+                    nombre=user_data[3], 
+                    rol=user_data[4]
+                )
+                
+                # 2. Iniciar sesión en el servidor (Crea la Cookie)
+                # El parámetro remember=True mantiene la sesión al cerrar el navegador
+                login_user(user, remember=True)
+                
+                # 3. Responder al frontend con los datos que necesita guardar en localStorage
+                return jsonify({
+                    'success': True,
+                    'user': {
+                        'id': user.id,
+                        'email': user.email,
+                        'nombre': user.nombre,
+                        'rol': user.rol
+                    }
+                })
+            else:
                 return jsonify({'success': False, 'error': 'Contraseña incorrecta'}), 401
-            
-            # Verificar suscripción
-            if expiracion and datetime.strptime(expiracion, '%Y-%m-%d %H:%M:%S') < datetime.now():
-                plan = 'expired'
-            
-            user = User(user_id, user_email, nombre, plan, rol)
-            login_user(user)
-            
-            return jsonify({
-                'success': True,
-                'user': {
-                    'id': user_id,
-                    'email': user_email,
-                    'nombre': nombre,
-                    'plan': plan,
-                    'rol': rol,
-                    'expiracion': expiracion
-                }
-            })
-            
+        else:
+            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"❌ Error en login: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
 
 @app.route('/api/auth/logout')
 @login_required

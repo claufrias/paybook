@@ -117,23 +117,19 @@ async function register(event = null) {
     return false;
 }
 
+// Reemplaza la función logout en static/js/auth.js
 async function logout() {
     try {
-        const response = await fetch('/api/auth/logout');
-        const data = await response.json();
-        
-        if (data.success) {
-            // Limpiar localStorage
-            localStorage.removeItem('redcajeros_user');
-            currentUser = null;
-            
-            // Redirigir a login
-            window.location.href = '/login';
-        }
+        await fetch('/api/auth/logout');
     } catch (error) {
-        console.error('Error en logout:', error);
-        // Forzar logout local
+        console.error('Error cerrando sesión:', error);
+    } finally {
+        // Limpiamos todas las posibles claves usadas
         localStorage.removeItem('redcajeros_user');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        
+        // Redirigir al inicio
         window.location.href = '/login';
     }
 }
