@@ -1434,3 +1434,30 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"🚀 Corriendo en puerto: {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
+
+
+def status():
+    """Endpoint para healthcheck de Railway"""
+    return jsonify({
+        'status': 'online',
+        'database': os.path.exists(DB_PATH),
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'version': '4.0',
+        'nombre': 'RedCajeros',
+        'usuarios': len(get_all_users()) if hasattr(get_all_users, '__call__') else 0
+    })
+
+
+def get_all_users():
+    """Función auxiliar para contar usuarios"""
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM usuarios')
+            count = cursor.fetchone()[0]
+            conn.close()
+            return count
+    except:
+        return 0
+
