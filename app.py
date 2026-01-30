@@ -1,11 +1,14 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_cors import CORS
 import sqlite3
 import os
 import json
 from datetime import datetime, timedelta
 import traceback
 from threading import Lock
-from flask_cors import CORS
+import hashlib
+import secrets
 import csv
 import io
 from reportlab.lib import colors
@@ -14,45 +17,16 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 import tempfile
-import hashlib
-import secrets
 from functools import wraps
 
-# ========== PARCHES PARA COMPATIBILIDAD ==========
-import werkzeug
-# Solucionar problema de url_decode en Flask-Login
-try:
-    from werkzeug.urls import url_decode
-    werkzeug.urls.url_decode = url_decode
-except ImportError:
-    # Para versiones nuevas de Werkzeug
-    from werkzeug.datastructures import MultiDict
-    from urllib.parse import parse_qs
-    
-    def url_decode(query_string, charset='utf-8'):
-        result = parse_qs(query_string, keep_blank_values=True)
-        return MultiDict((k, v[0]) for k, v in result.items())
-    
-    werkzeug.urls.url_decode = url_decode
-
-# Ahora importar Flask-Login (debe funcionar)
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'redcajeros-secreto-2024')
 CORS(app)
 
-# Configuración Flask-Login
-app.secret_key = os.environ.get('SECRET_KEY', 'redcajeros-secret-key-2026')
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
-app.config['SESSION_COOKIE_SECURE'] = False  # True en producción con HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-
+# Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
-login_manager.session_protection = 'strong'  # Cambiado de 'basic'
 
 # Ruta de la base de datos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -61,103 +35,83 @@ DB_PATH = os.path.join(BASE_DIR, 'database.db')
 # Lock para operaciones de base de datos
 db_lock = Lock()
 
-# ========== MODELOS ==========
+# Modelo de Usuario
 class User(UserMixin):
-    def __init__(self, id, email, nombre, plan='free', expiracion=None):
+    def __init__(self, id, email, nombre, plan='free', rol='user'):
         self.id = id
         self.email = email
         self.nombre = nombre
         self.plan = plan
-        self.expiracion = expiracion
+        self.rol = rol
+    
+    def is_admin(self):
+        return self.rol == 'admin'
 
 @login_manager.user_loader
 def load_user(user_id):
-    try:
+    with db_lock:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT id, email, nombre, plan, fecha_expiracion 
+            SELECT id, email, nombre, plan, rol, fecha_expiracion 
             FROM usuarios 
             WHERE id = ? AND activo = 1
         ''', (user_id,))
-        
         user_data = cursor.fetchone()
         conn.close()
         
         if user_data:
-            return User(user_data[0], user_data[1], user_data[2], user_data[3], user_data[4])
-        return None
-    except Exception as e:
-        print(f"❌ Error en user_loader: {e}")
-        return None
+            id, email, nombre, plan, rol, expiracion = user_data
+            # Verificar si la suscripción está activa
+            if expiracion and datetime.strptime(expiracion, '%Y-%m-%d %H:%M:%S') < datetime.now():
+                # Suscripción expirada, pero permitimos login para renovar
+                return User(id, email, nombre, 'expired', rol)
+            return User(id, email, nombre, plan, rol)
+    return None
 
-# ========== UTILIDADES ==========
+# Función hash de contraseña
 def hash_password(password):
-    """Hash simple para contraseñas"""
-    salt = "redcajeros_salt_2026"
+    salt = "redcajeros_salt_2024"
     return hashlib.sha256((password + salt).encode()).hexdigest()
 
-def require_auth(f):
-    """Decorator para requerir autenticación"""
+# Decorador para verificar suscripción activa
+def subscription_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return jsonify({'success': False, 'error': 'No autenticado'}), 401
-        
-        # Verificar suscripción activa
-        if current_user.expiracion:
-            expiracion_date = datetime.strptime(current_user.expiracion, '%Y-%m-%d %H:%M:%S')
-            if expiracion_date < datetime.now():
-                return jsonify({
-                    'success': False, 
-                    'error': 'Suscripción expirada. Renueva tu plan.',
-                    'code': 'SUBSCRIPTION_EXPIRED'
-                }), 403
-        
+        if current_user.is_authenticated:
+            # Verificar suscripción
+            with db_lock:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute('SELECT fecha_expiracion, plan FROM usuarios WHERE id = ?', (current_user.id,))
+                expiracion, plan = cursor.fetchone()
+                conn.close()
+                
+                if expiracion and datetime.strptime(expiracion, '%Y-%m-%d %H:%M:%S') < datetime.now():
+                    if plan != 'admin':
+                        return jsonify({
+                            'success': False, 
+                            'error': 'Tu suscripción ha expirado. Renueva para continuar.',
+                            'code': 'SUBSCRIPTION_EXPIRED'
+                        }), 403
         return f(*args, **kwargs)
     return decorated_function
 
-def get_db_connection():
-    """Obtener conexión a BD con contexto de usuario"""
-    conn = sqlite3.connect(DB_PATH)
-    
-    # Si hay usuario autenticado, aplicar filtros por usuario_id
-    if current_user.is_authenticated:
-        # Crear función personalizada para aplicar filtros
-        def add_user_filter(query, params=None):
-            if params is None:
-                params = []
-            
-            # Verificar si ya tiene WHERE
-            if 'WHERE' in query.upper():
-                query += ' AND usuario_id = ?'
-            else:
-                query += ' WHERE usuario_id = ?'
-            
-            params.append(current_user.id)
-            return query, params
-        
-        conn.add_user_filter = add_user_filter
-    else:
-        conn.add_user_filter = lambda q, p=None: (q, p or [])
-    
-    return conn
-
-# ========== INICIALIZACIÓN BD ==========
 def init_db():
     """Crear base de datos y tablas"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Tabla usuarios
+    # Tabla usuarios (NUEVA)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             nombre TEXT,
-            telefono TEXT,
             plan TEXT DEFAULT 'free',
+            rol TEXT DEFAULT 'user',
+            telefono TEXT,
             fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             fecha_expiracion TIMESTAMP,
             activo BOOLEAN DEFAULT 1,
@@ -165,22 +119,24 @@ def init_db():
         )
     ''')
     
-    # Tabla pagos_manuales
+    # Tabla pagos_manuales (NUEVA)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pagos_manuales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             usuario_id INTEGER,
-            codigo TEXT UNIQUE,
+            codigo TEXT UNIQUE NOT NULL,
             monto DECIMAL(10,2),
             plan TEXT,
             estado TEXT DEFAULT 'pendiente',
+            comprobante_url TEXT,
             fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             fecha_verificacion TIMESTAMP,
+            notas TEXT,
             FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
         )
     ''')
     
-    # Tabla cajeros (MODIFICADA para multi-usuario)
+    # Tabla cajeros (MODIFICADA - agregar usuario_id)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS cajeros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -188,11 +144,11 @@ def init_db():
             nombre TEXT NOT NULL,
             activo BOOLEAN DEFAULT 1,
             fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(usuario_id, nombre)
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
         )
     ''')
     
-    # Tabla cargas (MODIFICADA para multi-usuario)
+    # Tabla cargas (MODIFICADA - agregar usuario_id)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS cargas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -209,7 +165,7 @@ def init_db():
         )
     ''')
     
-    # Tabla pagos (MODIFICADA para multi-usuario)
+    # Tabla pagos (MODIFICADA - agregar usuario_id)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pagos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -239,27 +195,26 @@ def init_db():
                ('moneda', '$'),
                ('plataformas', 'Zeus,Gana,Ganamos'),
                ('permitir_deudas', '1'),
-               ('whatsapp_admin', '584241234567'),
-               ('banco_nombre', 'Mercantil'),
-               ('banco_cuenta', '0105-1234-5678-9012'),
-               ('banco_titular', 'RedCajeros Admin'),
+               ('whatsapp_admin', '584121234567'),
+               ('banco_nombre', 'Tu Banco'),
+               ('banco_cuenta', '0102-1234-5678-9012'),
+               ('banco_titular', 'Tu Nombre'),
                ('precio_basico', '9.99'),
                ('precio_premium', '19.99')
     ''')
     
-    # Crear usuario admin por defecto (si no existe)
+    # Crear usuario admin por defecto si no existe
     cursor.execute('SELECT id FROM usuarios WHERE email = ?', ('admin@redcajeros.com',))
     if not cursor.fetchone():
         admin_hash = hash_password('admin123')
+        fecha_expiracion = (datetime.now() + timedelta(days=3650)).strftime('%Y-%m-%d %H:%M:%S')
         cursor.execute('''
-            INSERT INTO usuarios (email, password_hash, nombre, plan, fecha_expiracion)
-            VALUES (?, ?, ?, ?, ?)
-        ''', ('admin@redcajeros.com', admin_hash, 'Administrador', 'premium', 
-              (datetime.now() + timedelta(days=3650)).strftime('%Y-%m-%d %H:%M:%S')))
+            INSERT INTO usuarios (email, password_hash, nombre, plan, rol, fecha_expiracion)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', ('admin@redcajeros.com', admin_hash, 'Administrador', 'admin', 'admin', fecha_expiracion))
     
     conn.commit()
     conn.close()
-    print("✅ Base de datos inicializada con sistema de usuarios")
 
 def actualizar_bd():
     """Actualizar base de datos existente"""
@@ -267,56 +222,66 @@ def actualizar_bd():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Verificar y agregar campos necesarios
-        cursor.execute("PRAGMA table_info(cajeros)")
-        columnas_cajeros = [col[1] for col in cursor.fetchall()]
+        # Verificar y agregar columnas si no existen
+        columnas_usuarios = [col[1] for col in cursor.execute("PRAGMA table_info(usuarios)").fetchall()]
+        if 'rol' not in columnas_usuarios:
+            cursor.execute('ALTER TABLE usuarios ADD COLUMN rol TEXT DEFAULT "user"')
+        if 'telefono' not in columnas_usuarios:
+            cursor.execute('ALTER TABLE usuarios ADD COLUMN telefono TEXT')
+        if 'api_key' not in columnas_usuarios:
+            cursor.execute('ALTER TABLE usuarios ADD COLUMN api_key TEXT UNIQUE')
         
-        cursor.execute("PRAGMA table_info(cargas)")
-        columnas_cargas = [col[1] for col in cursor.fetchall()]
+        # Verificar tablas nuevas
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pagos_manuales'")
+        if not cursor.fetchone():
+            cursor.execute('''
+                CREATE TABLE pagos_manuales (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER,
+                    codigo TEXT UNIQUE NOT NULL,
+                    monto DECIMAL(10,2),
+                    plan TEXT,
+                    estado TEXT DEFAULT 'pendiente',
+                    comprobante_url TEXT,
+                    fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    fecha_verificacion TIMESTAMP,
+                    notas TEXT,
+                    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+                )
+            ''')
         
         # Agregar usuario_id a tablas existentes si no existe
-        if 'usuario_id' not in columnas_cajeros:
-            cursor.execute('ALTER TABLE cajeros ADD COLUMN usuario_id INTEGER')
-            # Asignar cajeros existentes al usuario admin
-            cursor.execute('SELECT id FROM usuarios WHERE email = ?', ('admin@redcajeros.com',))
-            admin_id = cursor.fetchone()[0]
-            cursor.execute('UPDATE cajeros SET usuario_id = ? WHERE usuario_id IS NULL', (admin_id,))
+        tablas = ['cajeros', 'cargas', 'pagos']
+        for tabla in tablas:
+            cursor.execute(f"PRAGMA table_info({tabla})")
+            columnas = [col[1] for col in cursor.fetchall()]
+            if 'usuario_id' not in columnas:
+                cursor.execute(f'ALTER TABLE {tabla} ADD COLUMN usuario_id INTEGER')
         
-        if 'usuario_id' not in columnas_cargas:
-            cursor.execute('ALTER TABLE cargas ADD COLUMN usuario_id INTEGER')
-            cursor.execute('SELECT id FROM usuarios WHERE email = ?', ('admin@redcajeros.com',))
-            admin_id = cursor.fetchone()[0]
-            cursor.execute('UPDATE cargas SET usuario_id = ? WHERE usuario_id IS NULL', (admin_id,))
+        # Actualizar configuraciones
+        configs_necesarias = {
+            'whatsapp_admin': '584121234567',
+            'banco_nombre': 'Tu Banco',
+            'banco_cuenta': '0102-1234-5678-9012',
+            'banco_titular': 'Tu Nombre',
+            'precio_basico': '9.99',
+            'precio_premium': '19.99'
+        }
         
-        # Verificar tabla pagos
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pagos'")
-        if cursor.fetchone():
-            cursor.execute("PRAGMA table_info(pagos)")
-            columnas_pagos = [col[1] for col in cursor.fetchall()]
-            if 'usuario_id' not in columnas_pagos:
-                cursor.execute('ALTER TABLE pagos ADD COLUMN usuario_id INTEGER')
+        for clave, valor in configs_necesarias.items():
+            cursor.execute('SELECT clave FROM configuraciones WHERE clave = ?', (clave,))
+            if not cursor.fetchone():
+                cursor.execute('INSERT INTO configuraciones (clave, valor) VALUES (?, ?)', (clave, valor))
         
         conn.commit()
         conn.close()
-        print("✅ Base de datos actualizada para multi-usuario")
+        print("✅ Base de datos actualizada")
         
     except Exception as e:
         print(f"❌ Error actualizando BD: {e}")
 
-# Inicializar BD
-init_db()
-actualizar_bd()
-
-# ========== MIDDLEWARE ==========
-@app.before_request
-def handle_json():
-    if request.method in ['POST', 'PUT'] and request.content_type == 'application/json':
-        try:
-            request.json_data = request.get_json()
-        except:
-            request.json_data = None
-
 # ========== RUTAS DE AUTENTICACIÓN ==========
+
 @app.route('/login')
 def login_page():
     return render_template('login.html')
@@ -330,25 +295,10 @@ def register_page():
 def dashboard():
     return render_template('dashboard.html')
 
-@app.route('/admin')
-@login_required
-def admin_panel():
-    # Solo admin puede ver este panel
-    if current_user.email != 'admin@redcajeros.com':
-        return redirect(url_for('dashboard'))
-    return render_template('admin.html')
-
 @app.route('/api/auth/register', methods=['POST'])
 def api_register():
     try:
-        if request.json_data:
-            data = request.json_data
-        else:
-            data = request.get_json()
-        
-        if not data:
-            return jsonify({'success': False, 'error': 'No se recibieron datos'}), 400
-        
+        data = request.get_json()
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
         nombre = data.get('nombre', '').strip()
@@ -373,13 +323,13 @@ def api_register():
             
             # Crear usuario
             password_hash = hash_password(password)
-            fecha_expiracion = datetime.now() + timedelta(days=7)  # Trial de 7 días
+            fecha_expiracion = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')  # Trial 7 días
+            api_key = secrets.token_urlsafe(32)
             
             cursor.execute('''
-                INSERT INTO usuarios (email, password_hash, nombre, telefono, plan, fecha_expiracion)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (email, password_hash, nombre, telefono, 'trial', 
-                  fecha_expiracion.strftime('%Y-%m-%d %H:%M:%S')))
+                INSERT INTO usuarios (email, password_hash, nombre, telefono, plan, fecha_expiracion, api_key)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (email, password_hash, nombre, telefono, 'trial', fecha_expiracion, api_key))
             
             user_id = cursor.lastrowid
             
@@ -387,7 +337,7 @@ def api_register():
             conn.close()
         
         # Login automático
-        user = User(user_id, email, nombre, 'trial', fecha_expiracion.strftime('%Y-%m-%d %H:%M:%S'))
+        user = User(user_id, email, nombre, 'trial', 'user')
         login_user(user)
         
         return jsonify({
@@ -397,9 +347,8 @@ def api_register():
                 'id': user_id,
                 'email': email,
                 'nombre': nombre,
-                'telefono': telefono,
                 'plan': 'trial',
-                'expiracion': fecha_expiracion.strftime('%Y-%m-%d')
+                'expiracion': fecha_expiracion
             }
         })
         
@@ -409,11 +358,7 @@ def api_register():
 @app.route('/api/auth/login', methods=['POST'])
 def api_login():
     try:
-        if request.json_data:
-            data = request.json_data
-        else:
-            data = request.get_json()
-        
+        data = request.get_json()
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
         
@@ -422,7 +367,7 @@ def api_login():
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT id, email, password_hash, nombre, telefono, plan, fecha_expiracion 
+                SELECT id, email, password_hash, nombre, plan, rol, fecha_expiracion 
                 FROM usuarios 
                 WHERE email = ? AND activo = 1
             ''', (email,))
@@ -430,48 +375,44 @@ def api_login():
             user_data = cursor.fetchone()
             conn.close()
             
-        if not user_data:
-            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 401
-        
-        user_id, user_email, stored_hash, nombre, telefono, plan, expiracion = user_data
-        
-        # Verificar contraseña
-        if hash_password(password) != stored_hash:
-            return jsonify({'success': False, 'error': 'Contraseña incorrecta'}), 401
-        
-        # Verificar si la suscripción está activa
-        if expiracion and datetime.strptime(expiracion, '%Y-%m-%d %H:%M:%S') < datetime.now():
+            if not user_data:
+                return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 401
+            
+            user_id, user_email, stored_hash, nombre, plan, rol, expiracion = user_data
+            
+            # Verificar contraseña
+            if hash_password(password) != stored_hash:
+                return jsonify({'success': False, 'error': 'Contraseña incorrecta'}), 401
+            
+            # Verificar suscripción
+            if expiracion and datetime.strptime(expiracion, '%Y-%m-%d %H:%M:%S') < datetime.now():
+                plan = 'expired'
+            
+            user = User(user_id, user_email, nombre, plan, rol)
+            login_user(user)
+            
             return jsonify({
-                'success': False, 
-                'error': 'Suscripción expirada',
-                'code': 'SUBSCRIPTION_EXPIRED'
-            }), 403
-        
-        user = User(user_id, user_email, nombre, plan, expiracion)
-        login_user(user)
-        
-        return jsonify({
-            'success': True,
-            'user': {
-                'id': user_id,
-                'email': user_email,
-                'nombre': nombre,
-                'telefono': telefono,
-                'plan': plan,
-                'expiracion': expiracion
-            }
-        })
-        
+                'success': True,
+                'user': {
+                    'id': user_id,
+                    'email': user_email,
+                    'nombre': nombre,
+                    'plan': plan,
+                    'rol': rol,
+                    'expiracion': expiracion
+                }
+            })
+            
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/auth/logout', methods=['POST'])
+@app.route('/api/auth/logout')
 @login_required
 def api_logout():
     logout_user()
     return jsonify({'success': True, 'message': 'Sesión cerrada'})
 
-@app.route('/api/auth/user')
+@app.route('/api/auth/me')
 @login_required
 def api_get_user():
     return jsonify({
@@ -481,48 +422,24 @@ def api_get_user():
             'email': current_user.email,
             'nombre': current_user.nombre,
             'plan': current_user.plan,
-            'expiracion': current_user.expiracion
+            'rol': current_user.rol
         }
     })
 
-# ========== API PAGOS MANUALES ==========
+# ========== SISTEMA DE PAGOS MANUALES ==========
+
 @app.route('/api/pagos/solicitar', methods=['POST'])
 @login_required
-def api_solicitar_pago():
+def solicitar_pago():
+    """Solicitar pago manual"""
     try:
         data = request.get_json()
         plan = data.get('plan', 'basic')
         
-        # Obtener precios desde configuración
-        with db_lock:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'precio_basico'")
-            precio_basico = float(cursor.fetchone()[0])
-            
-            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'precio_premium'")
-            precio_premium = float(cursor.fetchone()[0])
-            
-            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'banco_nombre'")
-            banco_nombre = cursor.fetchone()[0]
-            
-            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'banco_cuenta'")
-            banco_cuenta = cursor.fetchone()[0]
-            
-            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'banco_titular'")
-            banco_titular = cursor.fetchone()[0]
-            
-            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'whatsapp_admin'")
-            whatsapp_admin = cursor.fetchone()[0]
-            
-            conn.close()
-        
-        # Precios por plan
-        precios = {'basic': precio_basico, 'premium': precio_premium}
-        
+        # Precios
+        precios = {'basic': 9.99, 'premium': 19.99}
         if plan not in precios:
-            return jsonify({'success': False, 'error': 'Plan no válido'})
+            return jsonify({'success': False, 'error': 'Plan no válido'}), 400
         
         # Generar código único
         codigo = f"REDCAJ-{secrets.token_hex(3).upper()}"
@@ -531,6 +448,17 @@ def api_solicitar_pago():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
+            # Obtener datos bancarios de configuración
+            cursor.execute('SELECT valor FROM configuraciones WHERE clave IN ("banco_nombre", "banco_cuenta", "banco_titular", "whatsapp_admin")')
+            configs = cursor.fetchall()
+            config_dict = {
+                'banco_nombre': configs[0][0] if len(configs) > 0 else 'Tu Banco',
+                'banco_cuenta': configs[1][0] if len(configs) > 1 else '0102-1234-5678-9012',
+                'banco_titular': configs[2][0] if len(configs) > 2 else 'Tu Nombre',
+                'whatsapp_admin': configs[3][0] if len(configs) > 3 else '584121234567'
+            }
+            
+            # Insertar solicitud de pago
             cursor.execute('''
                 INSERT INTO pagos_manuales (usuario_id, codigo, monto, plan)
                 VALUES (?, ?, ?, ?)
@@ -539,109 +467,109 @@ def api_solicitar_pago():
             conn.commit()
             conn.close()
         
-        # Información para el pago
-        info_pago = {
-            'codigo': codigo,
-            'monto': precios[plan],
-            'plan': plan,
-            'banco_nombre': banco_nombre,
-            'banco_cuenta': banco_cuenta,
-            'banco_titular': banco_titular,
-            'whatsapp_admin': whatsapp_admin,
-            'mensaje_whatsapp': f"Hola RedCajeros! Te envío el comprobante del pago con código {codigo}"
-        }
+        # Generar enlace de WhatsApp
+        mensaje = f"Hola RedCajeros! Te envío el comprobante del pago con código {codigo} para el plan {plan}"
+        whatsapp_url = f"https://wa.me/{config_dict['whatsapp_admin']}?text={mensaje.replace(' ', '%20')}"
         
-        return jsonify({'success': True, 'data': info_pago})
+        return jsonify({
+            'success': True,
+            'data': {
+                'codigo': codigo,
+                'monto': precios[plan],
+                'plan': plan,
+                'banco_nombre': config_dict['banco_nombre'],
+                'banco_cuenta': config_dict['banco_cuenta'],
+                'banco_titular': config_dict['banco_titular'],
+                'whatsapp_url': whatsapp_url,
+                'whatsapp_numero': config_dict['whatsapp_admin']
+            }
+        })
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/pagos/estado')
+@app.route('/api/pagos/mis-solicitudes')
 @login_required
-def api_estado_pago():
-    try:
-        with db_lock:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT codigo, monto, plan, estado, fecha_solicitud, fecha_verificacion
-                FROM pagos_manuales 
-                WHERE usuario_id = ? 
-                ORDER BY fecha_solicitud DESC
-                LIMIT 1
-            ''', (current_user.id,))
-            
-            pago = cursor.fetchone()
-            conn.close()
+def mis_solicitudes_pago():
+    """Obtener solicitudes de pago del usuario"""
+    with db_lock:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
         
-        if pago:
-            return jsonify({
-                'success': True,
-                'data': {
-                    'codigo': pago[0],
-                    'monto': pago[1],
-                    'plan': pago[2],
-                    'estado': pago[3],
-                    'fecha_solicitud': pago[4],
-                    'fecha_verificacion': pago[5]
-                }
-            })
-        else:
-            return jsonify({'success': True, 'data': None})
-            
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        cursor.execute('''
+            SELECT codigo, monto, plan, estado, fecha_solicitud, fecha_verificacion
+            FROM pagos_manuales
+            WHERE usuario_id = ?
+            ORDER BY fecha_solicitud DESC
+        ''', (current_user.id,))
+        
+        solicitudes = cursor.fetchall()
+        conn.close()
+    
+    return jsonify({
+        'success': True,
+        'data': [{
+            'codigo': s[0],
+            'monto': s[1],
+            'plan': s[2],
+            'estado': s[3],
+            'fecha_solicitud': s[4],
+            'fecha_verificacion': s[5]
+        } for s in solicitudes]
+    })
 
-# ========== API ADMIN PAGOS ==========
+# ========== PANEL ADMIN ==========
+
+@app.route('/admin')
+@login_required
+def admin_panel():
+    """Panel de administración"""
+    if not current_user.is_admin():
+        return redirect(url_for('dashboard'))
+    return render_template('admin.html')
+
 @app.route('/api/admin/pagos/pendientes')
 @login_required
-def api_admin_pagos_pendientes():
-    # Solo admin puede ver esto
-    if current_user.email != 'admin@redcajeros.com':
+def admin_pagos_pendientes():
+    """Obtener pagos pendientes (solo admin)"""
+    if not current_user.is_admin():
         return jsonify({'success': False, 'error': 'No autorizado'}), 403
     
-    try:
-        with db_lock:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT pm.id, pm.codigo, pm.monto, pm.plan, pm.estado, pm.fecha_solicitud,
-                       u.email, u.nombre, u.telefono
-                FROM pagos_manuales pm
-                JOIN usuarios u ON pm.usuario_id = u.id
-                WHERE pm.estado = 'pendiente'
-                ORDER BY pm.fecha_solicitud DESC
-            ''')
-            
-            pagos = cursor.fetchall()
-            conn.close()
+    with db_lock:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
         
-        pagos_list = []
-        for p in pagos:
-            pagos_list.append({
-                'id': p[0],
-                'codigo': p[1],
-                'monto': p[2],
-                'plan': p[3],
-                'estado': p[4],
-                'fecha_solicitud': p[5],
-                'usuario_email': p[6],
-                'usuario_nombre': p[7],
-                'usuario_telefono': p[8]
-            })
+        cursor.execute('''
+            SELECT pm.id, pm.codigo, pm.monto, pm.plan, pm.fecha_solicitud,
+                   u.email, u.nombre, u.telefono
+            FROM pagos_manuales pm
+            JOIN usuarios u ON pm.usuario_id = u.id
+            WHERE pm.estado = 'pendiente'
+            ORDER BY pm.fecha_solicitud DESC
+        ''')
         
-        return jsonify({'success': True, 'data': pagos_list})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        pagos = cursor.fetchall()
+        conn.close()
+    
+    return jsonify({
+        'success': True,
+        'data': [{
+            'id': p[0],
+            'codigo': p[1],
+            'monto': p[2],
+            'plan': p[3],
+            'fecha_solicitud': p[4],
+            'usuario_email': p[5],
+            'usuario_nombre': p[6],
+            'usuario_telefono': p[7]
+        } for p in pagos]
+    })
 
 @app.route('/api/admin/pagos/verificar/<codigo>', methods=['POST'])
 @login_required
-def api_admin_verificar_pago(codigo):
-    # Solo admin puede verificar pagos
-    if current_user.email != 'admin@redcajeros.com':
+def admin_verificar_pago(codigo):
+    """Verificar pago manualmente (solo admin)"""
+    if not current_user.is_admin():
         return jsonify({'success': False, 'error': 'No autorizado'}), 403
     
     try:
@@ -678,16 +606,17 @@ def api_admin_verificar_pago(codigo):
                 WHERE codigo = ?
             ''', (codigo,))
             
-            # Obtener email para respuesta
-            cursor.execute('SELECT email FROM usuarios WHERE id = ?', (usuario_id,))
-            email = cursor.fetchone()[0]
-            
             conn.commit()
+            
+            # Obtener email del usuario
+            cursor.execute('SELECT email, nombre FROM usuarios WHERE id = ?', (usuario_id,))
+            usuario_email, usuario_nombre = cursor.fetchone()
+            
             conn.close()
         
         return jsonify({
             'success': True, 
-            'message': f'Usuario {email} activado hasta {nueva_expiracion.strftime("%Y-%m-%d")}'
+            'message': f'Pago verificado. Usuario {usuario_nombre} activado hasta {nueva_expiracion.strftime("%Y-%m-%d")}'
         })
         
     except Exception as e:
@@ -695,8 +624,9 @@ def api_admin_verificar_pago(codigo):
 
 @app.route('/api/admin/pagos/rechazar/<codigo>', methods=['POST'])
 @login_required
-def api_admin_rechazar_pago(codigo):
-    if current_user.email != 'admin@redcajeros.com':
+def admin_rechazar_pago(codigo):
+    """Rechazar pago (solo admin)"""
+    if not current_user.is_admin():
         return jsonify({'success': False, 'error': 'No autorizado'}), 403
     
     try:
@@ -704,6 +634,15 @@ def api_admin_rechazar_pago(codigo):
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
+            # Obtener datos del pago
+            cursor.execute('SELECT usuario_id FROM pagos_manuales WHERE codigo = ?', (codigo,))
+            pago = cursor.fetchone()
+            
+            if not pago:
+                conn.close()
+                return jsonify({'success': False, 'error': 'Código no encontrado'})
+            
+            # Marcar como rechazado
             cursor.execute('''
                 UPDATE pagos_manuales 
                 SET estado = 'rechazado'
@@ -718,25 +657,72 @@ def api_admin_rechazar_pago(codigo):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== RUTAS PRINCIPALES (PROTEGIDAS) ==========
+@app.route('/api/admin/usuarios')
+@login_required
+def admin_usuarios():
+    """Listar todos los usuarios (solo admin)"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+    
+    with db_lock:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, email, nombre, plan, rol, telefono, 
+                   fecha_registro, fecha_expiracion, activo
+            FROM usuarios
+            ORDER BY fecha_registro DESC
+        ''')
+        
+        usuarios = cursor.fetchall()
+        conn.close()
+    
+    return jsonify({
+        'success': True,
+        'data': [{
+            'id': u[0],
+            'email': u[1],
+            'nombre': u[2],
+            'plan': u[3],
+            'rol': u[4],
+            'telefono': u[5],
+            'fecha_registro': u[6],
+            'fecha_expiracion': u[7],
+            'activo': bool(u[8])
+        } for u in usuarios]
+    })
+
+# ========== MIDDLEWARE Y RUTAS PROTEGIDAS ==========
+
+@app.before_request
+def handle_json():
+    if request.method in ['POST', 'PUT'] and request.content_type == 'application/json':
+        try:
+            request.json_data = request.get_json()
+        except:
+            request.json_data = None
+
 @app.route('/')
 def index():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-    return render_template('index.html')
+    return render_template('login.html')
 
-@app.route('/api/status')
-def status():
-    return jsonify({
-        'status': 'online',
-        'app': 'RedCajeros',
-        'version': '3.0',
-        'multi_usuario': True
-    })
+# ========== MODIFICAR TODAS LAS RUTAS EXISTENTES PARA FILTRAR POR USUARIO ==========
 
-# ========== API CAJEROS (MODIFICADA PARA MULTI-USUARIO) ==========
+# Decorador para rutas que requieren usuario activo
+def user_required(f):
+    @wraps(f)
+    @login_required
+    @subscription_required
+    def decorated_function(*args, **kwargs):
+        return f(*args, **kwargs)
+    return decorated_function
+
+# CAJEROS - Modificadas para filtrar por usuario
 @app.route('/api/cajeros', methods=['GET'])
-@require_auth
+@user_required
 def get_cajeros():
     try:
         with db_lock:
@@ -759,7 +745,7 @@ def get_cajeros():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cajeros', methods=['POST'])
-@require_auth
+@user_required
 def add_cajero():
     try:
         if request.json_data:
@@ -783,20 +769,18 @@ def add_cajero():
             cursor = conn.cursor()
             
             try:
-                # Verificar si ya existe un cajero con el mismo nombre para ESTE usuario
-                cursor.execute('SELECT id, nombre FROM cajeros WHERE usuario_id = ? AND LOWER(nombre) = LOWER(?)', 
-                              (current_user.id, nombre))
+                # Verificar si ya existe un cajero con el mismo nombre para este usuario
+                cursor.execute('SELECT id, nombre FROM cajeros WHERE LOWER(nombre) = LOWER(?) AND usuario_id = ?', (nombre, current_user.id))
                 cajero_existente = cursor.fetchone()
                 
                 if cajero_existente:
                     conn.close()
                     return jsonify({
                         'success': False, 
-                        'error': f'Ya existe un cajero con el nombre "{cajero_existente[1]}" en tu cuenta'
+                        'error': f'Ya existe un cajero con el nombre "{cajero_existente[1]}"'
                     }), 400
                 
-                cursor.execute('INSERT INTO cajeros (usuario_id, nombre) VALUES (?, ?)', 
-                              (current_user.id, nombre))
+                cursor.execute('INSERT INTO cajeros (usuario_id, nombre) VALUES (?, ?)', (current_user.id, nombre))
                 conn.commit()
                 cajero_id = cursor.lastrowid
                 
@@ -821,118 +805,9 @@ def add_cajero():
     except Exception as e:
         return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
 
-@app.route('/api/cajeros/<int:id>', methods=['PUT'])
-@require_auth
-def update_cajero(id):
-    try:
-        if request.json_data:
-            data = request.json_data
-        else:
-            data = request.get_json()
-        
-        if not data:
-            return jsonify({'success': False, 'error': 'No se recibieron datos'}), 400
-        
-        nombre = data.get('nombre', '').strip()
-        activo = data.get('activo', True)
-        
-        if not nombre:
-            return jsonify({'success': False, 'error': 'El nombre no puede estar vacío'}), 400
-        
-        with db_lock:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            
-            # Verificar que existe y pertenece a este usuario
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ? AND usuario_id = ?', (id, current_user.id))
-            cajero_actual = cursor.fetchone()
-            if not cajero_actual:
-                conn.close()
-                return jsonify({'success': False, 'error': 'Cajero no encontrado'}), 404
-            
-            # Verificar si el nuevo nombre ya existe para ESTE usuario
-            cursor.execute('SELECT id FROM cajeros WHERE usuario_id = ? AND LOWER(nombre) = LOWER(?) AND id != ?', 
-                          (current_user.id, nombre, id))
-            if cursor.fetchone():
-                conn.close()
-                return jsonify({'success': False, 'error': 'Ya existe otro cajero con ese nombre en tu cuenta'}), 400
-            
-            # Actualizar cajero
-            cursor.execute('''UPDATE cajeros SET nombre = ?, activo = ? WHERE id = ? AND usuario_id = ?''',
-                          (nombre, 1 if activo else 0, id, current_user.id))
-            
-            conn.commit()
-            conn.close()
-        
-        return jsonify({'success': True, 'message': 'Cajero actualizado exitosamente'})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/cajeros/<int:id>/eliminar', methods=['DELETE'])
-@require_auth
-def eliminar_cajero_completamente(id):
-    try:
-        with db_lock:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            
-            # Verificar que existe y pertenece a este usuario
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ? AND usuario_id = ?', (id, current_user.id))
-            cajero = cursor.fetchone()
-            
-            if not cajero:
-                conn.close()
-                return jsonify({'success': False, 'error': 'Cajero no encontrado'}), 404
-            
-            # Verificar si tiene cargas
-            cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ?', (id, current_user.id))
-            tiene_cargas = cursor.fetchone()[0] > 0
-            
-            if tiene_cargas:
-                conn.close()
-                return jsonify({'success': False, 'error': 'No se puede eliminar un cajero que tiene cargas registradas'}), 400
-            
-            # Eliminar completamente
-            cursor.execute('DELETE FROM cajeros WHERE id = ? AND usuario_id = ?', (id, current_user.id))
-            conn.commit()
-            conn.close()
-        
-        return jsonify({'success': True, 'message': f'Cajero eliminado completamente'})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/cajeros/<int:id>', methods=['DELETE'])
-@require_auth
-def delete_cajero(id):
-    try:
-        with db_lock:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            
-            # Verificar que existe y pertenece a este usuario
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ? AND usuario_id = ?', (id, current_user.id))
-            cajero = cursor.fetchone()
-            
-            if not cajero:
-                conn.close()
-                return jsonify({'success': False, 'error': 'Cajero no encontrado'}), 404
-            
-            # Marcamos como inactivo
-            cursor.execute('UPDATE cajeros SET activo = 0 WHERE id = ? AND usuario_id = ?', (id, current_user.id))
-            
-            conn.commit()
-            conn.close()
-        
-        return jsonify({'success': True, 'message': 'Cajero desactivado correctamente'})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ========== API CARGAS (MODIFICADA PARA MULTI-USUARIO) ==========
+# CARGAS - Modificadas para filtrar por usuario
 @app.route('/api/cargas', methods=['GET'])
-@require_auth
+@user_required
 def get_cargas():
     try:
         with db_lock:
@@ -991,7 +866,7 @@ def get_cargas():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cargas', methods=['POST'])
-@require_auth
+@user_required
 def add_carga():
     try:
         if request.json_data:
@@ -1002,12 +877,6 @@ def add_carga():
         if not data:
             return jsonify({'success': False, 'error': 'No se recibieron datos'}), 400
         
-        # Validar datos
-        required_fields = ['cajero_id', 'plataforma', 'monto']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'success': False, 'error': f'Falta el campo: {field}'}), 400
-        
         cajero_id = data['cajero_id']
         plataforma = data['plataforma']
         monto = float(data['monto'])
@@ -1016,9 +885,6 @@ def add_carga():
         if monto == 0:
             return jsonify({'success': False, 'error': 'El monto no puede ser 0'}), 400
         
-        if abs(monto) > 1000000:
-            return jsonify({'success': False, 'error': 'El monto no puede superar $1,000,000'}), 400
-        
         fecha = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         es_deuda = 1 if monto < 0 else 0
         
@@ -1026,13 +892,12 @@ def add_carga():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
-            # Verificar que el cajero existe y pertenece a este usuario
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ? AND usuario_id = ? AND activo = 1', 
-                          (cajero_id, current_user.id))
+            # Verificar que el cajero existe y pertenece al usuario
+            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ? AND usuario_id = ? AND activo = 1', (cajero_id, current_user.id))
             cajero = cursor.fetchone()
             if not cajero:
                 conn.close()
-                return jsonify({'success': False, 'error': 'El cajero no existe o está inactivo'}), 400
+                return jsonify({'success': False, 'error': 'El cajero no existe o no tienes permisos'}), 400
             
             cursor.execute('''
                 INSERT INTO cargas (usuario_id, cajero_id, plataforma, monto, fecha, nota, es_deuda)
@@ -1064,70 +929,31 @@ def add_carga():
     except Exception as e:
         return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
 
-@app.route('/api/cargas/<int:id>', methods=['DELETE'])
-@require_auth
-def delete_carga(id):
-    try:
-        with db_lock:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            
-            # Verificar que existe y pertenece a este usuario
-            cursor.execute('SELECT id FROM cargas WHERE id = ? AND usuario_id = ?', (id, current_user.id))
-            if not cursor.fetchone():
-                conn.close()
-                return jsonify({'success': False, 'error': 'Carga no encontrada'}), 404
-            
-            # Eliminar carga
-            cursor.execute('DELETE FROM cargas WHERE id = ? AND usuario_id = ?', (id, current_user.id))
-            conn.commit()
-            conn.close()
-        
-        return jsonify({'success': True, 'message': 'Carga eliminada exitosamente'})
-        
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ========== API RESÚMEN (MODIFICADA PARA MULTI-USUARIO) ==========
+# RESÚMEN - Modificado para filtrar por usuario
 @app.route('/api/resumen', methods=['GET'])
-@require_auth
+@user_required
 def get_resumen():
     try:
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
-            # Obtener configuración de deudas
-            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'permitir_deudas'")
-            permitir_deudas = cursor.fetchone()
-            permitir_deudas = bool(int(permitir_deudas[0])) if permitir_deudas else True
-            
-            # Obtener todos los cajeros activos de ESTE usuario
             cursor.execute('SELECT id, nombre FROM cajeros WHERE usuario_id = ? AND activo = 1 ORDER BY nombre', (current_user.id,))
             cajeros = cursor.fetchall()
             
             resumen = []
             
             for cajero_id, nombre in cajeros:
-                # Calcular totales por plataforma - SOLO NO PAGADAS
-                if permitir_deudas:
-                    cursor.execute('''
-                        SELECT plataforma, SUM(monto) as total
-                        FROM cargas 
-                        WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
-                        GROUP BY plataforma
-                    ''', (cajero_id, current_user.id))
-                else:
-                    cursor.execute('''
-                        SELECT plataforma, SUM(monto) as total
-                        FROM cargas 
-                        WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
-                        GROUP BY plataforma
-                    ''', (cajero_id, current_user.id))
+                # Calcular totales por plataforma
+                cursor.execute('''
+                    SELECT plataforma, SUM(monto) as total
+                    FROM cargas 
+                    WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
+                    GROUP BY plataforma
+                ''', (cajero_id, current_user.id))
                 
                 montos = cursor.fetchall()
                 
-                # Inicializar en 0
                 totales = {'Zeus': 0, 'Gana': 0, 'Ganamos': 0}
                 
                 for plataforma, total in montos:
@@ -1136,14 +962,8 @@ def get_resumen():
                 
                 total_general = sum(totales.values())
                 
-                # Obtener cantidad de cargas NO PAGADAS
-                if permitir_deudas:
-                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)', 
-                                  (cajero_id, current_user.id))
-                else:
-                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0', 
-                                  (cajero_id, current_user.id))
-                
+                # Obtener cantidad de cargas
+                cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)', (cajero_id, current_user.id))
                 cantidad_cargas = cursor.fetchone()[0]
                 
                 resumen.append({
@@ -1166,30 +986,29 @@ def get_resumen():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== API ESTADÍSTICAS (MODIFICADA PARA MULTI-USUARIO) ==========
+# ESTADÍSTICAS - Modificado para filtrar por usuario
 @app.route('/api/estadisticas', methods=['GET'])
-@require_auth
+@user_required
 def get_estadisticas():
     try:
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
-            # Total cajeros de ESTE usuario
+            # Total cajeros del usuario
             cursor.execute('SELECT COUNT(*) FROM cajeros WHERE usuario_id = ? AND activo = 1', (current_user.id,))
             total_cajeros = cursor.fetchone()[0]
             
-            # Total cargas de ESTE usuario
+            # Total cargas del usuario
             cursor.execute('SELECT COUNT(*), COALESCE(SUM(monto), 0) FROM cargas WHERE usuario_id = ?', (current_user.id,))
             total_cargas, monto_total = cursor.fetchone()
             
-            # Cargas hoy de ESTE usuario
+            # Cargas hoy del usuario
             hoy = datetime.now().strftime('%Y-%m-%d')
-            cursor.execute('SELECT COUNT(*), COALESCE(SUM(monto), 0) FROM cargas WHERE usuario_id = ? AND fecha LIKE ?', 
-                          (current_user.id, f'{hoy}%',))
+            cursor.execute('SELECT COUNT(*), COALESCE(SUM(monto), 0) FROM cargas WHERE usuario_id = ? AND fecha LIKE ?', (current_user.id, f'{hoy}%',))
             cargas_hoy, monto_hoy = cursor.fetchone()
             
-            # Top cajero de ESTE usuario
+            # Top cajero del usuario
             cursor.execute('''
                 SELECT c.nombre, SUM(cg.monto) as total
                 FROM cajeros c
@@ -1224,9 +1043,9 @@ def get_estadisticas():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== API PAGOS (MODIFICADA PARA MULTI-USUARIO) ==========
+# PAGOS - Modificado para filtrar por usuario
 @app.route('/api/pagos', methods=['POST'])
-@require_auth
+@user_required
 def registrar_pago():
     try:
         if request.json_data:
@@ -1248,33 +1067,20 @@ def registrar_pago():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             
-            # Verificar que el cajero existe y pertenece a ESTE usuario
-            cursor.execute('SELECT nombre FROM cajeros WHERE id = ? AND usuario_id = ? AND activo = 1', 
-                          (cajero_id, current_user.id))
+            # Verificar que el cajero existe y pertenece al usuario
+            cursor.execute('SELECT nombre FROM cajeros WHERE id = ? AND usuario_id = ? AND activo = 1', (cajero_id, current_user.id))
             cajero = cursor.fetchone()
             
             if not cajero:
                 conn.close()
-                return jsonify({'success': False, 'error': 'Cajero no encontrado o inactivo'}), 404
+                return jsonify({'success': False, 'error': 'Cajero no encontrado o no tienes permisos'}), 404
             
-            # Obtener configuración de deudas
-            cursor.execute("SELECT valor FROM configuraciones WHERE clave = 'permitir_deudas'")
-            permitir_deudas = cursor.fetchone()
-            permitir_deudas = bool(int(permitir_deudas[0])) if permitir_deudas else True
-            
-            # Obtener el total actual de comisiones NO pagadas (incluyendo deudas si está permitido)
-            if permitir_deudas:
-                cursor.execute('''
-                    SELECT COALESCE(SUM(monto), 0), COUNT(*)
-                    FROM cargas 
-                    WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
-                ''', (cajero_id, current_user.id))
-            else:
-                cursor.execute('''
-                    SELECT COALESCE(SUM(monto), 0), COUNT(*)
-                    FROM cargas 
-                    WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
-                ''', (cajero_id, current_user.id))
+            # Obtener el total actual de comisiones
+            cursor.execute('''
+                SELECT COALESCE(SUM(monto), 0), COUNT(*)
+                FROM cargas 
+                WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
+            ''', (cajero_id, current_user.id))
             
             total_comisiones, cantidad_cargas = cursor.fetchone()
             
@@ -1289,16 +1095,14 @@ def registrar_pago():
             
             pago_id = cursor.lastrowid
             
-            # Marcar cargas como pagadas (solo hasta el monto pagado)
+            # Marcar cargas como pagadas
             if monto_pagado >= total_comisiones:
-                # Si paga todo, marcar todas como pagadas
                 cursor.execute('''
                     UPDATE cargas 
                     SET pagado = 1 
                     WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
                 ''', (cajero_id, current_user.id))
             else:
-                # Si paga parcialmente, marcar cargas más antiguas primero
                 cursor.execute('''
                     UPDATE cargas 
                     SET pagado = 1 
@@ -1310,24 +1114,16 @@ def registrar_pago():
                     )
                 ''', (cajero_id, current_user.id, cantidad_cargas))
             
-            # Registrar carga especial en el historial para el pago
+            # Registrar carga especial para el pago
             fecha_pago = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute('''
                 INSERT INTO cargas (usuario_id, cajero_id, plataforma, monto, fecha, nota, pagado, es_deuda)
                 VALUES (?, ?, ?, ?, ?, ?, 1, 0)
-            ''', (current_user.id, cajero_id, 'PAGO', -monto_pagado, fecha_pago, 
-                  f'Pago registrado - {notas}' if notas else 'Pago registrado'))
+            ''', (current_user.id, cajero_id, 'PAGO', -monto_pagado, fecha_pago, f'Pago registrado - {notas}' if notas else 'Pago registrado'))
             
             conn.commit()
             
-            # Obtener detalles del pago
-            cursor.execute('''
-                SELECT p.*, c.nombre 
-                FROM pagos p
-                JOIN cajeros c ON p.cajero_id = c.id
-                WHERE p.id = ?
-            ''', (pago_id,))
-            
+            cursor.execute('SELECT * FROM pagos WHERE id = ?', (pago_id,))
             pago = cursor.fetchone()
             conn.close()
         
@@ -1336,12 +1132,12 @@ def registrar_pago():
             'data': {
                 'id': pago[0],
                 'cajero_id': pago[1],
-                'cajero_nombre': pago[6],
-                'monto_pagado': pago[3],
-                'total_comisiones': pago[4],
-                'fecha_pago': pago[5],
-                'notas': pago[6],
-                'diferencia': pago[3] - pago[4],
+                'cajero_nombre': cajero[0],
+                'monto_pagado': pago[2],
+                'total_comisiones': pago[3],
+                'fecha_pago': pago[4],
+                'notas': pago[5],
+                'diferencia': pago[2] - pago[3],
                 'cargas_afectadas': cantidad_cargas
             },
             'message': f'Pago registrado exitosamente para {cajero[0]}'
@@ -1350,9 +1146,9 @@ def registrar_pago():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== API EXPORTACIÓN (MODIFICADA PARA MULTI-USUARIO) ==========
+# EXPORTACIÓN - Modificado para filtrar por usuario
 @app.route('/api/exportar/pdf', methods=['GET'])
-@require_auth
+@user_required
 def exportar_pdf():
     try:
         fecha_inicio = request.args.get('fecha_inicio')
@@ -1389,16 +1185,19 @@ def exportar_pdf():
             cursor.execute(query_cargas, params)
             cargas_data = cursor.fetchall()
             
-            # Calcular totales
             total_cargas = len(cargas_data)
             total_monto = sum(row[2] for row in cargas_data)
+            
+            # Obtener datos del usuario para el reporte
+            cursor.execute('SELECT email, nombre FROM usuarios WHERE id = ?', (current_user.id,))
+            usuario_data = cursor.fetchone()
+            usuario_email, usuario_nombre = usuario_data if usuario_data else ('', '')
             
             conn.close()
         
         # Crear PDF
         buffer = io.BytesIO()
         
-        # Configurar documento
         doc = SimpleDocTemplate(
             buffer,
             pagesize=landscape(letter),
@@ -1408,7 +1207,6 @@ def exportar_pdf():
             bottomMargin=72
         )
         
-        # Estilos
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             'CustomTitle',
@@ -1418,12 +1216,10 @@ def exportar_pdf():
             alignment=1
         )
         
-        # Contenido
         elements = []
         
-        # Título
-        title_text = f"Reporte RedCajeros - {tipo_reporte.capitalize()}"
-        title_text += f"\nUsuario: {current_user.nombre} ({current_user.email})"
+        # Título con datos del usuario
+        title_text = f"RedCajeros - Reporte {tipo_reporte.capitalize()}\nUsuario: {usuario_nombre} ({usuario_email})"
         if fecha_inicio and fecha_fin:
             fecha_inicio_formatted = fecha_inicio.split('T')[0] if 'T' in fecha_inicio else fecha_inicio
             fecha_fin_formatted = fecha_fin.split('T')[0] if 'T' in fecha_fin else fecha_fin
@@ -1465,12 +1261,12 @@ def exportar_pdf():
                 fecha_formatted = fecha.split(' ')[0] if ' ' in fecha else fecha
                 
                 data.append([
-                    row[0],  # Cajero
-                    row[1],  # Plataforma
+                    row[0],
+                    row[1],
                     f"${abs(monto):.2f}" + (" (-)" if monto < 0 else ""),
                     fecha_formatted,
-                    row[5],  # Estado
-                    row[6]   # Tipo
+                    row[5],
+                    row[6]
                 ])
             
             table = Table(data, colWidths=[120, 80, 80, 80, 80, 80])
@@ -1492,16 +1288,13 @@ def exportar_pdf():
         else:
             elements.append(Paragraph("No hay datos para mostrar", styles['Normal']))
         
-        # Pie de página
         elements.append(Spacer(1, 30))
         elements.append(Paragraph("© RedCajeros - Sistema de Gestión de Comisiones", styles['Normal']))
         
-        # Construir PDF
         doc.build(elements)
         
-        # Preparar respuesta
         buffer.seek(0)
-        filename = f'reporte_redcajeros_{current_user.id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
+        filename = f'redcajeros_{usuario_email}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'
         
         return send_file(
             buffer,
@@ -1513,12 +1306,12 @@ def exportar_pdf():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== API CONFIGURACIÓN ==========
+# ========== RUTAS DE CONFIGURACIÓN (solo admin) ==========
+
 @app.route('/api/configuracion', methods=['GET'])
 @login_required
 def get_configuracion():
-    # Solo admin puede ver configuración
-    if current_user.email != 'admin@redcajeros.com':
+    if not current_user.is_admin():
         return jsonify({'success': False, 'error': 'No autorizado'}), 403
     
     try:
@@ -1539,12 +1332,44 @@ def get_configuracion():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== RUTAS DE PRUEBA ==========
-@app.route('/api/test')
-def test():
-    return jsonify({'status': 'ok', 'app': 'RedCajeros', 'version': '3.0'})
+@app.route('/api/configuracion', methods=['PUT'])
+@login_required
+def update_configuracion():
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+    
+    try:
+        if request.json_data:
+            data = request.json_data
+        else:
+            data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No se recibieron datos'}), 400
+        
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            for clave, valor in data.items():
+                cursor.execute('''
+                    INSERT OR REPLACE INTO configuraciones (clave, valor)
+                    VALUES (?, ?)
+                ''', (clave, str(valor)))
+            
+            conn.commit()
+            conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Configuración actualizada exitosamente'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ========== MANEJADOR DE ERRORES ==========
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'success': False, 'error': 'Ruta no encontrada'}), 404
@@ -1553,12 +1378,20 @@ def not_found(error):
 def server_error(error):
     return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
 
-# ========== INICIAR SERVIDOR ==========
+# ========== INICIAR APLICACIÓN ==========
+
 if __name__ == '__main__':
+    # Inicializar base de datos
+    init_db()
+    actualizar_bd()
+    
     port = int(os.environ.get("PORT", 5000))
-    print(f"🚀 Iniciando RedCajeros v3.0 (Sistema Multi-Usuario)...")
+    print(f"🚀 Iniciando RedCajeros v3.0...")
     print(f"📁 Base de datos: {DB_PATH}")
-    print(f"👤 Usuario admin: admin@redcajeros.com / admin123")
     print(f"🌐 Puerto: {port}")
     print("\n⚠️  Para detener: Presiona Ctrl+C\n")
+    print("🔑 Credenciales admin por defecto:")
+    print("   Email: admin@redcajeros.com")
+    print("   Contraseña: admin123")
+    print("\n")
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -1260,6 +1260,197 @@ body {
     }
 }
 
+/* Estilos generales actualizados */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --dark-bg: #0f0f0f;
+    --darker-bg: #0a0a0a;
+    --dark-card: #1a1a1a;
+    --dark-border: #2a2a2a;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+}
+
+/* Páginas de autenticación */
+.auth-page {
+    background: var(--darker-bg);
+    min-height: 100vh;
+}
+
+.auth-page .ig-card {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.auth-page .feature-icon {
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+}
+
+.auth-page .feature-item {
+    background: var(--dark-card);
+    padding: 0.5rem;
+    border-radius: 8px;
+    margin-bottom: 0.25rem;
+}
+
+/* Estado de suscripción */
+.subscription-status {
+    border-left: 4px solid var(--success);
+}
+
+.subscription-status.subscription-expired {
+    border-left-color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Estilos para admin */
+.admin-page {
+    background: var(--darker-bg);
+    min-height: 100vh;
+}
+
+.stat-card-admin {
+    background: var(--dark-card);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    border: 1px solid var(--dark-border);
+}
+
+.stat-card-admin .stat-icon {
+    font-size: 2rem;
+    color: var(--info);
+    margin-bottom: 1rem;
+}
+
+.stat-card-admin .stat-number {
+    font-size: 2rem;
+    font-weight: 800;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card-admin .stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.system-info .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--dark-border);
+}
+
+.system-info .info-item:last-child {
+    border-bottom: none;
+}
+
+.system-info .label {
+    color: var(--text-secondary);
+}
+
+.system-info .value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Tablas admin */
+.table-ig th {
+    background: var(--dark-card);
+    border-bottom: 2px solid var(--dark-border);
+}
+
+/* List group personalizado */
+.list-group-item {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.list-group-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.list-group-item.active {
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+}
+
+/* Formularios admin */
+.form-control-ig-sm {
+    background: var(--dark-card);
+    border: 1px solid var(--dark-border);
+    color: var(--text-primary);
+    padding: 0.375rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+}
+
+.form-control-ig-sm:focus {
+    background: var(--dark-card);
+    border-color: var(--info);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nav-stories {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 1rem;
+    }
+    
+    .story-item {
+        flex: 0 0 auto;
+    }
+    
+    .stat-card-admin {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Animaciones */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--dark-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--dark-border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
 /* Dark Mode Overrides */
 [data-bs-theme="dark"] .plan-card {
     background: #1a1a1a;

@@ -14,7 +14,7 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Nuestro CSS -->
+    <!-- Nuestro CSS personalizado -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -27,8 +27,7 @@
             <h4 class="gradient-text mb-3">Cargando...</h4>
             <p class="text-muted">Por favor espere</p>
             <div class="progress mt-3" style="height: 4px; width: 200px;">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                     style="width: 100%"></div>
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
             </div>
         </div>
     </div>
@@ -49,86 +48,129 @@
                 </div>
             </a>
             
+            <!-- User Info -->
+            <div class="d-none d-lg-flex align-items-center me-4">
+                <div class="text-end">
+                    <div class="text-muted small" id="userPlan">Cargando...</div>
+                    <div class="gradient-text fw-bold" id="userName">Usuario</div>
+                </div>
+            </div>
+            
             <!-- User Menu -->
-            <div id="userNav">
-                <!-- Se llena con JavaScript -->
+            <div class="dropdown">
+                <button class="btn btn-ig-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-user-circle me-2"></i> <span id="userEmail">usuario@email.com</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark border-gradient" style="right: 0; left: auto;">
+                    <li><a class="dropdown-item" href="#" onclick="cargarDatosIniciales()"><i class="fas fa-sync-alt me-2"></i> Actualizar</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="verMiPerfil()"><i class="fas fa-user me-2"></i> Mi Perfil</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="verMisSuscripciones()"><i class="fas fa-credit-card me-2"></i> Mi Suscripción</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportarReporte()"><i class="fas fa-file-pdf me-2"></i> Exportar PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mostrarEstadisticas()"><i class="fas fa-chart-bar me-2"></i> Estadísticas</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="verPendientes()"><i class="fas fa-clock me-2"></i> Ver Pendientes</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="mostrarReporteDiario()"><i class="fas fa-calendar-day me-2"></i> Reporte Diario</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mostrarReporteSemanal()"><i class="fas fa-calendar-week me-2"></i> Reporte Semanal</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mostrarReporteMensual()"><i class="fas fa-calendar-alt me-2"></i> Reporte Mensual</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-info" href="#" onclick="diagnostico()"><i class="fas fa-stethoscope me-2"></i> Diagnóstico</a></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión</a></li>
+                </ul>
             </div>
         </div>
     </nav>
+
+    <!-- Quick Navigation Stories -->
+    <div class="container mt-3">
+        <div class="nav-stories">
+            <div class="story-item" onclick="mostrarSeccion('resumen')">
+                <div class="story-circle">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <small>Resumen</small>
+            </div>
+            <div class="story-item" onclick="mostrarModalCajeros()">
+                <div class="story-circle">
+                    <i class="fas fa-users"></i>
+                </div>
+                <small>Cajeros</small>
+            </div>
+            <div class="story-item" onclick="mostrarModalCarga()">
+                <div class="story-circle pulse">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <small>Nueva Carga</small>
+            </div>
+            <div class="story-item" onclick="mostrarSeccion('historial')">
+                <div class="story-circle">
+                    <i class="fas fa-history"></i>
+                </div>
+                <small>Historial</small>
+            </div>
+            <div class="story-item" onclick="mostrarModalReportes()">
+                <div class="story-circle">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <small>Reportes</small>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <div class="container py-4">
         <!-- Alert Container -->
         <div id="alertContainer" class="mb-3"></div>
         
-        <!-- Dashboard Header -->
-        <div class="dashboard-header">
-            <div class="user-welcome">
-                <div class="user-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div>
-                    <h1 class="gradient-text mb-2" id="dashboardTitle">Bienvenido</h1>
-                    <p class="text-muted mb-0">Gestión profesional de tus cajeros y comisiones</p>
-                </div>
-            </div>
-        </div>
-        
         <!-- Subscription Status -->
-        <div class="subscription-status">
-            <div id="subscriptionInfo">
-                <!-- Se llena con JavaScript -->
+        <div class="row mb-3" id="subscriptionStatusContainer">
+            <div class="col-12">
+                <div class="ig-card py-2 subscription-status">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">
+                                <i class="fas fa-crown me-1"></i>
+                                <span id="planInfo">Plan: Cargando...</span>
+                            </small>
+                        </div>
+                        <div>
+                            <small class="text-muted" id="expirationInfo">
+                                <i class="fas fa-calendar me-1"></i>
+                                Expiración: Cargando...
+                            </small>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-ig" onclick="mostrarModalSuscripcion()" id="upgradeButton">
+                                <i class="fas fa-rocket me-1"></i> Actualizar
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <!-- Quick Stats -->
-        <div class="dashboard-stats">
-            <div class="stat-card-user">
-                <div class="stat-label-user">Cajeros Activos</div>
-                <div class="stat-number-user" id="statsCajeros">0</div>
-                <small class="text-muted"><i class="fas fa-user me-1"></i> En tu cuenta</small>
-            </div>
-            
-            <div class="stat-card-user">
-                <div class="stat-label-user">Cargas Totales</div>
-                <div class="stat-number-user" id="statsCargas">0</div>
-                <small class="text-muted"><i class="fas fa-list me-1"></i> Este mes</small>
-            </div>
-            
-            <div class="stat-card-user">
-                <div class="stat-label-user">Total Pendiente</div>
-                <div class="stat-number-user" id="statsPendiente">$0</div>
-                <small class="text-muted"><i class="fas fa-money-bill-wave me-1"></i> Por cobrar</small>
-            </div>
-            
-            <div class="stat-card-user">
-                <div class="stat-label-user">Días Restantes</div>
-                <div class="stat-number-user" id="statsDias">0</div>
-                <small class="text-muted"><i class="fas fa-calendar me-1"></i> De tu plan</small>
+        <!-- Data Status Bar -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="ig-card py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">
+                                <i class="fas fa-database me-1"></i>
+                                <span id="dataStatus">Cargando datos...</span>
+                            </small>
+                        </div>
+                        <div>
+                            <small class="text-muted" id="lastUpdate">
+                                <i class="fas fa-clock me-1"></i>
+                                Última actualización: --
+                            </small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <!-- Quick Actions -->
-        <div class="quick-actions mb-4">
-            <div class="quick-action-btn" onclick="window.location.href='#'">
-                <i class="fas fa-plus-circle"></i>
-                <div>Nuevo Cajero</div>
-            </div>
-            <div class="quick-action-btn" onclick="mostrarModalPago()">
-                <i class="fas fa-credit-card"></i>
-                <div>Renovar Plan</div>
-            </div>
-            <div class="quick-action-btn" onclick="exportarReporte()">
-                <i class="fas fa-file-pdf"></i>
-                <div>Exportar PDF</div>
-            </div>
-            <div class="quick-action-btn" onclick="verPendientes()">
-                <i class="fas fa-clock"></i>
-                <div>Ver Pendientes</div>
-            </div>
-        </div>
-        
-        <!-- Main Dashboard Content (from original index.html) -->
         <div class="row">
             <!-- Left Column - Forms -->
             <div class="col-lg-4">
@@ -356,13 +398,18 @@
         </div>
     </div>
 
+    <!-- Floating Action Button -->
+    <button class="fab" onclick="mostrarModalCarga()" title="Agregar carga rápida">
+        <i class="fas fa-plus"></i>
+    </button>
+
     <!-- Footer -->
     <footer class="py-3 mt-5 border-top border-dark">
         <div class="container text-center">
             <small class="text-muted">
-                <i class="fas fa-code me-1"></i> RedCajeros v3.0 | 
-                <i class="fas fa-user ms-3 me-1"></i> Sistema Multi-Usuario |
-                <i class="fas fa-shield-alt ms-3 me-1"></i> Tus datos están seguros
+                <i class="fas fa-code me-1"></i> RedCajeros | 
+                <i class="fas fa-mobile-alt ms-3 me-1"></i> Cl4udev 2024 |
+                <i class="fas fa-palette ms-3 me-1"></i> Plan: <span id="footerPlan">Cargando...</span>
             </small>
         </div>
     </footer>
@@ -372,62 +419,104 @@
     
     <!-- Nuestro JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
     
+    <!-- Inicialización -->
     <script>
-        // Actualizar estadísticas del dashboard
-        function actualizarEstadisticasDashboard() {
-            // Cajeros activos
-            const statsCajeros = document.getElementById('statsCajeros');
-            if (statsCajeros) {
-                const activos = cajeros.filter(c => c.activo).length;
-                statsCajeros.textContent = activos;
-            }
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar autenticación
+            checkAuth();
             
-            // Cargas totales
-            const statsCargas = document.getElementById('statsCargas');
-            if (statsCargas) {
-                // Cargas de este mes
-                const hoy = new Date();
-                const mesActual = hoy.getMonth();
-                const cargasEsteMes = cargas.filter(c => {
-                    if (!c.fecha) return false;
-                    const fechaCarga = new Date(c.fecha);
-                    return fechaCarga.getMonth() === mesActual;
-                }).length;
-                statsCargas.textContent = cargasEsteMes;
-            }
+            // Cargar datos del usuario
+            cargarDatosUsuario();
             
-            // Total pendiente
-            const statsPendiente = document.getElementById('statsPendiente');
-            if (statsPendiente) {
-                const totalPendiente = resumen.reduce((sum, item) => sum + item.total, 0);
-                statsPendiente.textContent = `$${totalPendiente.toFixed(2)}`;
-            }
+            // Inicializar aplicación
+            inicializarApp();
+        });
+        
+        function inicializarApp() {
+            // Cargar datos iniciales
+            cargarDatosIniciales();
             
-            // Días restantes
-            const statsDias = document.getElementById('statsDias');
-            if (statsDias && usuarioActual && usuarioActual.expiracion) {
-                const expiracion = new Date(usuarioActual.expiracion);
-                const hoy = new Date();
-                const diffTime = expiracion - hoy;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                statsDias.textContent = diffDays > 0 ? diffDays : 0;
-            }
+            // Actualizar UI periódicamente
+            setInterval(actualizarEstadoSuscripcion, 60000); // Cada minuto
         }
         
-        // Sobreescribir actualizarTodaLaUI para incluir estadísticas del dashboard
-        const originalActualizarTodaLaUI = actualizarTodaLaUI;
-        actualizarTodaLaUI = function() {
-            originalActualizarTodaLaUI();
-            actualizarEstadisticasDashboard();
-        };
+        function cargarDatosUsuario() {
+            fetch('/api/auth/me')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const user = data.user;
+                        document.getElementById('userName').textContent = user.nombre;
+                        document.getElementById('userEmail').textContent = user.email;
+                        document.getElementById('userPlan').textContent = `Plan: ${user.plan.toUpperCase()}`;
+                        document.getElementById('footerPlan').textContent = user.plan.toUpperCase();
+                        
+                        // Actualizar estado de suscripción
+                        actualizarEstadoSuscripcion();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cargando datos del usuario:', error);
+                });
+        }
         
-        // Cargar datos al iniciar
-        document.addEventListener('DOMContentLoaded', function() {
-            if (usuarioActual) {
-                cargarDatosIniciales();
-            }
-        });
+        function actualizarEstadoSuscripcion() {
+            fetch('/api/auth/me')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const user = data.user;
+                        
+                        // Actualizar información del plan
+                        let planText = '';
+                        let expirationText = '';
+                        let buttonText = '';
+                        let buttonClass = 'btn-ig';
+                        
+                        if (user.plan === 'trial') {
+                            planText = `Prueba gratuita (${user.plan})`;
+                            // Calcular días restantes
+                            if (user.expiracion) {
+                                const expDate = new Date(user.expiracion);
+                                const hoy = new Date();
+                                const diasRestantes = Math.ceil((expDate - hoy) / (1000 * 60 * 60 * 24));
+                                expirationText = `${diasRestantes} días restantes`;
+                            }
+                            buttonText = 'Actualizar Plan';
+                        } else if (user.plan === 'expired') {
+                            planText = 'Suscripción expirada';
+                            expirationText = '¡Renueva para continuar!';
+                            buttonText = 'Renovar Ahora';
+                            buttonClass = 'btn btn-danger';
+                        } else {
+                            planText = `Plan: ${user.plan.toUpperCase()}`;
+                            if (user.expiracion) {
+                                const expDate = new Date(user.expiracion);
+                                expirationText = `Expira: ${expDate.toLocaleDateString()}`;
+                            }
+                            buttonText = 'Actualizar';
+                        }
+                        
+                        document.getElementById('planInfo').textContent = planText;
+                        document.getElementById('expirationInfo').innerHTML = `<i class="fas fa-calendar me-1"></i> ${expirationText}`;
+                        
+                        const upgradeBtn = document.getElementById('upgradeButton');
+                        upgradeBtn.textContent = buttonText;
+                        upgradeBtn.className = `btn btn-sm ${buttonClass}`;
+                        
+                        // Mostrar/ocultar sección según suscripción
+                        if (user.plan === 'expired') {
+                            document.getElementById('subscriptionStatusContainer').classList.add('subscription-expired');
+                            document.querySelectorAll('.ig-card:not(#formCajero)').forEach(card => {
+                                card.style.opacity = '0.5';
+                                card.style.pointerEvents = 'none';
+                            });
+                        }
+                    }
+                });
+        }
     </script>
 </body>
 </html>
