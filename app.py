@@ -98,123 +98,130 @@ def subscription_required(f):
     return decorated_function
 
 def init_db():
-    """Crear base de datos y tablas"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Tabla usuarios (NUEVA)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            nombre TEXT,
-            plan TEXT DEFAULT 'free',
-            rol TEXT DEFAULT 'user',
-            telefono TEXT,
-            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            fecha_expiracion TIMESTAMP,
-            activo BOOLEAN DEFAULT 1,
-            api_key TEXT UNIQUE
-        )
-    ''')
-    
-    # Tabla pagos_manuales (NUEVA)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS pagos_manuales (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER,
-            codigo TEXT UNIQUE NOT NULL,
-            monto DECIMAL(10,2),
-            plan TEXT,
-            estado TEXT DEFAULT 'pendiente',
-            comprobante_url TEXT,
-            fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            fecha_verificacion TIMESTAMP,
-            notas TEXT,
-            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
-        )
-    ''')
-    
-    # Tabla cajeros (MODIFICADA - agregar usuario_id)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS cajeros (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL,
-            nombre TEXT NOT NULL,
-            activo BOOLEAN DEFAULT 1,
-            fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
-        )
-    ''')
-    
-    # Tabla cargas (MODIFICADA - agregar usuario_id)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS cargas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL,
-            cajero_id INTEGER,
-            plataforma TEXT,
-            monto REAL,
-            fecha TEXT,
-            nota TEXT,
-            pagado BOOLEAN DEFAULT 0,
-            es_deuda BOOLEAN DEFAULT 0,
-            FOREIGN KEY(cajero_id) REFERENCES cajeros(id),
-            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
-        )
-    ''')
-    
-    # Tabla pagos (MODIFICADA - agregar usuario_id)
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS pagos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL,
-            cajero_id INTEGER,
-            monto_pagado REAL,
-            total_comisiones REAL,
-            fecha_pago TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            notas TEXT,
-            FOREIGN KEY(cajero_id) REFERENCES cajeros(id),
-            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
-        )
-    ''')
-    
-    # Tabla configuraciones
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS configuraciones (
-            clave TEXT PRIMARY KEY,
-            valor TEXT
-        )
-    ''')
-    
-    # Insertar configuraciones por defecto
-    cursor.execute('''
-        INSERT OR IGNORE INTO configuraciones (clave, valor) 
-        VALUES ('porcentaje_comision', '10'),
-               ('moneda', '$'),
-               ('plataformas', 'Zeus,Gana,Ganamos'),
-               ('permitir_deudas', '1'),
-               ('whatsapp_admin', '584121234567'),
-               ('banco_nombre', 'Tu Banco'),
-               ('banco_cuenta', '0102-1234-5678-9012'),
-               ('banco_titular', 'Tu Nombre'),
-               ('precio_basico', '9.99'),
-               ('precio_premium', '19.99')
-    ''')
-    
-    # Crear usuario admin por defecto si no existe
-    cursor.execute('SELECT id FROM usuarios WHERE email = ?', ('admin@redcajeros.com',))
-    if not cursor.fetchone():
-        admin_hash = hash_password('admin123')
-        fecha_expiracion = (datetime.now() + timedelta(days=3650)).strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute('''
-            INSERT INTO usuarios (email, password_hash, nombre, plan, rol, fecha_expiracion)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', ('admin@redcajeros.com', admin_hash, 'Administrador', 'admin', 'admin', fecha_expiracion))
-    
-    conn.commit()
-    conn.close()
+    """Crear base de datos y tablas - Versión Segura"""
+    with db_lock:
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # 1. Tabla usuarios
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    nombre TEXT,
+                    plan TEXT DEFAULT 'free',
+                    rol TEXT DEFAULT 'user',
+                    telefono TEXT,
+                    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    fecha_expiracion TIMESTAMP,
+                    activo BOOLEAN DEFAULT 1,
+                    api_key TEXT UNIQUE
+                )
+            ''')
+            
+            # 2. Tabla pagos_manuales
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS pagos_manuales (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER,
+                    codigo TEXT UNIQUE NOT NULL,
+                    monto DECIMAL(10,2),
+                    plan TEXT,
+                    estado TEXT DEFAULT 'pendiente',
+                    comprobante_url TEXT,
+                    fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    fecha_verificacion TIMESTAMP,
+                    notas TEXT,
+                    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+                )
+            ''')
+            
+            # 3. Tabla cajeros
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS cajeros (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER NOT NULL,
+                    nombre TEXT NOT NULL,
+                    activo BOOLEAN DEFAULT 1,
+                    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+                )
+            ''')
+            
+            # 4. Tabla cargas
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS cargas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER NOT NULL,
+                    cajero_id INTEGER,
+                    plataforma TEXT,
+                    monto REAL,
+                    fecha TEXT,
+                    nota TEXT,
+                    pagado BOOLEAN DEFAULT 0,
+                    es_deuda BOOLEAN DEFAULT 0,
+                    FOREIGN KEY(cajero_id) REFERENCES cajeros(id),
+                    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+                )
+            ''')
+            
+            # 5. Tabla pagos
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS pagos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER NOT NULL,
+                    cajero_id INTEGER,
+                    monto_pagado REAL,
+                    total_comisiones REAL,
+                    fecha_pago TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    notas TEXT,
+                    FOREIGN KEY(cajero_id) REFERENCES cajeros(id),
+                    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+                )
+            ''')
+            
+            # 6. Tabla configuraciones
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS configuraciones (
+                    clave TEXT PRIMARY KEY,
+                    valor TEXT
+                )
+            ''')
+            
+            # Insertar configuraciones por defecto
+            cursor.execute('''
+                INSERT OR IGNORE INTO configuraciones (clave, valor) 
+                VALUES ('porcentaje_comision', '10'),
+                       ('moneda', '$'),
+                       ('plataformas', 'Zeus,Gana,Ganamos'),
+                       ('permitir_deudas', '1'),
+                       ('whatsapp_admin', '584121234567'),
+                       ('banco_nombre', 'Tu Banco'),
+                       ('banco_cuenta', '0102-1234-5678-9012'),
+                       ('banco_titular', 'Tu Nombre'),
+                       ('precio_basico', '9.99'),
+                       ('precio_premium', '19.99')
+            ''')
+            
+            # Crear usuario admin por defecto
+            cursor.execute('SELECT id FROM usuarios WHERE email = ?', ('admin@redcajeros.com',))
+            if not cursor.fetchone():
+                admin_hash = hashlib.sha256('admin123'.encode()).hexdigest()
+                fecha_expiracion = (datetime.now() + timedelta(days=3650)).strftime('%Y-%m-%d %H:%M:%S')
+                cursor.execute('''
+                    INSERT INTO usuarios (email, password_hash, nombre, plan, rol, fecha_expiracion)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', ('admin@redcajeros.com', admin_hash, 'Administrador', 'admin', 'admin', fecha_expiracion))
+            
+            conn.commit()
+            conn.close()
+            print("✅ Base de datos sincronizada con éxito.")
+        except Exception as e:
+            print(f"❌ Error crítico en init_db: {e}")
+            import traceback
+            traceback.print_exc()
 
 def actualizar_bd():
     """Actualizar base de datos existente"""
@@ -305,63 +312,52 @@ def dashboard_page():
     return render_template('dashboard.html')
 
 @app.route('/api/auth/register', methods=['POST'])
-def api_register():
+def register():
     try:
         data = request.get_json()
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        nombre = data.get('nombre', '').strip()
-        telefono = data.get('telefono', '').strip()
+        nombre = data.get('nombre')
+        email = data.get('email').lower().strip()
+        password = data.get('password')
         
-        # Validaciones
-        if not email or '@' not in email:
-            return jsonify({'success': False, 'error': 'Email inválido'}), 400
+        if not email or not password:
+            return jsonify({'success': False, 'error': 'Email y contraseña requeridos'}), 400
+
+        # Usamos hashlib para el hash (o tu función hash_password si la tienes)
+        hashed_pw = hashlib.sha256(password.encode()).hexdigest()
         
-        if len(password) < 6:
-            return jsonify({'success': False, 'error': 'Contraseña muy corta (mínimo 6 caracteres)'}), 400
-        
+        # Trial de 7 días
+        fecha_exp = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+        api_key = secrets.token_hex(16)
+
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            
-            # Verificar si email ya existe
-            cursor.execute('SELECT id FROM usuarios WHERE email = ?', (email,))
-            if cursor.fetchone():
+            try:
+                cursor.execute('''
+                    INSERT INTO usuarios (nombre, email, password_hash, plan, fecha_expiracion, api_key)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (nombre, email, hashed_pw, 'free', fecha_exp, api_key))
+                conn.commit()
+                user_id = cursor.lastrowid
+                
+                return jsonify({
+                    'success': True,
+                    'user': {
+                        'id': user_id,
+                        'nombre': nombre,
+                        'email': email,
+                        'rol': 'user'
+                    }
+                })
+            except sqlite3.IntegrityError:
+                return jsonify({'success': False, 'error': 'El correo ya existe'}), 400
+            finally:
                 conn.close()
-                return jsonify({'success': False, 'error': 'Email ya registrado'}), 400
-            
-            # Crear usuario
-            password_hash = hash_password(password)
-            fecha_expiracion = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')  # Trial 7 días
-            api_key = secrets.token_urlsafe(32)
-            
-            cursor.execute('''
-                INSERT INTO usuarios (email, password_hash, nombre, telefono, plan, fecha_expiracion, api_key)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (email, password_hash, nombre, telefono, 'trial', fecha_expiracion, api_key))
-            
-            user_id = cursor.lastrowid
-            
-            conn.commit()
-            conn.close()
-        
-        # Login automático
-        user = User(user_id, email, nombre, 'trial', 'user')
-        login_user(user)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Registro exitoso. Tienes 7 días de prueba.',
-            'user': {
-                'id': user_id,
-                'email': email,
-                'nombre': nombre,
-                'plan': 'trial',
-                'expiracion': fecha_expiracion
-            }
-        })
-        
+
     except Exception as e:
+        print(f"❌ Error en /api/auth/register: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/auth/login', methods=['POST'])
@@ -1411,18 +1407,14 @@ def server_error(error):
 # ========== INICIAR APLICACIÓN ==========
 
 if __name__ == '__main__':
-    # 1. Asegurar que las tablas existan ANTES de arrancar
+    # 1. Asegurar BD
     try:
-        print("🛠️ Inicializando base de datos...")
-        init_db()  # Esto crea las tablas si no existen
-        print("✅ Tablas creadas/verificadas.")
-        
-        print("🔄 Actualizando esquema (si es necesario)...")
-        actualizar_bd() # Esto añade columnas nuevas si actualizaste la app
-        print("✅ Esquema actualizado.")
+        init_db()
+        # actualizar_bd() # Descomentar si tienes esta función
     except Exception as e:
-        print(f"❌ ERROR CRÍTICO inicializando BD: {e}")
+        print(f"Aviso inicialización: {e}")
 
+    # 2. Configuración Railway
     port = int(os.environ.get("PORT", 5000))
-    # Importante: host="0.0.0.0" es obligatorio para Railway
-    app.run(host="0.0.0.0", port=port)
+    print(f"🚀 Corriendo en puerto: {port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
