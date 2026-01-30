@@ -423,12 +423,19 @@
     
     <!-- Inicialización -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verificar autenticación
-            const user = checkAuth();
-            if (!user) return;
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 1. Verificar autenticación (ESPERA a que termine)
+            const user = await checkAuth();
             
-            // Inicializar aplicación
+            if (!user) {
+                // Si no hay usuario, ya redirigió a login
+                return;
+            }
+            
+            // 2. Cargar datos del usuario
+            await cargarDatosUsuario();
+            
+            // 3. Inicializar aplicación
             inicializarApp();
         });
         

@@ -136,7 +136,7 @@ async function logout() {
 
 // ========== FUNCIONES DE USUARIO ==========
 
-function checkAuth() {
+async function checkAuth() {
     const userData = localStorage.getItem('redcajeros_user');
     
     if (!userData) {
@@ -145,20 +145,39 @@ function checkAuth() {
             !window.location.pathname.includes('/register')) {
             window.location.href = '/login';
         }
-        return false;
+        return null;
     }
     
     try {
         currentUser = JSON.parse(userData);
-        return currentUser;
+        
+        // VERIFICAR CON EL SERVIDOR que el usuario aún es válido
+        try {
+            const response = await fetch('/api/auth/me');
+            const data = await response.json();
+            
+            if (data.success) {
+                // Usuario válido, actualizar datos
+                localStorage.setItem('redcajeros_user', JSON.stringify(data.user));
+                currentUser = data.user;
+                return currentUser;
+            } else {
+                // Token inválido, forzar logout
+                localStorage.removeItem('redcajeros_user');
+                window.location.href = '/login';
+                return null;
+            }
+        } catch (error) {
+            // Si hay error de conexión, usar datos locales
+            console.warn('No se pudo verificar con servidor, usando datos locales');
+            return currentUser;
+        }
+        
     } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('redcajeros_user');
-        if (!window.location.pathname.includes('/login') && 
-            !window.location.pathname.includes('/register')) {
-            window.location.href = '/login';
-        }
-        return false;
+        window.location.href = '/login';
+        return null;
     }
 }
 

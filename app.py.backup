@@ -465,6 +465,7 @@ def verify_auth():
             'rol': current_user.rol
         }
     })
+
 # ========== SISTEMA DE PAGOS MANUALES ==========
 
 @app.route('/api/pagos/solicitar', methods=['POST'])
