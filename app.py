@@ -18,7 +18,24 @@ import hashlib
 import secrets
 from functools import wraps
 
-# Flask-Login
+# ========== PARCHES PARA COMPATIBILIDAD ==========
+import werkzeug
+# Solucionar problema de url_decode en Flask-Login
+try:
+    from werkzeug.urls import url_decode
+    werkzeug.urls.url_decode = url_decode
+except ImportError:
+    # Para versiones nuevas de Werkzeug
+    from werkzeug.datastructures import MultiDict
+    from urllib.parse import parse_qs
+    
+    def url_decode(query_string, charset='utf-8'):
+        result = parse_qs(query_string, keep_blank_values=True)
+        return MultiDict((k, v[0]) for k, v in result.items())
+    
+    werkzeug.urls.url_decode = url_decode
+
+# Ahora importar Flask-Login (debe funcionar)
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
 app = Flask(__name__)
