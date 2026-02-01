@@ -24,7 +24,7 @@ CORS(app, supports_credentials=True)
 # Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'index'
+login_manager.login_view = 'login_page'
 
 class User(UserMixin):
     def __init__(self, id, email, nombre, plan='free', rol='user'):
@@ -214,6 +214,11 @@ def handle_json():
 # ========== RUTAS PRINCIPALES ==========
 @app.route('/')
 def index():
+    return render_template('index.html')
+
+@app.route('/login')
+def login_page():
+    """Página de login (misma que index). Evita 404 cuando el frontend redirige a /login."""
     return render_template('index.html')
 
 @app.route('/dashboard')
