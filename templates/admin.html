@@ -507,7 +507,7 @@
         });
         
         function checkAdminAuth() {
-            fetch('/api/auth/me')
+            fetch('/api/auth/me', { credentials: 'include' })
                 .then(response => response.json())
                 .then(data => {
                     if (!data.success || data.user.rol !== 'admin') {

@@ -20,6 +20,11 @@ import tempfile
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'paybook-secret-key-cambiar-en-produccion')
 CORS(app, supports_credentials=True)
+# Cookie de sesión: que se envíe en peticiones same-site (evita problemas en Railway/proxy)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('HTTPS'):
+    app.config['SESSION_COOKIE_SECURE'] = True
 
 # Login Manager
 login_manager = LoginManager()
@@ -299,6 +304,22 @@ def api_logout():
     """Cerrar sesión."""
     logout_user()
     return jsonify({'success': True, 'message': 'Sesión cerrada'})
+
+@app.route('/api/auth/me', methods=['GET'])
+def api_auth_me():
+    """Usuario actual (mismo contrato que espera auth.js: success + user). Evita loop login↔dashboard."""
+    if current_user.is_authenticated:
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': current_user.id,
+                'email': current_user.email,
+                'nombre': current_user.nombre,
+                'plan': current_user.plan,
+                'rol': current_user.rol
+            }
+        })
+    return jsonify({'success': False}), 401
 
 # ========== API CAJEROS ==========
 @app.route('/api/cajeros', methods=['GET'])

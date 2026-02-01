@@ -126,13 +126,13 @@
                 </div>
                 <div class="ig-card-body">
                     <div class="mb-3">
-                        <label class="form-label text-muted">Email</label>
+                        <label class="form-label text-muted" for="loginEmail">Email</label>
                         <input type="email" id="loginEmail" class="form-control form-control-ig" 
                                placeholder="tu@email.com" autocomplete="off">
                     </div>
                     
                     <div class="mb-3 password-input">
-                        <label class="form-label text-muted">Contraseña</label>
+                        <label class="form-label text-muted" for="loginPassword">Contraseña</label>
                         <input type="password" id="loginPassword" class="form-control form-control-ig" 
                                placeholder="••••••••">
                         <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">
@@ -161,26 +161,26 @@
                 </div>
                 <div class="ig-card-body">
                     <div class="mb-3">
-                        <label class="form-label text-muted">Nombre Completo</label>
+                        <label class="form-label text-muted" for="registerNombre">Nombre Completo</label>
                         <input type="text" id="registerNombre" class="form-control form-control-ig" 
                                placeholder="Juan Pérez" autocomplete="off">
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label text-muted">Email</label>
+                        <label class="form-label text-muted" for="registerEmail">Email</label>
                         <input type="email" id="registerEmail" class="form-control form-control-ig" 
                                placeholder="tu@email.com" autocomplete="off">
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label text-muted">Teléfono (WhatsApp)</label>
+                        <label class="form-label text-muted" for="registerTelefono">Teléfono (WhatsApp)</label>
                         <input type="text" id="registerTelefono" class="form-control form-control-ig" 
                                placeholder="0412-1234567" autocomplete="off">
                         <small class="text-muted">Para contactarte sobre pagos</small>
                     </div>
                     
                     <div class="mb-3 password-input">
-                        <label class="form-label text-muted">Contraseña</label>
+                        <label class="form-label text-muted" for="registerPassword">Contraseña</label>
                         <input type="password" id="registerPassword" class="form-control form-control-ig" 
                                placeholder="•••••••• (mínimo 6 caracteres)">
                         <button type="button" class="password-toggle" onclick="togglePassword('registerPassword')">
@@ -189,7 +189,7 @@
                     </div>
                     
                     <div class="mb-3 password-input">
-                        <label class="form-label text-muted">Confirmar Contraseña</label>
+                        <label class="form-label text-muted" for="registerConfirm">Confirmar Contraseña</label>
                         <input type="password" id="registerConfirm" class="form-control form-control-ig" 
                                placeholder="••••••••">
                         <button type="button" class="password-toggle" onclick="togglePassword('registerConfirm')">
@@ -224,7 +224,7 @@
                 </div>
                 <div class="ig-card-body">
                     <div class="mb-3">
-                        <label class="form-label text-muted">Email registrado</label>
+                        <label class="form-label text-muted" for="forgotEmail">Email registrado</label>
                         <input type="email" id="forgotEmail" class="form-control form-control-ig" 
                                placeholder="tu@email.com" autocomplete="off">
                     </div>
@@ -344,9 +344,13 @@
             document.getElementById('registerSwitch').classList.add('d-none');
         }
         
-        // Verificar si ya está logueado
+        // Verificar si ya está logueado (no redirigir si venimos del dashboard por sesión inválida = evita loop)
         async function checkAuth() {
             try {
+                if (sessionStorage.getItem('auth_redirect_from_dashboard') === '1') {
+                    sessionStorage.removeItem('auth_redirect_from_dashboard');
+                    return;
+                }
                 const response = await fetch('/api/user/info', { credentials: 'include' });
                 if (response.ok) {
                     const data = await response.json();

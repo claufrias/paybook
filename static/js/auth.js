@@ -154,7 +154,7 @@ async function checkAuth() {
         
         // VERIFICAR CON EL SERVIDOR que el usuario aún es válido
         try {
-            const response = await fetch('/api/auth/me');
+            const response = await fetch('/api/auth/me', { credentials: 'include' });
             const data = await response.json();
             
             if (data.success) {
@@ -163,8 +163,9 @@ async function checkAuth() {
                 currentUser = data.user;
                 return currentUser;
             } else {
-                // Token inválido, forzar logout
+                // Token inválido, forzar logout (marcar origen para evitar loop login↔dashboard)
                 localStorage.removeItem('redcajeros_user');
+                sessionStorage.setItem('auth_redirect_from_dashboard', '1');
                 window.location.href = '/login';
                 return null;
             }
@@ -177,6 +178,7 @@ async function checkAuth() {
     } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('redcajeros_user');
+        sessionStorage.setItem('auth_redirect_from_dashboard', '1');
         window.location.href = '/login';
         return null;
     }
@@ -185,7 +187,7 @@ async function checkAuth() {
 // AGREGAR esta nueva función para verificar autenticación asíncrona
 async function verifyAuth() {
     try {
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('/api/auth/me', { credentials: 'include' });
         const data = await response.json();
         
         if (data.success) {
@@ -194,10 +196,11 @@ async function verifyAuth() {
             currentUser = data.user;
             return data.user;
         } else {
-            // Token inválido, forzar logout
+            // Token inválido, forzar logout (marcar para evitar loop)
             localStorage.removeItem('redcajeros_user');
             if (!window.location.pathname.includes('/login') && 
                 !window.location.pathname.includes('/register')) {
+                sessionStorage.setItem('auth_redirect_from_dashboard', '1');
                 window.location.href = '/login';
             }
             return null;
@@ -211,7 +214,7 @@ async function verifyAuth() {
 
 async function cargarDatosUsuario() {
     try {
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('/api/auth/me', { credentials: 'include' });
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
