@@ -149,6 +149,11 @@ def handle_json():
 def index():
     return render_template('index.html')
 
+@app.route('/dashboard')
+def dashboard():
+    """Misma app que index; evita loop login→dashboard cuando Railway redirige aquí."""
+    return render_template('index.html')
+
 @app.route('/favicon.ico')
 def favicon():
     return '', 404
