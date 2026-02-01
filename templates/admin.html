@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedCajeros - Panel de Administración</title>
+    
+    <!-- Bootstrap 5 Dark -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.1.3/dist/css/bootstrap-night.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Nuestro CSS personalizado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="admin-page">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="story-circle mb-4 pulse" style="width: 80px; height: 80px; border: none;">
+                <i class="fas fa-shield-alt fa-2x"></i>
+            </div>
+            <h4 class="gradient-text mb-3">Cargando...</h4>
+            <div class="progress mt-3" style="height: 4px; width: 200px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-dark" style="background: #1a1a2e;">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-shield-alt me-2"></i>
+                <span class="gradient-text">RedCajeros Admin</span>
+            </a>
+            <div class="d-flex">
+                <a href="/dashboard" class="btn btn-ig-outline me-2">
+                    <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+                </a>
+                <button class="btn btn-ig" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-2"></i> Salir
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Admin Dashboard -->
+    <div class="container-fluid py-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 mb-4">
+                <div class="ig-card sticky-top" style="top: 20px;">
+                    <div class="ig-card-header">
+                        <h6 class="gradient-text mb-0">
+                            <i class="fas fa-tachometer-alt me-2"></i>Panel de Control
+                        </h6>
+                    </div>
+                    <div class="ig-card-body p-0">
+                        <div class="list-group list-group-flush">
+                            <a href="#" class="list-group-item list-group-item-action active" onclick="mostrarSeccionAdmin('dashboard')">
+                                <i class="fas fa-home me-2"></i> Dashboard
+                            </a>
+                            <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('pagos')">
+                                <i class="fas fa-money-bill-wave me-2"></i> Pagos Pendientes
+                                <span class="badge bg-danger float-end" id="pagosPendientesCount">0</span>
+                            </a>
+                            <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('usuarios')">
+                                <i class="fas fa-users me-2"></i> Usuarios
+                                <span class="badge bg-info float-end" id="totalUsuariosCount">0</span>
+                            </a>
+                            <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('configuracion')">
+                                <i class="fas fa-cog me-2"></i> Configuración
+                            </a>
+                            <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('estadisticas')">
+                                <i class="fas fa-chart-bar me-2"></i> Estadísticas
+                            </a>
+                            <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('backup')">
+                                <i class="fas fa-database me-2"></i> Backup
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10">
+                <!-- Alert Container -->
+                <div id="adminAlertContainer" class="mb-3"></div>
+
+                <!-- Admin Dashboard -->
+                <div id="adminDashboard" class="admin-section">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="ig-card">
+                                <div class="ig-card-header">
+                                    <h4 class="gradient-text mb-0">
+                                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard Administrativo
+                                    </h4>
+                                </div>
+                                <div class="ig-card-body">
+                                    <div class="row">
+                                        <div class="col-md-3 mb-3">
+                                            <div class="stat-card-admin">
+                                                <div class="stat-icon">
+                                                    <i class="fas fa-users"></i>
+                                                </div>
+                                                <div class="stat-number" id="adminTotalUsuarios">0</div>
+                                                <div class="stat-label">Usuarios Totales</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <div class="stat-card-admin">
+                                                <div class="stat-icon">
+                                                    <i class="fas fa-money-bill-wave"></i>
+                                                </div>
+                                                <div class="stat-number" id="adminPagosHoy">$0</div>
+                                                <div class="stat-label">Ingresos Hoy</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <div class="stat-card-admin">
+                                                <div class="stat-icon">
+                                                    <i class="fas fa-clock"></i>
+                                                </div>
+                                                <div class="stat-number" id="adminPagosPendientes">0</div>
+                                                <div class="stat-label">Pagos Pendientes</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <div class="stat-card-admin">
+                                                <div class="stat-icon">
+                                                    <i class="fas fa-chart-line"></i>
+                                                </div>
+                                                <div class="stat-number" id="adminIngresosMes">$0</div>
+                                                <div class="stat-label">Ingresos del Mes</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="ig-card">
+                                <div class="ig-card-header">
+                                    <h6 class="gradient-text mb-0">Acciones Rápidas</h6>
+                                </div>
+                                <div class="ig-card-body">
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-ig" onclick="mostrarSeccionAdmin('pagos')">
+                                            <i class="fas fa-check-circle me-2"></i> Verificar Pagos
+                                        </button>
+                                        <button class="btn btn-ig-outline" onclick="crearUsuarioAdmin()">
+                                            <i class="fas fa-user-plus me-2"></i> Crear Usuario
+                                        </button>
+                                        <button class="btn btn-ig-outline" onclick="generarReporteAdmin()">
+                                            <i class="fas fa-file-pdf me-2"></i> Generar Reporte
+                                        </button>
+                                        <button class="btn btn-ig-outline" onclick="enviarRecordatorios()">
+                                            <i class="fas fa-bell me-2"></i> Enviar Recordatorios
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="ig-card">
+                                <div class="ig-card-header">
+                                    <h6 class="gradient-text mb-0">Sistema</h6>
+                                </div>
+                                <div class="ig-card-body">
+                                    <div class="system-info">
+                                        <div class="info-item">
+                                            <span class="label">Estado:</span>
+                                            <span class="value text-success">
+                                                <i class="fas fa-circle"></i> Online
+                                            </span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Usuarios Activos:</span>
+                                            <span class="value" id="adminUsuariosActivos">0</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Base de Datos:</span>
+                                            <span class="value" id="adminDBSize">0 MB</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <span class="label">Último Backup:</span>
+                                            <span class="value" id="adminLastBackup">--</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagos Pendientes -->
+                <div id="adminPagos" class="admin-section" style="display: none;">
+                    <div class="ig-card">
+                        <div class="ig-card-header d-flex justify-content-between align-items-center">
+                            <h4 class="gradient-text mb-0">
+                                <i class="fas fa-money-bill-wave me-2"></i>Pagos Pendientes
+                            </h4>
+                            <button class="btn btn-sm btn-ig" onclick="cargarPagosPendientes()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div class="ig-card-body">
+                            <div class="table-responsive">
+                                <table class="table table-ig table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Código</th>
+                                            <th>Usuario</th>
+                                            <th>Monto</th>
+                                            <th>Plan</th>
+                                            <th>Fecha Solicitud</th>
+                                            <th>WhatsApp</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminPagosTable">
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-5">
+                                                <div class="mb-3">
+                                                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                                </div>
+                                                <h6>Cargando pagos pendientes...</h6>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Usuarios -->
+                <div id="adminUsuarios" class="admin-section" style="display: none;">
+                    <div class="ig-card">
+                        <div class="ig-card-header d-flex justify-content-between align-items-center">
+                            <h4 class="gradient-text mb-0">
+                                <i class="fas fa-users me-2"></i>Gestión de Usuarios
+                            </h4>
+                            <div>
+                                <input type="text" id="buscarUsuario" class="form-control form-control-ig-sm d-inline-block me-2" 
+                                       placeholder="Buscar usuario..." style="width: 200px;">
+                                <button class="btn btn-sm btn-ig" onclick="cargarUsuarios()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="ig-card-body">
+                            <div class="table-responsive">
+                                <table class="table table-ig table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Email</th>
+                                            <th>Nombre</th>
+                                            <th>Plan</th>
+                                            <th>Expiración</th>
+                                            <th>Registro</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminUsuariosTable">
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted py-5">
+                                                <div class="mb-3">
+                                                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                                </div>
+                                                <h6>Cargando usuarios...</h6>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración -->
+                <div id="adminConfiguracion" class="admin-section" style="display: none;">
+                    <div class="ig-card">
+                        <div class="ig-card-header">
+                            <h4 class="gradient-text mb-0">
+                                <i class="fas fa-cog me-2"></i>Configuración del Sistema
+                            </h4>
+                        </div>
+                        <div class="ig-card-body">
+                            <form id="configForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">WhatsApp Admin</label>
+                                        <input type="text" class="form-control form-control-ig" 
+                                               id="configWhatsapp" placeholder="584121234567">
+                                        <small class="text-muted">Número para recibir comprobantes</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Nombre del Banco</label>
+                                        <input type="text" class="form-control form-control-ig" 
+                                               id="configBancoNombre" placeholder="Tu Banco">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Número de Cuenta</label>
+                                        <input type="text" class="form-control form-control-ig" 
+                                               id="configBancoCuenta" placeholder="0102-1234-5678-9012">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Titular de la Cuenta</label>
+                                        <input type="text" class="form-control form-control-ig" 
+                                               id="configBancoTitular" placeholder="Tu Nombre">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Precio Plan Básico ($)</label>
+                                        <input type="number" step="0.01" class="form-control form-control-ig" 
+                                               id="configPrecioBasico" value="9.99">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Precio Plan Premium ($)</label>
+                                        <input type="number" step="0.01" class="form-control form-control-ig" 
+                                               id="configPrecioPremium" value="19.99">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label class="form-label">Mensaje de Bienvenida</label>
+                                        <textarea class="form-control form-control-ig" id="configMensajeBienvenida" 
+                                                  rows="3" placeholder="Mensaje que reciben los nuevos usuarios..."></textarea>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-ig" onclick="guardarConfiguracion()">
+                                    <i class="fas fa-save me-2"></i> Guardar Configuración
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estadísticas -->
+                <div id="adminEstadisticas" class="admin-section" style="display: none;">
+                    <div class="ig-card">
+                        <div class="ig-card-header">
+                            <h4 class="gradient-text mb-0">
+                                <i class="fas fa-chart-bar me-2"></i>Estadísticas del Sistema
+                            </h4>
+                        </div>
+                        <div class="ig-card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <canvas id="usuariosChart" width="400" height="200"></canvas>
+                                </div>
+                                <div class="col-md-6">
+                                    <canvas id="ingresosChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-md-12">
+                                    <h6 class="gradient-text">Resumen Financiero</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-ig table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Período</th>
+                                                    <th>Usuarios Nuevos</th>
+                                                    <th>Ingresos</th>
+                                                    <th>Pagos Pendientes</th>
+                                                    <th>Tasa de Conversión</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="estadisticasTable">
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted">Cargando estadísticas...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backup -->
+                <div id="adminBackup" class="admin-section" style="display: none;">
+                    <div class="ig-card">
+                        <div class="ig-card-header">
+                            <h4 class="gradient-text mb-0">
+                                <i class="fas fa-database me-2"></i>Backup y Mantenimiento
+                            </h4>
+                        </div>
+                        <div class="ig-card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <div class="ig-card">
+                                        <div class="ig-card-header">
+                                            <h6 class="gradient-text mb-0">Backup de Base de Datos</h6>
+                                        </div>
+                                        <div class="ig-card-body">
+                                            <p class="text-muted">Crea una copia de seguridad de toda la base de datos.</p>
+                                            <button class="btn btn-ig w-100 mb-2" onclick="crearBackup()">
+                                                <i class="fas fa-download me-2"></i> Crear Backup
+                                            </button>
+                                            <button class="btn btn-ig-outline w-100" onclick="restaurarBackup()">
+                                                <i class="fas fa-upload me-2"></i> Restaurar Backup
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-4">
+                                    <div class="ig-card">
+                                        <div class="ig-card-header">
+                                            <h6 class="gradient-text mb-0">Mantenimiento</h6>
+                                        </div>
+                                        <div class="ig-card-body">
+                                            <p class="text-muted">Opciones de mantenimiento del sistema.</p>
+                                            <button class="btn btn-ig-outline w-100 mb-2" onclick="optimizarBD()">
+                                                <i class="fas fa-broom me-2"></i> Optimizar Base de Datos
+                                            </button>
+                                            <button class="btn btn-ig-outline w-100 mb-2" onclick="limpiarCache()">
+                                                <i class="fas fa-trash me-2"></i> Limpiar Cache
+                                            </button>
+                                            <button class="btn btn-danger w-100" onclick="reiniciarSistema()">
+                                                <i class="fas fa-redo me-2"></i> Reiniciar Sistema
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="ig-card">
+                                        <div class="ig-card-header">
+                                            <h6 class="gradient-text mb-0">Historial de Backups</h6>
+                                        </div>
+                                        <div class="ig-card-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-ig table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Fecha</th>
+                                                            <th>Tamaño</th>
+                                                            <th>Tipo</th>
+                                                            <th>Estado</th>
+                                                            <th>Acciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="backupHistoryTable">
+                                                        <tr>
+                                                            <td colspan="5" class="text-center text-muted">No hay backups creados</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Nuestro JavaScript -->
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+    
+    <script>
+        // Inicializar panel admin
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar que sea admin
+            checkAdminAuth();
+            
+            // Cargar estadísticas iniciales
+            cargarEstadisticasAdmin();
+            cargarPagosPendientes();
+            cargarUsuarios();
+            cargarConfiguracion();
+            
+            // Configurar búsqueda de usuarios
+            document.getElementById('buscarUsuario').addEventListener('input', function(e) {
+                buscarUsuarios(e.target.value);
+            });
+        });
+        
+        function checkAdminAuth() {
+            fetch('/api/auth/me')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success || data.user.rol !== 'admin') {
+                        window.location.href = '/dashboard';
+                    }
+                })
+                .catch(() => {
+                    window.location.href = '/login';
+                });
+        }
+        
+        function mostrarSeccionAdmin(seccion) {
+            // Ocultar todas las secciones
+            document.querySelectorAll('.admin-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Mostrar la sección seleccionada
+            document.getElementById('admin' + seccion.charAt(0).toUpperCase() + seccion.slice(1)).style.display = 'block';
+            
+            // Actualizar menú activo
+            document.querySelectorAll('.list-group-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[onclick="mostrarSeccionAdmin('${seccion}')"]`).classList.add('active');
+            
+            // Recargar datos si es necesario
+            if (seccion === 'pagos') {
+                cargarPagosPendientes();
+            } else if (seccion === 'usuarios') {
+                cargarUsuarios();
+            } else if (seccion === 'estadisticas') {
+                cargarEstadisticasAdmin();
+            }
+        }
+        
+        function mostrarAlertaAdmin(titulo, mensaje, tipo = 'info') {
+            const tipos = {
+                'success': 'alert-ig-success',
+                'error': 'alert-ig-error',
+                'warning': 'alert-ig-warning',
+                'info': 'alert-ig-info'
+            };
+            
+            const alerta = document.createElement('div');
+            alerta.className = `alert-ig ${tipos[tipo]} fade-in`;
+            alerta.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-circle' : tipo === 'warning' ? 'exclamation-triangle' : 'info-circle'} fa-lg me-3"></i>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1 fw-bold">${titulo}</h6>
+                        <small>${mensaje}</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-2" onclick="this.parentElement.parentElement.remove()"></button>
+                </div>
+            `;
+            
+            const container = document.getElementById('adminAlertContainer');
+            if (container) {
+                container.prepend(alerta);
+                
+                // Auto-remove after 5 seconds
+                setTimeout(() => {
+                    if (alerta.parentNode) {
+                        alerta.remove();
+                    }
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

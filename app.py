@@ -905,6 +905,70 @@ def exportar_excel():
             output.seek(0)
             
             conn.close()
+        
+        # Crear PDF
+        buffer = io.BytesIO()
+        
+        # Configurar documento
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(letter),
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+        
+        # Estilos
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Centered
+        )
+        
+        # Contenido
+        elements = []
+        
+        # Título
+        title_text = f"Reporte Paybook - {tipo_reporte.capitalize()}"
+        if fecha_inicio and fecha_fin:
+            fecha_inicio_formatted = fecha_inicio.split('T')[0] if 'T' in fecha_inicio else fecha_inicio
+            fecha_fin_formatted = fecha_fin.split('T')[0] if 'T' in fecha_fin else fecha_fin
+            title_text += f"\nDel {fecha_inicio_formatted} al {fecha_fin_formatted}"
+        else:
+            title_text += f"\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        elements.append(Paragraph(title_text, title_style))
+        elements.append(Spacer(1, 20))
+        
+        # Totales - FORMATO CORRECTO
+        totales_data = [
+            ['Total Cargas:', str(total_cargas)],
+            ['Monto Total:', f"${abs(total_monto):.2f}" + (" (-)" if total_monto < 0 else "")],
+            ['Generado:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')]
+        ]
+        
+        totales_table = Table(totales_data, colWidths=[200, 200])
+        totales_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#2c3e50')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+        ]))
+        elements.append(totales_table)
+        elements.append(Spacer(1, 20))
+        
+        # Tabla de datos
+        if cargas_data:
+            # Encabezados
+            headers = ['Cajero', 'Plataforma', 'Monto', 'Fecha', 'Estado', 'Tipo']
+            data = [headers]
             
             # Crear respuesta
             filename = f'reporte_comisiones_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
