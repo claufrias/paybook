@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, jsonify, send_file
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 import sqlite3
 import os
 import json
+import hashlib
 from datetime import datetime, timedelta
 import traceback
 from threading import Lock
@@ -16,7 +18,46 @@ from reportlab.lib.units import inch
 import tempfile
 
 app = Flask(__name__)
-CORS(app)
+app.secret_key = os.environ.get('SECRET_KEY', 'paybook-secret-key-cambiar-en-produccion')
+CORS(app, supports_credentials=True)
+
+# Login Manager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'index'
+
+class User(UserMixin):
+    def __init__(self, id, email, nombre, plan='free', rol='user'):
+        self.id = id
+        self.email = email
+        self.nombre = nombre
+        self.plan = plan
+        self.rol = rol
+
+    def is_admin(self):
+        return self.rol == 'admin'
+
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, email, nombre, plan, rol FROM usuarios
+                WHERE id = ? AND activo = 1
+            ''', (user_id,))
+            row = cursor.fetchone()
+            conn.close()
+        if row:
+            return User(row[0], row[1], row[2] or '', row[3] or 'free', row[4] or 'user')
+    except Exception:
+        pass
+    return None
+
+def hash_password(password):
+    salt = "paybook_salt_2024"
+    return hashlib.sha256((password + salt).encode()).hexdigest()
 
 # Ruta de la base de datos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +70,23 @@ def init_db():
     """Crear base de datos y tablas"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
+
+    # Tabla usuarios (login)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            nombre TEXT,
+            plan TEXT DEFAULT 'free',
+            rol TEXT DEFAULT 'user',
+            telefono TEXT,
+            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            fecha_expiracion TIMESTAMP,
+            activo INTEGER DEFAULT 1
+        )
+    ''')
+
     # Tabla cajeros
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS cajeros (
@@ -123,7 +180,17 @@ def actualizar_bd():
         cursor.execute("SELECT clave FROM configuraciones WHERE clave = 'permitir_deudas'")
         if not cursor.fetchone():
             cursor.execute("INSERT INTO configuraciones (clave, valor) VALUES ('permitir_deudas', '1')")
-        
+
+        # Usuario admin por defecto si no hay usuarios (email: admin@paybook.local, contraseña: Admin123)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usuarios'")
+        if cursor.fetchone():
+            cursor.execute("SELECT COUNT(*) FROM usuarios")
+            if cursor.fetchone()[0] == 0:
+                cursor.execute('''
+                    INSERT INTO usuarios (email, password_hash, nombre, plan, rol, activo)
+                    VALUES (?, ?, ?, ?, ?, 1)
+                ''', ('admin@paybook.local', hash_password('Admin123'), 'Administrador', 'admin', 'admin'))
+
         conn.commit()
         conn.close()
         print("✅ Base de datos lista")
@@ -151,8 +218,13 @@ def index():
 
 @app.route('/dashboard')
 def dashboard():
-    """Misma app que index; evita loop login→dashboard cuando Railway redirige aquí."""
-    return render_template('index.html')
+    """Dashboard para usuarios normales."""
+    return render_template('dashboard.html')
+
+@app.route('/admin')
+def admin():
+    """Panel de administración."""
+    return render_template('admin.html')
 
 @app.route('/favicon.ico')
 def favicon():
@@ -160,11 +232,68 @@ def favicon():
 
 @app.route('/api/user/info', methods=['GET'])
 def user_info():
-    """Info del usuario actual. Sin auth real: siempre authenticated=false."""
-    return jsonify({
-        'authenticated': False,
-        'user': None
-    })
+    """Info del usuario actual (sesión)."""
+    if current_user.is_authenticated:
+        return jsonify({
+            'authenticated': True,
+            'user': {
+                'id': current_user.id,
+                'email': current_user.email,
+                'nombre': current_user.nombre,
+                'plan': current_user.plan,
+                'rol': current_user.rol
+            }
+        })
+    return jsonify({'authenticated': False, 'user': None})
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """Login real: verifica email/password en BD y crea sesión."""
+    try:
+        data = request.get_json(silent=True) or {}
+        email = (data.get('email') or '').strip().lower()
+        password = (data.get('password') or '').strip()
+        if not email or not password:
+            return jsonify({'success': False, 'error': 'Email y contraseña son obligatorios'}), 400
+
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT id, email, password_hash, nombre, plan, rol FROM usuarios WHERE email = ? AND activo = 1',
+                (email,)
+            )
+            row = cursor.fetchone()
+            conn.close()
+
+        if not row:
+            return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
+
+        user_id, user_email, password_hash, nombre, plan, rol = row
+        if hash_password(password) != password_hash:
+            return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
+
+        user = User(user_id, user_email, nombre or '', plan or 'free', rol or 'user')
+        login_user(user, remember=True)
+
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'nombre': user.nombre,
+                'plan': user.plan,
+                'rol': user.rol
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+@app.route('/api/auth/logout', methods=['GET', 'POST'])
+def api_logout():
+    """Cerrar sesión."""
+    logout_user()
+    return jsonify({'success': True, 'message': 'Sesión cerrada'})
 
 # ========== API CAJEROS ==========
 @app.route('/api/cajeros', methods=['GET'])

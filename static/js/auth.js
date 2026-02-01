@@ -23,7 +23,8 @@ async function login(event = null) {
         const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
+            credentials: 'include'
         });
         
         const data = await response.json();
@@ -752,11 +753,16 @@ function mostrarModalSuscripcion() {
 // ========== FUNCIONES UTILITARIAS ==========
 
 function mostrarAlertaAuth(titulo, mensaje, tipo = 'info') {
-    const container = document.getElementById('authAlertContainer');
+    let container = document.getElementById('authAlertContainer');
     if (!container) {
-        // Si no hay contenedor específico, usar el global
-        mostrarAlerta(titulo, mensaje, tipo);
-        return;
+        container = document.createElement('div');
+        container.id = 'authAlertContainer';
+        const card = document.querySelector('.auth-card');
+        if (card) {
+            card.insertBefore(container, card.firstChild);
+        } else {
+            document.body.insertBefore(container, document.body.firstChild);
+        }
     }
     
     const tipos = {
