@@ -158,6 +158,14 @@ def dashboard():
 def favicon():
     return '', 404
 
+@app.route('/api/user/info', methods=['GET'])
+def user_info():
+    """Info del usuario actual. Sin auth real: siempre authenticated=false."""
+    return jsonify({
+        'authenticated': False,
+        'user': None
+    })
+
 # ========== API CAJEROS ==========
 @app.route('/api/cajeros', methods=['GET'])
 def get_cajeros():
