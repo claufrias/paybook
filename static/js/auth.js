@@ -139,8 +139,21 @@ async function logout() {
 
 async function checkAuth() {
     const userData = localStorage.getItem('redcajeros_user');
-    
+
     if (!userData) {
+        try {
+            const response = await fetch('/api/auth/me', { credentials: 'include' });
+            const data = await response.json();
+
+            if (data.success) {
+                localStorage.setItem('redcajeros_user', JSON.stringify(data.user));
+                currentUser = data.user;
+                return currentUser;
+            }
+        } catch (error) {
+            console.warn('No se pudo verificar con servidor, usando datos locales');
+        }
+
         // No hay usuario, redirigir a login
         if (!window.location.pathname.includes('/login') && 
             !window.location.pathname.includes('/register')) {
