@@ -973,13 +973,13 @@ async function guardarPerfil() {
 // ========== INICIALIZACIÓN ==========
 
 // Verificar autenticación al cargar
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // SOLO verificar autenticación en páginas específicas
     const path = window.location.pathname;
     
     if (path === '/login' || path === '/register') {
         // En páginas de auth, si hay usuario, redirigir
-        const user = checkAuth();
+        const user = await checkAuth();
         if (user) {
             window.location.href = user.rol === 'admin' ? '/admin' : '/dashboard';
         }
