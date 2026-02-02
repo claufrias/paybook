@@ -84,6 +84,25 @@ function actualizarContadorUsuarios(count) {
     }
 }
 
+function actualizarEstadisticasUsuarios(usuarios) {
+    if (!Array.isArray(usuarios)) return;
+
+    const total = usuarios.length;
+    const activos = usuarios.filter(usuario => usuario.activo).length;
+
+    const totalEl = document.getElementById('adminTotalUsuarios');
+    if (totalEl) {
+        totalEl.textContent = total;
+    }
+
+    const activosEl = document.getElementById('adminUsuariosActivos');
+    if (activosEl) {
+        activosEl.textContent = activos;
+    }
+
+    actualizarContadorUsuarios(total);
+}
+
 // ========== GESTIÓN DE PAGOS PENDIENTES ==========
 
 async function cargarPagosPendientes() {
