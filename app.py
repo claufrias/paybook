@@ -299,6 +299,57 @@ def api_login():
     except Exception as e:
         return jsonify({'success': False, 'error': 'Error interno'}), 500
 
+@app.route('/api/auth/register', methods=['POST'])
+def api_register():
+    """Registro de usuario: crea cuenta y abre sesión."""
+    try:
+        data = request.get_json(silent=True) or {}
+        nombre = (data.get('nombre') or '').strip()
+        email = (data.get('email') or '').strip().lower()
+        password = (data.get('password') or '').strip()
+        telefono = (data.get('telefono') or '').strip()
+
+        if not nombre or not email or not password:
+            return jsonify({'success': False, 'error': 'Nombre, email y contraseña son obligatorios'}), 400
+
+        if len(password) < 6:
+            return jsonify({'success': False, 'error': 'La contraseña debe tener al menos 6 caracteres'}), 400
+
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM usuarios WHERE email = ?', (email,))
+            if cursor.fetchone():
+                conn.close()
+                return jsonify({'success': False, 'error': 'El email ya está registrado'}), 400
+
+            cursor.execute(
+                '''
+                INSERT INTO usuarios (email, password_hash, nombre, plan, rol, telefono, activo)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
+                ''',
+                (email, hash_password(password), nombre, 'free', 'user', telefono)
+            )
+            user_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+
+        user = User(user_id, email, nombre, 'free', 'user')
+        login_user(user, remember=True)
+
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'nombre': user.nombre,
+                'plan': user.plan,
+                'rol': user.rol
+            }
+        })
+    except Exception:
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
 @app.route('/api/auth/logout', methods=['GET', 'POST'])
 def api_logout():
     """Cerrar sesión."""
