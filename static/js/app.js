@@ -333,6 +333,9 @@ function mostrarModalCajeros() {
         const input = document.getElementById('nombreCajero');
         if (input) input.focus();
     }
+
+    const input = document.getElementById('nombreCajero');
+    if (input) input.focus();
 }
 
 function mostrarModalCarga() {
@@ -420,12 +423,8 @@ function mostrarModalCarga() {
     modalContainer.querySelector('#modalCarga').addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modalContainer);
     });
-    const form = document.getElementById('formCarga');
-    if (form) {
-        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        const input = document.getElementById('montoCarga');
-        if (input) input.focus();
-    }
+    const input = document.getElementById('montoCarga');
+    if (input) input.focus();
 }
 
 function mostrarModalReportes() {
