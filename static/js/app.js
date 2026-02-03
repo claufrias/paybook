@@ -237,6 +237,214 @@ function handleKeyboardShortcuts(event) {
     }
 }
 
+function mostrarSeccion(seccion) {
+    const secciones = {
+        resumen: ['seccionResumen', 'seccionTablaResumen'],
+        historial: ['seccionHistorial'],
+        todo: ['seccionResumen', 'seccionTablaResumen', 'seccionHistorial']
+    };
+
+    const idsVisibles = secciones[seccion] || secciones.todo;
+    secciones.todo.forEach(id => {
+        const element = document.getElementById(id);
+        if (!element) return;
+        element.style.display = idsVisibles.includes(id) ? '' : 'none';
+    });
+
+    const firstId = idsVisibles[0];
+    if (firstId) {
+        const target = document.getElementById(firstId);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+}
+
+function mostrarModalCajeros() {
+    mostrarSeccion('todo');
+    const abrirModal = () => {
+        const modalHtml = `
+            <div class="modal fade" id="modalCajeros" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content ig-card">
+                        <div class="modal-header ig-card-header">
+                            <h5 class="modal-title gradient-text">
+                                <i class="fas fa-users me-2"></i>Gestión de Cajeros
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body ig-card-body">
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-8">
+                                    <input type="text" id="modalNombreCajero" class="form-control form-control-ig"
+                                           placeholder="Nombre del cajero">
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-ig w-100" onclick="agregarCajeroDesdeModal()">
+                                        <i class="fas fa-plus me-2"></i>Agregar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-ig table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Cajero</th>
+                                            <th>Estado</th>
+                                            <th>Creación</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="modalCajerosBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHtml;
+        document.body.appendChild(modalContainer);
+
+        renderCajerosModal();
+
+        const modal = new bootstrap.Modal(document.getElementById('modalCajeros'));
+        modal.show();
+
+        modalContainer.querySelector('#modalCajeros').addEventListener('hidden.bs.modal', function () {
+            document.body.removeChild(modalContainer);
+        });
+    };
+
+    if (!cajeros.length) {
+        cargarCajeros().then(data => {
+            cajeros = data || [];
+            abrirModal();
+        });
+    } else {
+        abrirModal();
+    }
+}
+
+function mostrarModalCarga() {
+    mostrarSeccion('todo');
+    if (!cajeros.length) {
+        cargarCajeros()
+            .then(data => {
+                cajeros = data || [];
+                mostrarModalCarga();
+            })
+            .catch(() => {
+                mostrarAlerta('Error', 'No se pudieron cargar los cajeros', 'error');
+            });
+        return;
+    }
+
+    const cajerosActivos = cajeros.filter(c => c.activo);
+    const options = cajerosActivos.map(cajero => `
+        <option value="${cajero.id}">${cajero.nombre}</option>
+    `).join('');
+
+    const modalHtml = `
+        <div class="modal fade" id="modalCarga" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content ig-card">
+                    <div class="modal-header ig-card-header">
+                        <h5 class="modal-title gradient-text">
+                            <i class="fas fa-plus-circle me-2"></i>Nueva Carga
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body ig-card-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Cajero</label>
+                            <select id="modalSelectCajero" class="form-select form-select-ig">
+                                <option value="">Seleccione un cajero</option>
+                                ${options}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Plataforma</label>
+                            <select id="modalPlataforma" class="form-select form-select-ig">
+                                <option value="Zeus">Zeus</option>
+                                <option value="Gana">Gana</option>
+                                <option value="Ganamos">Ganamos</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Monto</label>
+                            <input type="number" id="modalMonto" class="form-control form-control-ig" min="0" step="0.01">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Nota</label>
+                            <input type="text" id="modalNota" class="form-control form-control-ig" placeholder="Opcional">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-ig" onclick="agregarCargaDesdeModal()">
+                            <i class="fas fa-save me-2"></i>Guardar Carga
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer);
+
+    const modal = new bootstrap.Modal(document.getElementById('modalCarga'));
+    modal.show();
+
+    modalContainer.querySelector('#modalCarga').addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modalContainer);
+    });
+}
+
+function mostrarModalReportes() {
+    mostrarSeccion('todo');
+    const modalHtml = `
+        <div class="modal fade" id="modalReportes" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content ig-card">
+                    <div class="modal-header ig-card-header">
+                        <h5 class="modal-title gradient-text">
+                            <i class="fas fa-file-alt me-2"></i>Reportes
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body ig-card-body">
+                        <button class="btn btn-ig w-100 mb-2" onclick="mostrarReporteDiario()">
+                            <i class="fas fa-calendar-day me-2"></i>Reporte Diario
+                        </button>
+                        <button class="btn btn-ig w-100 mb-2" onclick="mostrarReporteSemanal()">
+                            <i class="fas fa-calendar-week me-2"></i>Reporte Semanal
+                        </button>
+                        <button class="btn btn-ig w-100" onclick="mostrarReporteMensual()">
+                            <i class="fas fa-calendar-alt me-2"></i>Reporte Mensual
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer);
+
+    const modal = new bootstrap.Modal(document.getElementById('modalReportes'));
+    modal.show();
+
+    modalContainer.querySelector('#modalReportes').addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modalContainer);
+    });
+}
+
 // ========== ALERT SYSTEM ==========
 
 function mostrarAlerta(titulo, mensaje, tipo = 'info') {
@@ -491,6 +699,95 @@ async function cargarCajeros() {
     }
 }
 
+function renderCajerosModal() {
+    const tbody = document.getElementById('modalCajerosBody');
+    if (!tbody) return;
+
+    if (!cajeros.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center text-muted">Sin cajeros registrados</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = cajeros.map(cajero => `
+        <tr>
+            <td>${cajero.nombre}</td>
+            <td>${cajero.activo ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'}</td>
+            <td>${cajero.fecha_creacion || '--'}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" onclick="editarCajero(${cajero.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="eliminarCajero(${cajero.id})">
+                        <i class="fas fa-user-slash"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="eliminarCajeroCompleto(${cajero.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function agregarCajeroDesdeModal() {
+    const input = document.getElementById('modalNombreCajero');
+    if (!input) return;
+    const nombre = input.value.trim();
+    if (!nombre) {
+        mostrarAlerta('Campo vacío', 'Ingrese un nombre para el cajero', 'warning');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/api/cajeros`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre })
+        });
+        const data = await response.json();
+        if (data.success) {
+            input.value = '';
+            cajeros = await cargarCajeros();
+            actualizarSelectCajeros();
+            renderCajerosModal();
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo agregar el cajero', 'error');
+        }
+    } catch (error) {
+        console.error('Error agregando cajero:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    }
+}
+
+async function eliminarCajeroCompleto(id) {
+    const cajero = cajeros.find(c => c.id === id);
+    if (!cajero) return;
+    if (!confirm(`¿Eliminar completamente el cajero "${cajero.nombre}"?`)) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/api/cajeros/${id}/eliminar`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        if (data.success) {
+            cajeros = await cargarCajeros();
+            actualizarSelectCajeros();
+            renderCajerosModal();
+            mostrarAlerta('Eliminado', data.message || 'Cajero eliminado', 'success');
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo eliminar el cajero', 'error');
+        }
+    } catch (error) {
+        console.error('Error eliminando cajero:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    }
+}
+
 function actualizarSelectCajeros(seleccionarId = null) {
     const select = document.getElementById('selectCajero');
     if (!select) return;
@@ -662,6 +959,7 @@ async function editarCajero(id) {
             actualizarSelectCajeros(id);
             actualizarTablaResumen();
             calcularEstadisticas();
+            renderCajerosModal();
             
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo actualizar el cajero', 'error');
@@ -706,6 +1004,7 @@ async function eliminarCajero(id) {
             actualizarSelectCajeros();
             actualizarTablaResumen();
             calcularEstadisticas();
+            renderCajerosModal();
             
         } else {
             mostrarAlerta('Error', data.error || 'No se pudo procesar el cajero', 'error');
@@ -1331,7 +1630,7 @@ function seleccionarPlan(plan) {
     if (container && nombre && precio) {
         container.style.display = 'block';
         nombre.textContent = plan === 'basic' ? 'Básico' : 'Premium';
-        precio.textContent = plan === 'basic' ? '9.99' : '19.99';
+        precio.textContent = plan === 'basic' ? '10000' : '20000';
     }
 }
 
@@ -1836,6 +2135,93 @@ async function exportarReporte() {
     }
 }
 
+async function agregarCargaDesdeModal() {
+    const cajeroId = document.getElementById('modalSelectCajero')?.value;
+    const plataforma = document.getElementById('modalPlataforma')?.value;
+    const monto = document.getElementById('modalMonto')?.value;
+    const nota = document.getElementById('modalNota')?.value || '';
+
+    if (!cajeroId) {
+        mostrarAlerta('Seleccione cajero', 'Debe seleccionar un cajero de la lista', 'warning');
+        return;
+    }
+    if (!monto || Number(monto) <= 0) {
+        mostrarAlerta('Monto inválido', 'Ingrese un monto válido', 'warning');
+        return;
+    }
+
+    mostrarLoading(true);
+    try {
+        const response = await fetch(`${API_BASE}/api/cargas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cajero_id: parseInt(cajeroId, 10),
+                plataforma,
+                monto: parseFloat(monto),
+                nota
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            mostrarAlerta('¡Éxito!', 'Carga registrada correctamente', 'success');
+            await cargarDatosIniciales();
+            const modalEl = document.getElementById('modalCarga');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+        } else {
+            mostrarAlerta('Error', data.error || 'No se pudo registrar la carga', 'error');
+        }
+    } catch (error) {
+        console.error('Error registrando carga:', error);
+        mostrarAlerta('Error', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+async function descargarReporte(tipo) {
+    const url = `${API_BASE}/api/exportar/pdf?tipo_reporte=${encodeURIComponent(tipo)}`;
+    mostrarLoading(true);
+    try {
+        const response = await fetch(url);
+        if (response.ok) {
+            const blob = await response.blob();
+            const urlBlob = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = urlBlob;
+            link.download = `reporte_${tipo}_${new Date().toISOString().slice(0,10)}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(urlBlob);
+            mostrarAlerta('Exportado', `Reporte ${tipo} descargado correctamente`, 'success');
+        } else {
+            const data = await response.json();
+            mostrarAlerta('Error', data.error || 'No se pudo exportar', 'error');
+        }
+    } catch (error) {
+        console.error('Error descargando reporte:', error);
+        mostrarAlerta('Error', 'No se pudo generar el reporte', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
+}
+
+function mostrarReporteDiario() {
+    descargarReporte('diario');
+}
+
+function mostrarReporteSemanal() {
+    descargarReporte('semanal');
+}
+
+function mostrarReporteMensual() {
+    descargarReporte('mensual');
+}
+
 // ========== FUNCIONES GLOBALES ==========
 window.actualizarTodo = cargarDatosIniciales;
 window.agregarCajero = agregarCajero;
@@ -1915,6 +2301,16 @@ window.seleccionarPlan = seleccionarPlan;
 window.solicitarPago = solicitarPago;
 window.verificarEstadoPago = verificarEstadoPago;
 window.copiarCodigo = copiarCodigo;
+window.mostrarSeccion = mostrarSeccion;
+window.mostrarModalCajeros = mostrarModalCajeros;
+window.mostrarModalCarga = mostrarModalCarga;
+window.mostrarModalReportes = mostrarModalReportes;
+window.agregarCajeroDesdeModal = agregarCajeroDesdeModal;
+window.eliminarCajeroCompleto = eliminarCajeroCompleto;
+window.agregarCargaDesdeModal = agregarCargaDesdeModal;
+window.mostrarReporteDiario = mostrarReporteDiario;
+window.mostrarReporteSemanal = mostrarReporteSemanal;
+window.mostrarReporteMensual = mostrarReporteMensual;
 
 // Auto-hide loading after 20 seconds
 setTimeout(() => {
