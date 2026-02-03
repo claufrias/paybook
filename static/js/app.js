@@ -1331,7 +1331,7 @@ function seleccionarPlan(plan) {
     if (container && nombre && precio) {
         container.style.display = 'block';
         nombre.textContent = plan === 'basic' ? 'Básico' : 'Premium';
-        precio.textContent = plan === 'basic' ? '9.99' : '19.99';
+        precio.textContent = plan === 'basic' ? '10000' : '20000';
     }
 }
 

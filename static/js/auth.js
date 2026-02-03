@@ -651,6 +651,25 @@ function mostrarModalMisSolicitudes(solicitudes) {
 }
 
 function mostrarModalSuscripcion() {
+    const userData = localStorage.getItem('redcajeros_user');
+    let currentPlan = '';
+    if (userData) {
+        try {
+            currentPlan = JSON.parse(userData).plan || '';
+        } catch (error) {
+            currentPlan = '';
+        }
+    }
+
+    const showUpgradeOnly = currentPlan === 'basic';
+    const premiumLabel = showUpgradeOnly
+        ? 'Actualizar a Premium (solo diferencia)'
+        : 'Seleccionar Premium';
+    const premiumPrice = showUpgradeOnly ? '$10000' : '$20000';
+    const upgradeNote = showUpgradeOnly
+        ? '<small class="text-info d-block mt-2">Pagas solo la diferencia: $10000</small>'
+        : '';
+
     const modalHtml = `
         <div class="modal fade" id="modalSuscripcion" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -663,11 +682,12 @@ function mostrarModalSuscripcion() {
                     </div>
                     <div class="modal-body ig-card-body">
                         <div class="row">
+                            ${showUpgradeOnly ? '' : `
                             <div class="col-md-6 mb-3">
                                 <div class="plan-card">
                                     <div class="plan-header bg-primary">
                                         <h4 class="mb-0">Básico</h4>
-                                        <div class="plan-price">$9.99<span class="plan-period">/mes</span></div>
+                                        <div class="plan-price">$10000<span class="plan-period">/mes</span></div>
                                     </div>
                                     <div class="plan-body">
                                         <ul class="plan-features">
@@ -683,11 +703,12 @@ function mostrarModalSuscripcion() {
                                     </div>
                                 </div>
                             </div>
+                            `}
                             <div class="col-md-6 mb-3">
                                 <div class="plan-card">
                                     <div class="plan-header bg-gradient">
                                         <h4 class="mb-0">Premium</h4>
-                                        <div class="plan-price">$19.99<span class="plan-period">/mes</span></div>
+                                        <div class="plan-price">${premiumPrice}<span class="plan-period">/mes</span></div>
                                         <span class="plan-badge">Recomendado</span>
                                     </div>
                                     <div class="plan-body">
@@ -699,8 +720,9 @@ function mostrarModalSuscripcion() {
                                             <li><i class="fas fa-check text-success me-2"></i> Soporte prioritario</li>
                                             <li><i class="fas fa-check text-success me-2"></i> Backup automático</li>
                                         </ul>
+                                        ${upgradeNote}
                                         <button class="btn btn-gradient w-100 mt-3" onclick="solicitarPagoManual('premium')">
-                                            <i class="fas fa-rocket me-2"></i> Seleccionar Premium
+                                            <i class="fas fa-rocket me-2"></i> ${premiumLabel}
                                         </button>
                                     </div>
                                 </div>

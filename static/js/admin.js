@@ -885,8 +885,8 @@ async function cargarConfiguracion() {
             document.getElementById('configBancoNombre').value = config.banco_nombre || '';
             document.getElementById('configBancoCuenta').value = config.banco_cuenta || '';
             document.getElementById('configBancoTitular').value = config.banco_titular || '';
-            document.getElementById('configPrecioBasico').value = config.precio_basico || '9.99';
-            document.getElementById('configPrecioPremium').value = config.precio_premium || '19.99';
+            document.getElementById('configPrecioBasico').value = config.precio_basico || '10000';
+            document.getElementById('configPrecioPremium').value = config.precio_premium || '20000';
             document.getElementById('configMensajeBienvenida').value = config.mensaje_bienvenida || '';
         }
     } catch (error) {

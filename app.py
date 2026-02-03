@@ -174,7 +174,9 @@ def init_db():
         VALUES ('porcentaje_comision', '10'),
                ('moneda', '$'),
                ('plataformas', 'Zeus,Gana,Ganamos'),
-               ('permitir_deudas', '1')
+               ('permitir_deudas', '1'),
+               ('precio_basico', '10000'),
+               ('precio_premium', '20000')
     ''')
     
     conn.commit()
@@ -435,6 +437,27 @@ def solicitar_pago_manual():
             cursor = conn.cursor()
             cursor.execute('SELECT plan, fecha_expiracion FROM usuarios WHERE id = ?', (current_user.id,))
             user_row = cursor.fetchone()
+            user_plan = None
+            exp_date = None
+            if user_row:
+                user_plan, fecha_expiracion = user_row
+                if fecha_expiracion:
+                    try:
+                        exp_date = datetime.strptime(fecha_expiracion, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        exp_date = None
+
+            tiene_suscripcion_activa = exp_date and exp_date > datetime.now()
+            es_upgrade_premium = user_plan == 'basic' and plan == 'premium' and tiene_suscripcion_activa
+            if tiene_suscripcion_activa and not es_upgrade_premium:
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'error': 'Ya tienes una suscripción activa. No puedes solicitar otro pago.'
+                }), 400
+
+            precio_basico = float(get_config_value(cursor, 'precio_basico', '10000'))
+            precio_premium = float(get_config_value(cursor, 'precio_premium', '20000'))
             if user_row:
                 user_plan, fecha_expiracion = user_row
                 if user_plan != 'expired' and fecha_expiracion:
@@ -457,6 +480,8 @@ def solicitar_pago_manual():
             whatsapp_admin = get_config_value(cursor, 'whatsapp_admin', '584121234567')
 
             monto = precio_premium if plan == 'premium' else precio_basico
+            if es_upgrade_premium:
+                monto = max(precio_premium - precio_basico, 0)
 
             codigo = None
             for _ in range(5):
