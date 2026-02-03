@@ -4,6 +4,8 @@
 let adminStats = null;
 let pagosPendientes = [];
 let usuariosList = [];
+let usuariosChartInstance = null;
+let ingresosChartInstance = null;
 
 // ========== FUNCIONES DEL DASHBOARD ==========
 
@@ -25,6 +27,8 @@ async function cargarEstadisticasAdmin() {
         if (estadisticasData.success) {
             adminStats = estadisticasData.data;
             actualizarDashboardAdmin();
+            actualizarTablaEstadisticas(adminStats);
+            inicializarGraficos(adminStats);
         }
         
         if (pagosData.success) {
@@ -82,6 +86,59 @@ function actualizarContadorUsuarios(count) {
     if (badge) {
         badge.textContent = count;
     }
+}
+
+function actualizarEstadisticasUsuarios(usuarios) {
+    if (!Array.isArray(usuarios)) return;
+
+    const total = usuarios.length;
+    const activos = usuarios.filter(usuario => usuario.activo).length;
+
+    const totalEl = document.getElementById('adminTotalUsuarios');
+    if (totalEl) {
+        totalEl.textContent = total;
+    }
+
+    const activosEl = document.getElementById('adminUsuariosActivos');
+    if (activosEl) {
+        activosEl.textContent = activos;
+    }
+
+    actualizarContadorUsuarios(total);
+}
+
+function actualizarTablaEstadisticas(stats) {
+    const tbody = document.getElementById('estadisticasTable');
+    if (!tbody) return;
+    if (!stats) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">Sin datos disponibles</td>
+            </tr>
+        `;
+        return;
+    }
+
+    const totalUsuarios = stats.total_usuarios || 0;
+    const usuariosActivos = stats.usuarios_activos || 0;
+    const conversion = totalUsuarios ? Math.round((usuariosActivos / totalUsuarios) * 100) : 0;
+
+    tbody.innerHTML = `
+        <tr>
+            <td>Hoy</td>
+            <td>${usuariosActivos}</td>
+            <td>$${stats.ingresos_hoy || 0}</td>
+            <td>${stats.pagos_pendientes || 0}</td>
+            <td>${conversion}%</td>
+        </tr>
+        <tr>
+            <td>Mes</td>
+            <td>${totalUsuarios}</td>
+            <td>$${stats.ingresos_mes || 0}</td>
+            <td>${stats.pagos_pendientes || 0}</td>
+            <td>${conversion}%</td>
+        </tr>
+    `;
 }
 
 // ========== GESTIÓN DE PAGOS PENDIENTES ==========
@@ -827,8 +884,8 @@ async function cargarConfiguracion() {
             document.getElementById('configBancoNombre').value = config.banco_nombre || '';
             document.getElementById('configBancoCuenta').value = config.banco_cuenta || '';
             document.getElementById('configBancoTitular').value = config.banco_titular || '';
-            document.getElementById('configPrecioBasico').value = config.precio_basico || '9.99';
-            document.getElementById('configPrecioPremium').value = config.precio_premium || '19.99';
+            document.getElementById('configPrecioBasico').value = config.precio_basico || '10000';
+            document.getElementById('configPrecioPremium').value = config.precio_premium || '20000';
             document.getElementById('configMensajeBienvenida').value = config.mensaje_bienvenida || '';
         }
     } catch (error) {
@@ -1092,18 +1149,32 @@ function reiniciarSistema() {
 // ========== INICIALIZACIÓN ==========
 
 // Configurar Chart.js si está disponible
-function inicializarGraficos() {
+function inicializarGraficos(stats) {
     const usuariosChart = document.getElementById('usuariosChart');
     const ingresosChart = document.getElementById('ingresosChart');
-    
-    if (usuariosChart && window.Chart) {
-        new Chart(usuariosChart, {
+
+    if (!stats || !window.Chart) {
+        return;
+    }
+
+    if (usuariosChartInstance) {
+        usuariosChartInstance.destroy();
+        usuariosChartInstance = null;
+    }
+
+    if (ingresosChartInstance) {
+        ingresosChartInstance.destroy();
+        ingresosChartInstance = null;
+    }
+
+    if (usuariosChart) {
+        usuariosChartInstance = new Chart(usuariosChart, {
             type: 'line',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
                 datasets: [{
                     label: 'Usuarios Nuevos',
-                    data: [12, 19, 3, 5, 2, 3],
+                    data: Array(6).fill(stats.usuarios_activos || 0),
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     tension: 0.4
@@ -1120,14 +1191,14 @@ function inicializarGraficos() {
         });
     }
     
-    if (ingresosChart && window.Chart) {
-        new Chart(ingresosChart, {
+    if (ingresosChart) {
+        ingresosChartInstance = new Chart(ingresosChart, {
             type: 'bar',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
                 datasets: [{
                     label: 'Ingresos ($)',
-                    data: [120, 190, 30, 50, 20, 30],
+                    data: Array(6).fill(stats.ingresos_mes || 0),
                     backgroundColor: 'rgba(16, 185, 129, 0.5)',
                     borderColor: 'rgb(16, 185, 129)',
                     borderWidth: 1
