@@ -63,6 +63,10 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark border-gradient" style="right: 0; left: auto;">
                     <li><a class="dropdown-item" href="#" onclick="cargarDatosIniciales()"><i class="fas fa-sync-alt me-2"></i> Actualizar</a></li>
+                    <li id="adminPanelLink" class="d-none">
+                        <a class="dropdown-item" href="/admin"><i class="fas fa-tools me-2"></i> Panel Admin</a>
+                    </li>
+                    <li id="adminPanelDivider" class="d-none"><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" onclick="verMiPerfil()"><i class="fas fa-user me-2"></i> Mi Perfil</a></li>
                     <li><a class="dropdown-item" href="#" onclick="verMisSuscripciones()"><i class="fas fa-credit-card me-2"></i> Mi Suscripción</a></li>
                     <li><hr class="dropdown-divider"></li>
@@ -469,6 +473,18 @@
                 document.getElementById('userEmail').textContent = user.email;
                 document.getElementById('userPlan').textContent = `Plan: ${user.plan.toUpperCase()}`;
                 document.getElementById('footerPlan').textContent = user.plan.toUpperCase();
+
+                const adminLink = document.getElementById('adminPanelLink');
+                const adminDivider = document.getElementById('adminPanelDivider');
+                if (adminLink && adminDivider) {
+                    if (user.rol === 'admin') {
+                        adminLink.classList.remove('d-none');
+                        adminDivider.classList.remove('d-none');
+                    } else {
+                        adminLink.classList.add('d-none');
+                        adminDivider.classList.add('d-none');
+                    }
+                }
                 
                 // Actualizar estado de suscripción
                 actualizarEstadoSuscripcion();
