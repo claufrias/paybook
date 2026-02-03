@@ -4,6 +4,8 @@
 let adminStats = null;
 let pagosPendientes = [];
 let usuariosList = [];
+let usuariosChartInstance = null;
+let ingresosChartInstance = null;
 
 // ========== FUNCIONES DEL DASHBOARD ==========
 
@@ -26,6 +28,7 @@ async function cargarEstadisticasAdmin() {
             adminStats = estadisticasData.data;
             actualizarDashboardAdmin();
             actualizarTablaEstadisticas(adminStats);
+            inicializarGraficos(adminStats);
             inicializarGraficos();
         }
         
@@ -1147,18 +1150,32 @@ function reiniciarSistema() {
 // ========== INICIALIZACIÓN ==========
 
 // Configurar Chart.js si está disponible
-function inicializarGraficos() {
+function inicializarGraficos(stats) {
     const usuariosChart = document.getElementById('usuariosChart');
     const ingresosChart = document.getElementById('ingresosChart');
-    
-    if (usuariosChart && window.Chart) {
-        new Chart(usuariosChart, {
+
+    if (!stats || !window.Chart) {
+        return;
+    }
+
+    if (usuariosChartInstance) {
+        usuariosChartInstance.destroy();
+        usuariosChartInstance = null;
+    }
+
+    if (ingresosChartInstance) {
+        ingresosChartInstance.destroy();
+        ingresosChartInstance = null;
+    }
+
+    if (usuariosChart) {
+        usuariosChartInstance = new Chart(usuariosChart, {
             type: 'line',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
                 datasets: [{
                     label: 'Usuarios Nuevos',
-                    data: [12, 19, 3, 5, 2, 3],
+                    data: Array(6).fill(stats.usuarios_activos || 0),
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     tension: 0.4
@@ -1175,14 +1192,14 @@ function inicializarGraficos() {
         });
     }
     
-    if (ingresosChart && window.Chart) {
-        new Chart(ingresosChart, {
+    if (ingresosChart) {
+        ingresosChartInstance = new Chart(ingresosChart, {
             type: 'bar',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
                 datasets: [{
                     label: 'Ingresos ($)',
-                    data: [120, 190, 30, 50, 20, 30],
+                    data: Array(6).fill(stats.ingresos_mes || 0),
                     backgroundColor: 'rgba(16, 185, 129, 0.5)',
                     borderColor: 'rgb(16, 185, 129)',
                     borderWidth: 1
