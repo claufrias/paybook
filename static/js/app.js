@@ -237,7 +237,7 @@ function handleKeyboardShortcuts(event) {
     }
 }
 
-function mostrarSeccion(seccion) {
+function mostrarSeccion(seccion, { scroll = true } = {}) {
     const secciones = {
         resumen: ['seccionResumen', 'seccionTablaResumen'],
         historial: ['seccionHistorial'],
@@ -251,17 +251,18 @@ function mostrarSeccion(seccion) {
         element.style.display = idsVisibles.includes(id) ? '' : 'none';
     });
 
-    const firstId = idsVisibles[0];
-    if (firstId) {
-        const target = document.getElementById(firstId);
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (scroll) {
+        const firstId = idsVisibles[0];
+        if (firstId) {
+            const target = document.getElementById(firstId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
     }
 }
 
 function mostrarModalCajeros() {
-    mostrarSeccion('todo');
     const abrirModal = () => {
         const modalHtml = `
             <div class="modal fade" id="modalCajeros" tabindex="-1">
@@ -325,20 +326,22 @@ function mostrarModalCajeros() {
         });
     } else {
         abrirModal();
-    const form = document.getElementById('formCajero');
-    if (form) {
-        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        const input = document.getElementById('nombreCajero');
-        if (input) input.focus();
     }
+
+    const input = document.getElementById('modalNombreCajero');
+    if (input) input.focus();
 }
 
 function mostrarModalCarga() {
-    mostrarSeccion('todo');
     if (!cajeros.length) {
         cargarCajeros()
             .then(data => {
                 cajeros = data || [];
+                if (!cajeros.length) {
+                    mostrarAlerta('Sin cajeros', 'Debe crear al menos un cajero antes de registrar una carga', 'warning');
+                    mostrarModalCajeros();
+                    return;
+                }
                 mostrarModalCarga();
             })
             .catch(() => {
@@ -348,6 +351,11 @@ function mostrarModalCarga() {
     }
 
     const cajerosActivos = cajeros.filter(c => c.activo);
+    if (!cajerosActivos.length) {
+        mostrarAlerta('Sin cajeros activos', 'Activa o crea un cajero para registrar una carga', 'warning');
+        mostrarModalCajeros();
+        return;
+    }
     const options = cajerosActivos.map(cajero => `
         <option value="${cajero.id}">${cajero.nombre}</option>
     `).join('');
@@ -408,16 +416,11 @@ function mostrarModalCarga() {
     modalContainer.querySelector('#modalCarga').addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modalContainer);
     });
-    const form = document.getElementById('formCarga');
-    if (form) {
-        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        const input = document.getElementById('montoCarga');
-        if (input) input.focus();
-    }
+    const input = document.getElementById('modalMonto');
+    if (input) input.focus();
 }
 
 function mostrarModalReportes() {
-    mostrarSeccion('todo');
     const modalHtml = `
         <div class="modal fade" id="modalReportes" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
