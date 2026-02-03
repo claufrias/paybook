@@ -325,6 +325,11 @@ function mostrarModalCajeros() {
         });
     } else {
         abrirModal();
+    const form = document.getElementById('formCajero');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const input = document.getElementById('nombreCajero');
+        if (input) input.focus();
     }
 }
 
@@ -403,6 +408,12 @@ function mostrarModalCarga() {
     modalContainer.querySelector('#modalCarga').addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modalContainer);
     });
+    const form = document.getElementById('formCarga');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const input = document.getElementById('montoCarga');
+        if (input) input.focus();
+    }
 }
 
 function mostrarModalReportes() {
@@ -443,6 +454,7 @@ function mostrarModalReportes() {
     modalContainer.querySelector('#modalReportes').addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modalContainer);
     });
+    mostrarAlerta('Reportes', 'Usa el menú para generar reportes y exportar PDF.', 'info');
 }
 
 // ========== ALERT SYSTEM ==========
