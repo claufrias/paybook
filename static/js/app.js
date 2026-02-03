@@ -329,6 +329,13 @@ function mostrarModalCajeros() {
         abrirModal();
     }
 
+    const form = document.getElementById('formCajero');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const input = document.getElementById('nombreCajero');
+        if (input) input.focus();
+    }
+
     const input = document.getElementById('nombreCajero');
     if (input) input.focus();
 }
