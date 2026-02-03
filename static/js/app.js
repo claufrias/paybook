@@ -252,6 +252,31 @@ function mostrarSeccion(seccion) {
     });
 }
 
+function mostrarModalCajeros() {
+    mostrarSeccion('todo');
+    const form = document.getElementById('formCajero');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const input = document.getElementById('nombreCajero');
+        if (input) input.focus();
+    }
+}
+
+function mostrarModalCarga() {
+    mostrarSeccion('todo');
+    const form = document.getElementById('formCarga');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const input = document.getElementById('montoCarga');
+        if (input) input.focus();
+    }
+}
+
+function mostrarModalReportes() {
+    mostrarSeccion('todo');
+    mostrarAlerta('Reportes', 'Usa el menú para generar reportes y exportar PDF.', 'info');
+}
+
 // ========== ALERT SYSTEM ==========
 
 function mostrarAlerta(titulo, mensaje, tipo = 'info') {
@@ -1931,6 +1956,9 @@ window.solicitarPago = solicitarPago;
 window.verificarEstadoPago = verificarEstadoPago;
 window.copiarCodigo = copiarCodigo;
 window.mostrarSeccion = mostrarSeccion;
+window.mostrarModalCajeros = mostrarModalCajeros;
+window.mostrarModalCarga = mostrarModalCarga;
+window.mostrarModalReportes = mostrarModalReportes;
 
 // Auto-hide loading after 20 seconds
 setTimeout(() => {
