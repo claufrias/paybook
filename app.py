@@ -433,6 +433,21 @@ def solicitar_pago_manual():
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
+            cursor.execute('SELECT plan, fecha_expiracion FROM usuarios WHERE id = ?', (current_user.id,))
+            user_row = cursor.fetchone()
+            if user_row:
+                user_plan, fecha_expiracion = user_row
+                if user_plan != 'expired' and fecha_expiracion:
+                    try:
+                        exp_date = datetime.strptime(fecha_expiracion, '%Y-%m-%d %H:%M:%S')
+                        if exp_date > datetime.now():
+                            conn.close()
+                            return jsonify({
+                                'success': False,
+                                'error': 'Ya tienes una suscripción activa. No puedes solicitar otro pago.'
+                            }), 400
+                    except ValueError:
+                        pass
 
             precio_basico = float(get_config_value(cursor, 'precio_basico', '9.99'))
             precio_premium = float(get_config_value(cursor, 'precio_premium', '19.99'))
