@@ -263,6 +263,7 @@ function mostrarSeccion(seccion, { scroll = true } = {}) {
 }
 
 function mostrarModalCajeros() {
+    mostrarSeccion('todo', { scroll: false });
     const abrirModal = () => {
         const modalHtml = `
             <div class="modal fade" id="modalCajeros" tabindex="-1">
@@ -329,10 +330,21 @@ function mostrarModalCajeros() {
     }
 
     const input = document.getElementById('modalNombreCajero');
+    }
+
+    const form = document.getElementById('formCajero');
+    if (form) {
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const input = document.getElementById('nombreCajero');
+        if (input) input.focus();
+    }
+
+    const input = document.getElementById('nombreCajero');
     if (input) input.focus();
 }
 
 function mostrarModalCarga() {
+    mostrarSeccion('todo', { scroll: false });
     if (!cajeros.length) {
         cargarCajeros()
             .then(data => {
@@ -417,10 +429,12 @@ function mostrarModalCarga() {
         document.body.removeChild(modalContainer);
     });
     const input = document.getElementById('modalMonto');
+    const input = document.getElementById('montoCarga');
     if (input) input.focus();
 }
 
 function mostrarModalReportes() {
+    mostrarSeccion('todo', { scroll: false });
     const modalHtml = `
         <div class="modal fade" id="modalReportes" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
