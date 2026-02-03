@@ -108,6 +108,14 @@ function actualizarEstadisticasUsuarios(usuarios) {
 function actualizarTablaEstadisticas(stats) {
     const tbody = document.getElementById('estadisticasTable');
     if (!tbody) return;
+    if (!stats) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">Sin datos disponibles</td>
+            </tr>
+        `;
+        return;
+    }
 
     const totalUsuarios = stats.total_usuarios || 0;
     const usuariosActivos = stats.usuarios_activos || 0;
