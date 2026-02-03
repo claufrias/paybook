@@ -658,6 +658,10 @@ function mostrarModalMisSolicitudes(solicitudes) {
     });
 }
 
+function verMisSuscripciones() {
+    mostrarModalSuscripcion();
+}
+
 function mostrarModalSuscripcion() {
     const userData = localStorage.getItem('redcajeros_user');
     let currentPlan = '';
@@ -1060,6 +1064,7 @@ window.register = register;
 window.logout = logout;
 window.solicitarPagoManual = solicitarPagoManual;
 window.verMisSolicitudesPago = verMisSolicitudesPago;
+window.verMisSuscripciones = verMisSuscripciones;
 window.mostrarModalSuscripcion = mostrarModalSuscripcion;
 window.verMiPerfil = verMiPerfil;
 window.seleccionarAvatar = seleccionarAvatar;
