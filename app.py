@@ -34,12 +34,13 @@ login_manager.init_app(app)
 login_manager.login_view = 'login_page'
 
 class User(UserMixin):
-    def __init__(self, id, email, nombre, plan='free', rol='user'):
+    def __init__(self, id, email, nombre, plan='free', rol='user', avatar=None):
         self.id = id
         self.email = email
         self.nombre = nombre
         self.plan = plan
         self.rol = rol
+        self.avatar = avatar
 
     def is_admin(self):
         return self.rol == 'admin'
@@ -51,13 +52,13 @@ def load_user(user_id):
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT id, email, nombre, plan, rol FROM usuarios
+                SELECT id, email, nombre, plan, rol, avatar FROM usuarios
                 WHERE id = ? AND activo = 1
             ''', (user_id,))
             row = cursor.fetchone()
             conn.close()
         if row:
-            return User(row[0], row[1], row[2] or '', row[3] or 'free', row[4] or 'user')
+            return User(row[0], row[1], row[2] or '', row[3] or 'free', row[4] or 'user', row[5])
     except Exception:
         pass
     return None
@@ -100,6 +101,7 @@ def init_db():
             plan TEXT DEFAULT 'free',
             rol TEXT DEFAULT 'user',
             telefono TEXT,
+            avatar TEXT,
             fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             fecha_expiracion TIMESTAMP,
             activo INTEGER DEFAULT 1
@@ -197,6 +199,11 @@ def actualizar_bd():
         
         if 'es_deuda' not in columnas:
             cursor.execute('ALTER TABLE cargas ADD COLUMN es_deuda BOOLEAN DEFAULT 0')
+
+        cursor.execute("PRAGMA table_info(usuarios)")
+        columnas_usuarios = [col[1] for col in cursor.fetchall()]
+        if 'avatar' not in columnas_usuarios:
+            cursor.execute('ALTER TABLE usuarios ADD COLUMN avatar TEXT')
         
         # Verificar tabla pagos
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pagos'")
@@ -320,7 +327,7 @@ def api_login():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute(
-                'SELECT id, email, password_hash, nombre, plan, rol FROM usuarios WHERE email = ? AND activo = 1',
+                'SELECT id, email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion FROM usuarios WHERE email = ? AND activo = 1',
                 (email,)
             )
             row = cursor.fetchone()
@@ -329,11 +336,11 @@ def api_login():
         if not row:
             return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
-        user_id, user_email, password_hash, nombre, plan, rol = row
+        user_id, user_email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion = row
         if hash_password(password) != password_hash:
             return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
-        user = User(user_id, user_email, nombre or '', plan or 'free', rol or 'user')
+        user = User(user_id, user_email, nombre or '', plan or 'free', rol or 'user', avatar)
         login_user(user, remember=True)
 
         return jsonify({
@@ -343,7 +350,10 @@ def api_login():
                 'email': user.email,
                 'nombre': user.nombre,
                 'plan': user.plan,
-                'rol': user.rol
+                'rol': user.rol,
+                'avatar': avatar,
+                'telefono': telefono,
+                'expiracion': fecha_expiracion
             }
         })
     except Exception as e:
@@ -384,6 +394,7 @@ def api_register():
             conn.commit()
             conn.close()
 
+        user = User(user_id, email, nombre, 'free', 'user', None)
         user = User(user_id, email, nombre, 'free', 'user')
         login_user(user, remember=True)
 
@@ -394,6 +405,10 @@ def api_register():
                 'email': user.email,
                 'nombre': user.nombre,
                 'plan': user.plan,
+                'rol': user.rol,
+                'avatar': None,
+                'telefono': telefono,
+                'expiracion': None
                 'rol': user.rol
             }
         })
@@ -406,10 +421,58 @@ def api_logout():
     logout_user()
     return jsonify({'success': True, 'message': 'Sesión cerrada'})
 
+@app.route('/api/auth/update', methods=['PUT'])
+@login_required
+def api_auth_update():
+    """Actualizar perfil del usuario autenticado."""
+    try:
+        data = request.get_json(silent=True) or {}
+        telefono = (data.get('telefono') or '').strip()
+        password = (data.get('password') or '').strip()
+        avatar = (data.get('avatar') or '').strip() or None
+
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE usuarios
+                SET telefono = ?, avatar = ?
+                WHERE id = ?
+            ''', (telefono, avatar, current_user.id))
+
+            if password:
+                cursor.execute('''
+                    UPDATE usuarios
+                    SET password_hash = ?
+                    WHERE id = ?
+                ''', (hash_password(password), current_user.id))
+
+            conn.commit()
+            conn.close()
+
+        return jsonify({'success': True})
+    except Exception:
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
 @app.route('/api/auth/me', methods=['GET'])
 def api_auth_me():
     """Usuario actual (mismo contrato que espera auth.js: success + user). Evita loop login↔dashboard."""
     if current_user.is_authenticated:
+        telefono = None
+        expiracion = None
+        avatar = current_user.avatar
+        try:
+            with db_lock:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute('SELECT telefono, fecha_expiracion, avatar FROM usuarios WHERE id = ?', (current_user.id,))
+                row = cursor.fetchone()
+                conn.close()
+            if row:
+                telefono, expiracion, avatar_db = row
+                avatar = avatar_db or avatar
+        except Exception:
+            pass
         return jsonify({
             'success': True,
             'user': {
@@ -417,7 +480,10 @@ def api_auth_me():
                 'email': current_user.email,
                 'nombre': current_user.nombre,
                 'plan': current_user.plan,
-                'rol': current_user.rol
+                'rol': current_user.rol,
+                'avatar': avatar,
+                'telefono': telefono,
+                'expiracion': expiracion
             }
         })
     return jsonify({'success': False}), 401

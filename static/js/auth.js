@@ -860,7 +860,17 @@ function verMiPerfil() {
     // Cargar datos actualizados del usuario
     cargarDatosUsuario().then(user => {
         if (!user) return;
-        
+        const avatarOpciones = ['😎', '😊', '🧑‍💻', '👩‍💼', '🧔', '👩‍🎨'];
+        const avatarActual = user.avatar || avatarOpciones[0];
+        const avatarsHtml = avatarOpciones.map(opcion => `
+            <button type="button"
+                    class="btn btn-sm ${opcion === avatarActual ? 'btn-ig' : 'btn-ig-outline'} me-2 mb-2"
+                    onclick="seleccionarAvatar('${opcion}')"
+                    data-avatar="${opcion}">
+                <span style="font-size: 1.2rem;">${opcion}</span>
+            </button>
+        `).join('');
+
         const modalHtml = `
             <div class="modal fade" id="modalPerfil" tabindex="-1">
                 <div class="modal-dialog modal-dialog-centered">
@@ -874,7 +884,7 @@ function verMiPerfil() {
                         <div class="modal-body ig-card-body">
                             <div class="text-center mb-4">
                                 <div class="story-circle mx-auto mb-3" style="width: 80px; height: 80px;">
-                                    <i class="fas fa-user fa-2x"></i>
+                                    <span id="avatarDisplay" style="font-size: 2rem;">${avatarActual}</span>
                                 </div>
                                 <h5 class="gradient-text">${user.nombre || 'Usuario'}</h5>
                                 <p class="text-muted">${user.email}</p>
@@ -891,8 +901,20 @@ function verMiPerfil() {
                                             <small class="text-muted d-block">Expiración</small>
                                             <strong class="d-block">${user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--'}</strong>
                                         </div>
+                                        <div class="col-6 mt-3">
+                                            <small class="text-muted d-block">Rol</small>
+                                            <strong class="d-block">${(user.rol || 'user').toUpperCase()}</strong>
+                                        </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Avatar</label>
+                                <div id="avatarSelector">
+                                    ${avatarsHtml}
+                                </div>
+                                <input type="hidden" id="profileAvatar" value="${avatarActual}">
                             </div>
                             
                             <div class="mb-3">
@@ -944,6 +966,7 @@ async function guardarPerfil() {
     const telefono = document.getElementById('profileTelefono').value.trim();
     const password = document.getElementById('profilePassword').value;
     const passwordConfirm = document.getElementById('profilePasswordConfirm').value;
+    const avatar = document.getElementById('profileAvatar')?.value || '';
     
     // Validar contraseñas si se están cambiando
     if (password && password !== passwordConfirm) {
@@ -959,7 +982,7 @@ async function guardarPerfil() {
     mostrarLoading(true);
     
     try {
-        const updateData = { telefono };
+        const updateData = { telefono, avatar };
         if (password) {
             updateData.password = password;
         }
@@ -992,6 +1015,25 @@ async function guardarPerfil() {
     }
 }
 
+function seleccionarAvatar(avatar) {
+    const input = document.getElementById('profileAvatar');
+    const display = document.getElementById('avatarDisplay');
+    const selector = document.getElementById('avatarSelector');
+    if (input) input.value = avatar;
+    if (display) display.textContent = avatar;
+    if (selector) {
+        selector.querySelectorAll('button[data-avatar]').forEach(button => {
+            if (button.dataset.avatar === avatar) {
+                button.classList.remove('btn-ig-outline');
+                button.classList.add('btn-ig');
+            } else {
+                button.classList.remove('btn-ig');
+                button.classList.add('btn-ig-outline');
+            }
+        });
+    }
+}
+
 // ========== INICIALIZACIÓN ==========
 
 // Verificar autenticación al cargar
@@ -1017,3 +1059,4 @@ window.solicitarPagoManual = solicitarPagoManual;
 window.verMisSolicitudesPago = verMisSolicitudesPago;
 window.mostrarModalSuscripcion = mostrarModalSuscripcion;
 window.verMiPerfil = verMiPerfil;
+window.seleccionarAvatar = seleccionarAvatar;
