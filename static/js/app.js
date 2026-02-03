@@ -325,6 +325,8 @@ function mostrarModalCajeros() {
         });
     } else {
         abrirModal();
+    }
+
     const form = document.getElementById('formCajero');
     if (form) {
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
