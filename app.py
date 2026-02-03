@@ -410,23 +410,6 @@ def api_register():
         return jsonify({
             'success': True,
             'user': user_payload
-        user = User(user_id, email, nombre, 'free', 'user')
-        login_user(user, remember=True)
-
-        return jsonify({
-            'success': True,
-            'user': {
-                'id': user.id,
-                'email': user.email,
-                'nombre': user.nombre,
-                'plan': user.plan,
-                'rol': user.rol,
-                'avatar': None,
-                'telefono': telefono,
-                'expiracion': None,
-                'expiracion': None
-                'rol': user.rol
-            }
         })
     except Exception:
         return jsonify({'success': False, 'error': 'Error interno'}), 500
