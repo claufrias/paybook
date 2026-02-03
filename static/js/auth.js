@@ -3,7 +3,7 @@
 // Variables globales
 let currentUser = null;
 let userSubscription = null;
-const AVATAR_OPCIONES = ['😎', '😊', '🧑‍💻', '👩‍💼', '🧔', '👩‍🎨', '🤓', '🧑🚀', '🍳', '🧑‍', '👩‍🔬', '👨‍🔧', '🦊', '🐼', '🐸'];
+const AVATAR_OPCIONES = ['😎', '😊', '🧑‍💻', '👩‍💼', '🧔', '👩‍🎨', '🤓', '🚀', '🍳', '🧑‍', '👩‍🔬', '👨‍🔧', '🦊', '🐼', '🐸'];
 
 // ========== FUNCIONES DE AUTENTICACIÓN ==========
 

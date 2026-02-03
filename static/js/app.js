@@ -329,9 +329,6 @@ function mostrarModalCajeros() {
         abrirModal();
     }
 
-    const input = document.getElementById('modalNombreCajero');
-    }
-
     const form = document.getElementById('formCajero');
     if (form) {
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
