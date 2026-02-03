@@ -25,6 +25,8 @@ async function cargarEstadisticasAdmin() {
         if (estadisticasData.success) {
             adminStats = estadisticasData.data;
             actualizarDashboardAdmin();
+            actualizarTablaEstadisticas(adminStats);
+            inicializarGraficos();
         }
         
         if (pagosData.success) {
@@ -101,6 +103,40 @@ function actualizarEstadisticasUsuarios(usuarios) {
     }
 
     actualizarContadorUsuarios(total);
+}
+
+function actualizarTablaEstadisticas(stats) {
+    const tbody = document.getElementById('estadisticasTable');
+    if (!tbody) return;
+    if (!stats) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">Sin datos disponibles</td>
+            </tr>
+        `;
+        return;
+    }
+
+    const totalUsuarios = stats.total_usuarios || 0;
+    const usuariosActivos = stats.usuarios_activos || 0;
+    const conversion = totalUsuarios ? Math.round((usuariosActivos / totalUsuarios) * 100) : 0;
+
+    tbody.innerHTML = `
+        <tr>
+            <td>Hoy</td>
+            <td>${usuariosActivos}</td>
+            <td>$${stats.ingresos_hoy || 0}</td>
+            <td>${stats.pagos_pendientes || 0}</td>
+            <td>${conversion}%</td>
+        </tr>
+        <tr>
+            <td>Mes</td>
+            <td>${totalUsuarios}</td>
+            <td>$${stats.ingresos_mes || 0}</td>
+            <td>${stats.pagos_pendientes || 0}</td>
+            <td>${conversion}%</td>
+        </tr>
+    `;
 }
 
 // ========== GESTIÓN DE PAGOS PENDIENTES ==========
