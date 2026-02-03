@@ -329,6 +329,9 @@ function mostrarModalCajeros() {
         abrirModal();
     }
 
+    const input = document.getElementById('modalNombreCajero');
+    }
+
     const form = document.getElementById('formCajero');
     if (form) {
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -425,6 +428,7 @@ function mostrarModalCarga() {
     modalContainer.querySelector('#modalCarga').addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modalContainer);
     });
+    const input = document.getElementById('modalMonto');
     const input = document.getElementById('montoCarga');
     if (input) input.focus();
 }
