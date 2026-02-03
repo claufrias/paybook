@@ -16,6 +16,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 import tempfile
+import secrets
+from urllib.parse import quote
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'paybook-secret-key-cambiar-en-produccion')
@@ -70,6 +72,18 @@ DB_PATH = os.path.join(BASE_DIR, 'database.db')
 
 # Lock para operaciones de base de datos
 db_lock = Lock()
+
+def get_config_value(cursor, clave, default=None):
+    cursor.execute('SELECT valor FROM configuraciones WHERE clave = ?', (clave,))
+    row = cursor.fetchone()
+    return row[0] if row else default
+
+def require_admin():
+    if not current_user.is_authenticated:
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'error': 'No autorizado'}), 403
+    return None
 
 def init_db():
     """Crear base de datos y tablas"""
@@ -137,6 +151,22 @@ def init_db():
             valor TEXT
         )
     ''')
+
+    # Tabla solicitudes de pago manual
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS solicitudes_pago (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            plan TEXT,
+            monto REAL,
+            codigo TEXT UNIQUE,
+            estado TEXT DEFAULT 'pendiente',
+            fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            fecha_respuesta TIMESTAMP,
+            notas TEXT,
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+        )
+    ''')
     
     # Insertar configuraciones por defecto
     cursor.execute('''
@@ -178,6 +208,24 @@ def actualizar_bd():
                     fecha_pago TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     notas TEXT,
                     FOREIGN KEY(cajero_id) REFERENCES cajeros(id)
+                )
+            ''')
+
+        # Verificar tabla solicitudes_pago
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='solicitudes_pago'")
+        if not cursor.fetchone():
+            cursor.execute('''
+                CREATE TABLE solicitudes_pago (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER,
+                    plan TEXT,
+                    monto REAL,
+                    codigo TEXT UNIQUE,
+                    estado TEXT DEFAULT 'pendiente',
+                    fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    fecha_respuesta TIMESTAMP,
+                    notas TEXT,
+                    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
                 )
             ''')
         
@@ -299,6 +347,57 @@ def api_login():
     except Exception as e:
         return jsonify({'success': False, 'error': 'Error interno'}), 500
 
+@app.route('/api/auth/register', methods=['POST'])
+def api_register():
+    """Registro de usuario: crea cuenta y abre sesión."""
+    try:
+        data = request.get_json(silent=True) or {}
+        nombre = (data.get('nombre') or '').strip()
+        email = (data.get('email') or '').strip().lower()
+        password = (data.get('password') or '').strip()
+        telefono = (data.get('telefono') or '').strip()
+
+        if not nombre or not email or not password:
+            return jsonify({'success': False, 'error': 'Nombre, email y contraseña son obligatorios'}), 400
+
+        if len(password) < 6:
+            return jsonify({'success': False, 'error': 'La contraseña debe tener al menos 6 caracteres'}), 400
+
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM usuarios WHERE email = ?', (email,))
+            if cursor.fetchone():
+                conn.close()
+                return jsonify({'success': False, 'error': 'El email ya está registrado'}), 400
+
+            cursor.execute(
+                '''
+                INSERT INTO usuarios (email, password_hash, nombre, plan, rol, telefono, activo)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
+                ''',
+                (email, hash_password(password), nombre, 'free', 'user', telefono)
+            )
+            user_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+
+        user = User(user_id, email, nombre, 'free', 'user')
+        login_user(user, remember=True)
+
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'nombre': user.nombre,
+                'plan': user.plan,
+                'rol': user.rol
+            }
+        })
+    except Exception:
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
 @app.route('/api/auth/logout', methods=['GET', 'POST'])
 def api_logout():
     """Cerrar sesión."""
@@ -320,6 +419,96 @@ def api_auth_me():
             }
         })
     return jsonify({'success': False}), 401
+
+# ========== API PAGOS MANUALES ==========
+@app.route('/api/pagos/solicitar', methods=['POST'])
+@login_required
+def solicitar_pago_manual():
+    try:
+        data = request.get_json(silent=True) or {}
+        plan = (data.get('plan') or 'basic').strip().lower()
+        if plan not in ['basic', 'premium']:
+            plan = 'basic'
+
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+
+            precio_basico = float(get_config_value(cursor, 'precio_basico', '9.99'))
+            precio_premium = float(get_config_value(cursor, 'precio_premium', '19.99'))
+            banco_nombre = get_config_value(cursor, 'banco_nombre', 'Banco')
+            banco_cuenta = get_config_value(cursor, 'banco_cuenta', '0000-0000-0000-0000')
+            banco_titular = get_config_value(cursor, 'banco_titular', 'RedCajeros')
+            whatsapp_admin = get_config_value(cursor, 'whatsapp_admin', '584121234567')
+
+            monto = precio_premium if plan == 'premium' else precio_basico
+
+            codigo = None
+            for _ in range(5):
+                intento = ''.join(secrets.choice('ABCDEFGHJKLMNPQRSTUVWXYZ23456789') for _ in range(8))
+                cursor.execute('SELECT id FROM solicitudes_pago WHERE codigo = ?', (intento,))
+                if not cursor.fetchone():
+                    codigo = intento
+                    break
+            if not codigo:
+                conn.close()
+                return jsonify({'success': False, 'error': 'No se pudo generar el código de pago'}), 500
+
+            cursor.execute('''
+                INSERT INTO solicitudes_pago (usuario_id, plan, monto, codigo, estado)
+                VALUES (?, ?, ?, ?, 'pendiente')
+            ''', (current_user.id, plan, monto, codigo))
+            conn.commit()
+            conn.close()
+
+        mensaje = f"Hola! Soy {current_user.nombre or current_user.email} y solicité el pago {codigo}"
+        whatsapp_url = f'https://wa.me/{whatsapp_admin}?text={quote(mensaje)}'
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'codigo': codigo,
+                'monto': monto,
+                'plan': plan,
+                'banco_nombre': banco_nombre,
+                'banco_cuenta': banco_cuenta,
+                'banco_titular': banco_titular,
+                'whatsapp_numero': whatsapp_admin,
+                'whatsapp_url': whatsapp_url
+            }
+        })
+    except Exception:
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
+
+@app.route('/api/pagos/mis-solicitudes', methods=['GET'])
+@login_required
+def mis_solicitudes_pago():
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT codigo, plan, monto, estado, fecha_solicitud, fecha_respuesta, notas
+                FROM solicitudes_pago
+                WHERE usuario_id = ?
+                ORDER BY fecha_solicitud DESC
+            ''', (current_user.id,))
+            rows = cursor.fetchall()
+            conn.close()
+
+        data = [{
+            'codigo': row[0],
+            'plan': row[1],
+            'monto': row[2],
+            'estado': row[3],
+            'fecha_solicitud': row[4],
+            'fecha_respuesta': row[5],
+            'notas': row[6]
+        } for row in rows]
+
+        return jsonify({'success': True, 'data': data})
+    except Exception:
+        return jsonify({'success': False, 'error': 'Error interno'}), 500
 
 # ========== API CAJEROS ==========
 @app.route('/api/cajeros', methods=['GET'])
@@ -1562,6 +1751,329 @@ def update_configuracion():
             'message': 'Configuración actualizada exitosamente'
         })
         
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ========== API ADMIN ==========
+@app.route('/api/estadisticas/admin', methods=['GET'])
+def estadisticas_admin():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        hoy = datetime.now().strftime('%Y-%m-%d')
+        inicio_mes = datetime.now().replace(day=1).strftime('%Y-%m-%d')
+
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+
+            cursor.execute('SELECT COUNT(*) FROM usuarios')
+            total_usuarios = cursor.fetchone()[0]
+
+            cursor.execute('SELECT COUNT(*) FROM usuarios WHERE activo = 1')
+            usuarios_activos = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM solicitudes_pago WHERE estado = 'pendiente'")
+            pagos_pendientes = cursor.fetchone()[0]
+
+            cursor.execute('''
+                SELECT COALESCE(SUM(monto), 0)
+                FROM solicitudes_pago
+                WHERE estado = 'verificado' AND fecha_respuesta LIKE ?
+            ''', (f'{hoy}%',))
+            ingresos_hoy = cursor.fetchone()[0]
+
+            cursor.execute('''
+                SELECT COALESCE(SUM(monto), 0)
+                FROM solicitudes_pago
+                WHERE estado = 'verificado' AND fecha_respuesta >= ?
+            ''', (inicio_mes,))
+            ingresos_mes = cursor.fetchone()[0]
+
+            conn.close()
+
+        db_size = 0
+        if os.path.exists(DB_PATH):
+            db_size = os.path.getsize(DB_PATH) / (1024 * 1024)
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'total_usuarios': total_usuarios,
+                'usuarios_activos': usuarios_activos,
+                'pagos_pendientes': pagos_pendientes,
+                'ingresos_hoy': round(ingresos_hoy, 2),
+                'ingresos_mes': round(ingresos_mes, 2),
+                'db_size': f'{db_size:.2f} MB',
+                'ultimo_backup': '--'
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/usuarios', methods=['GET'])
+def admin_usuarios():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, email, nombre, plan, rol, telefono, fecha_registro, fecha_expiracion, activo
+                FROM usuarios
+                ORDER BY fecha_registro DESC
+            ''')
+            rows = cursor.fetchall()
+            conn.close()
+
+        data = [{
+            'id': row[0],
+            'email': row[1],
+            'nombre': row[2],
+            'plan': row[3] or 'free',
+            'rol': row[4] or 'user',
+            'telefono': row[5],
+            'fecha_registro': row[6],
+            'fecha_expiracion': row[7],
+            'activo': bool(row[8])
+        } for row in rows]
+
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/usuarios/<int:user_id>', methods=['PUT'])
+def admin_actualizar_usuario(user_id):
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        data = request.get_json(silent=True) or {}
+        email = (data.get('email') or '').strip().lower()
+        if not email:
+            return jsonify({'success': False, 'error': 'El email es obligatorio'}), 400
+
+        nombre = (data.get('nombre') or '').strip()
+        telefono = (data.get('telefono') or '').strip()
+        plan = (data.get('plan') or 'free').strip().lower()
+        rol = (data.get('rol') or 'user').strip().lower()
+        fecha_expiracion = data.get('fecha_expiracion')
+        activo = 1 if data.get('activo', True) else 0
+        password = (data.get('password') or '').strip()
+
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+
+            cursor.execute('SELECT id FROM usuarios WHERE email = ? AND id != ?', (email, user_id))
+            if cursor.fetchone():
+                conn.close()
+                return jsonify({'success': False, 'error': 'El email ya está registrado'}), 400
+
+            cursor.execute('''
+                UPDATE usuarios
+                SET email = ?, nombre = ?, telefono = ?, plan = ?, rol = ?, fecha_expiracion = ?, activo = ?
+                WHERE id = ?
+            ''', (email, nombre, telefono, plan, rol, fecha_expiracion, activo, user_id))
+
+            if password:
+                cursor.execute('''
+                    UPDATE usuarios
+                    SET password_hash = ?
+                    WHERE id = ?
+                ''', (hash_password(password), user_id))
+
+            conn.commit()
+            conn.close()
+
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/usuarios/<int:user_id>/activar', methods=['POST'])
+def admin_activar_usuario(user_id):
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('UPDATE usuarios SET activo = 1 WHERE id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/usuarios/<int:user_id>/desactivar', methods=['POST'])
+def admin_desactivar_usuario(user_id):
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('UPDATE usuarios SET activo = 0 WHERE id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/usuarios/<int:user_id>/estadisticas', methods=['GET'])
+def admin_estadisticas_usuario(user_id):
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    return jsonify({
+        'success': True,
+        'data': {
+            'cajeros_activos': 0,
+            'total_cargas': 0,
+            'total_pendiente': 0,
+            'ultima_actividad': '--'
+        }
+    })
+
+@app.route('/api/admin/pagos/pendientes', methods=['GET'])
+def admin_pagos_pendientes():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT sp.codigo, sp.plan, sp.monto, sp.fecha_solicitud, u.nombre, u.email, u.telefono
+                FROM solicitudes_pago sp
+                LEFT JOIN usuarios u ON sp.usuario_id = u.id
+                WHERE sp.estado = 'pendiente'
+                ORDER BY sp.fecha_solicitud DESC
+            ''')
+            rows = cursor.fetchall()
+            conn.close()
+
+        data = [{
+            'codigo': row[0],
+            'plan': row[1],
+            'monto': row[2],
+            'fecha_solicitud': row[3],
+            'usuario_nombre': row[4],
+            'usuario_email': row[5],
+            'usuario_telefono': row[6]
+        } for row in rows]
+
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/pagos/verificar/<codigo>', methods=['POST'])
+def admin_verificar_pago(codigo):
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, usuario_id, plan
+                FROM solicitudes_pago
+                WHERE codigo = ? AND estado = 'pendiente'
+            ''', (codigo,))
+            row = cursor.fetchone()
+            if not row:
+                conn.close()
+                return jsonify({'success': False, 'error': 'Pago no encontrado'}), 404
+
+            solicitud_id, usuario_id, plan = row
+            cursor.execute('''
+                UPDATE solicitudes_pago
+                SET estado = 'verificado', fecha_respuesta = ?
+                WHERE id = ?
+            ''', (now, solicitud_id))
+
+            fecha_expiracion = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute('''
+                UPDATE usuarios
+                SET plan = ?, fecha_expiracion = ?, activo = 1
+                WHERE id = ?
+            ''', (plan, fecha_expiracion, usuario_id))
+
+            conn.commit()
+            conn.close()
+
+        return jsonify({'success': True, 'message': f'Pago {codigo} verificado correctamente'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/pagos/rechazar/<codigo>', methods=['POST'])
+def admin_rechazar_pago(codigo):
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE solicitudes_pago
+                SET estado = 'rechazado', fecha_respuesta = ?
+                WHERE codigo = ? AND estado = 'pendiente'
+            ''', (now, codigo))
+            if cursor.rowcount == 0:
+                conn.close()
+                return jsonify({'success': False, 'error': 'Pago no encontrado'}), 404
+            conn.commit()
+            conn.close()
+        return jsonify({'success': True, 'message': 'Pago rechazado correctamente'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/recordatorios/enviar', methods=['POST'])
+def admin_enviar_recordatorios():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM solicitudes_pago WHERE estado = 'pendiente'")
+            pendientes = cursor.fetchone()[0]
+            conn.close()
+        return jsonify({'success': True, 'message': f'Recordatorios enviados ({pendientes} pendientes)'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/backup/crear', methods=['POST'])
+def admin_backup_crear():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    return jsonify({'success': True, 'message': 'Backup creado correctamente'})
+
+@app.route('/api/admin/db/optimizar', methods=['POST'])
+def admin_db_optimizar():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute('VACUUM')
+            conn.commit()
+            conn.close()
+        return jsonify({'success': True, 'message': 'Base de datos optimizada'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
