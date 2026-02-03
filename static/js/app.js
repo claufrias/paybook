@@ -237,7 +237,7 @@ function handleKeyboardShortcuts(event) {
     }
 }
 
-function mostrarSeccion(seccion) {
+function mostrarSeccion(seccion, { scroll = true } = {}) {
     const secciones = {
         resumen: ['seccionResumen', 'seccionTablaResumen'],
         historial: ['seccionHistorial'],
@@ -251,17 +251,19 @@ function mostrarSeccion(seccion) {
         element.style.display = idsVisibles.includes(id) ? '' : 'none';
     });
 
-    const firstId = idsVisibles[0];
-    if (firstId) {
-        const target = document.getElementById(firstId);
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (scroll) {
+        const firstId = idsVisibles[0];
+        if (firstId) {
+            const target = document.getElementById(firstId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
     }
 }
 
 function mostrarModalCajeros() {
-    mostrarSeccion('todo');
+    mostrarSeccion('todo', { scroll: false });
     const abrirModal = () => {
         const modalHtml = `
             <div class="modal fade" id="modalCajeros" tabindex="-1">
@@ -339,7 +341,7 @@ function mostrarModalCajeros() {
 }
 
 function mostrarModalCarga() {
-    mostrarSeccion('todo');
+    mostrarSeccion('todo', { scroll: false });
     if (!cajeros.length) {
         cargarCajeros()
             .then(data => {
@@ -428,7 +430,7 @@ function mostrarModalCarga() {
 }
 
 function mostrarModalReportes() {
-    mostrarSeccion('todo');
+    mostrarSeccion('todo', { scroll: false });
     const modalHtml = `
         <div class="modal fade" id="modalReportes" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
