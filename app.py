@@ -408,6 +408,7 @@ def api_register():
                 'rol': user.rol,
                 'avatar': None,
                 'telefono': telefono,
+                'expiracion': None,
                 'expiracion': None
                 'rol': user.rol
             }
