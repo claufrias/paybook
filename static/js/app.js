@@ -237,6 +237,21 @@ function handleKeyboardShortcuts(event) {
     }
 }
 
+function mostrarSeccion(seccion) {
+    const secciones = {
+        resumen: ['seccionResumen', 'seccionTablaResumen'],
+        historial: ['seccionHistorial'],
+        todo: ['seccionResumen', 'seccionTablaResumen', 'seccionHistorial']
+    };
+
+    const idsVisibles = secciones[seccion] || secciones.todo;
+    secciones.todo.forEach(id => {
+        const element = document.getElementById(id);
+        if (!element) return;
+        element.style.display = idsVisibles.includes(id) ? '' : 'none';
+    });
+}
+
 // ========== ALERT SYSTEM ==========
 
 function mostrarAlerta(titulo, mensaje, tipo = 'info') {
@@ -1331,7 +1346,7 @@ function seleccionarPlan(plan) {
     if (container && nombre && precio) {
         container.style.display = 'block';
         nombre.textContent = plan === 'basic' ? 'Básico' : 'Premium';
-        precio.textContent = plan === 'basic' ? '9.99' : '19.99';
+        precio.textContent = plan === 'basic' ? '10000' : '20000';
     }
 }
 
@@ -1915,6 +1930,7 @@ window.seleccionarPlan = seleccionarPlan;
 window.solicitarPago = solicitarPago;
 window.verificarEstadoPago = verificarEstadoPago;
 window.copiarCodigo = copiarCodigo;
+window.mostrarSeccion = mostrarSeccion;
 
 // Auto-hide loading after 20 seconds
 setTimeout(() => {
