@@ -42,6 +42,9 @@
                 <a href="/dashboard" class="btn btn-ig-outline me-2">
                     <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
                 </a>
+                <button class="btn btn-ig-outline me-2" onclick="verMiPerfil()">
+                    <i class="fas fa-user me-2"></i> Mi Perfil
+                </button>
                 <button class="btn btn-ig" onclick="logout()">
                     <i class="fas fa-sign-out-alt me-2"></i> Salir
                 </button>
@@ -493,6 +496,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Verificar que sea admin
             checkAdminAuth();
+            cargarDatosUsuario();
             
             // Cargar estadísticas iniciales
             cargarEstadisticasAdmin();

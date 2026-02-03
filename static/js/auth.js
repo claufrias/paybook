@@ -3,6 +3,7 @@
 // Variables globales
 let currentUser = null;
 let userSubscription = null;
+const AVATAR_OPCIONES = ['😎', '😊', '🧑‍💻', '👩‍💼', '🧔', '👩‍🎨'];
 
 // ========== FUNCIONES DE AUTENTICACIÓN ==========
 
@@ -289,6 +290,7 @@ function actualizarUIUsuario(user) {
     const userNameElements = document.querySelectorAll('#userName, .user-name');
     const userEmailElements = document.querySelectorAll('#userEmail, .user-email');
     const userPlanElements = document.querySelectorAll('#userPlan, .user-plan');
+    const userAvatarElements = document.querySelectorAll('#userAvatar, .user-avatar');
     
     userNameElements.forEach(el => {
         if (el && user.nombre) {
@@ -307,6 +309,12 @@ function actualizarUIUsuario(user) {
     userPlanElements.forEach(el => {
         if (el && user.plan) {
             el.textContent = `Plan: ${user.plan.toUpperCase()}`;
+        }
+    });
+
+    userAvatarElements.forEach(el => {
+        if (el) {
+            el.textContent = user.avatar || AVATAR_OPCIONES[0];
         }
     });
     
@@ -854,111 +862,106 @@ function mostrarLoading(mostrar = true) {
 
 // ========== FUNCIONES DE PERFIL ==========
 
-function verMiPerfil() {
-    if (!currentUser) return;
-    
-    // Cargar datos actualizados del usuario
-    cargarDatosUsuario().then(user => {
-        if (!user) return;
-        const avatarOpciones = ['😎', '😊', '🧑‍💻', '👩‍💼', '🧔', '👩‍🎨'];
-        const avatarActual = user.avatar || avatarOpciones[0];
-        const avatarsHtml = avatarOpciones.map(opcion => `
-            <button type="button"
-                    class="btn btn-sm ${opcion === avatarActual ? 'btn-ig' : 'btn-ig-outline'} me-2 mb-2"
-                    onclick="seleccionarAvatar('${opcion}')"
-                    data-avatar="${opcion}">
-                <span style="font-size: 1.2rem;">${opcion}</span>
-            </button>
-        `).join('');
+async function verMiPerfil() {
+    const user = await cargarDatosUsuario();
+    if (!user) return;
+    const avatarActual = user.avatar || AVATAR_OPCIONES[0];
+    const avatarsHtml = AVATAR_OPCIONES.map(opcion => `
+        <button type="button"
+                class="btn btn-sm ${opcion === avatarActual ? 'btn-ig' : 'btn-ig-outline'} me-2 mb-2"
+                onclick="seleccionarAvatar('${opcion}')"
+                data-avatar="${opcion}">
+            <span style="font-size: 1.2rem;">${opcion}</span>
+        </button>
+    `).join('');
 
-        const modalHtml = `
-            <div class="modal fade" id="modalPerfil" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content ig-card">
-                        <div class="modal-header ig-card-header">
-                            <h5 class="modal-title gradient-text">
-                                <i class="fas fa-user me-2"></i>Mi Perfil
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body ig-card-body">
-                            <div class="text-center mb-4">
-                                <div class="story-circle mx-auto mb-3" style="width: 80px; height: 80px;">
-                                    <span id="avatarDisplay" style="font-size: 2rem;">${avatarActual}</span>
-                                </div>
-                                <h5 class="gradient-text">${user.nombre || 'Usuario'}</h5>
-                                <p class="text-muted">${user.email}</p>
+    const modalHtml = `
+        <div class="modal fade" id="modalPerfil" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content ig-card">
+                    <div class="modal-header ig-card-header">
+                        <h5 class="modal-title gradient-text">
+                            <i class="fas fa-user me-2"></i>Mi Perfil
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body ig-card-body">
+                        <div class="text-center mb-4">
+                            <div class="story-circle mx-auto mb-3" style="width: 80px; height: 80px;">
+                                <span id="avatarDisplay" style="font-size: 2rem;">${avatarActual}</span>
                             </div>
-                            
-                            <div class="ig-card mb-3">
-                                <div class="p-3">
-                                    <div class="row">
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Plan</small>
-                                            <strong class="d-block">${user.plan.toUpperCase()}</strong>
-                                        </div>
-                                        <div class="col-6">
-                                            <small class="text-muted d-block">Expiración</small>
-                                            <strong class="d-block">${user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--'}</strong>
-                                        </div>
-                                        <div class="col-6 mt-3">
-                                            <small class="text-muted d-block">Rol</small>
-                                            <strong class="d-block">${(user.rol || 'user').toUpperCase()}</strong>
-                                        </div>
+                            <h5 class="gradient-text">${user.nombre || 'Usuario'}</h5>
+                            <p class="text-muted">${user.email}</p>
+                        </div>
+                        
+                        <div class="ig-card mb-3">
+                            <div class="p-3">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Plan</small>
+                                        <strong class="d-block">${user.plan.toUpperCase()}</strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted d-block">Expiración</small>
+                                        <strong class="d-block">${user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--'}</strong>
+                                    </div>
+                                    <div class="col-6 mt-3">
+                                        <small class="text-muted d-block">Rol</small>
+                                        <strong class="d-block">${(user.rol || 'user').toUpperCase()}</strong>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="mb-3">
-                                <label class="form-label text-muted">Avatar</label>
-                                <div id="avatarSelector">
-                                    ${avatarsHtml}
-                                </div>
-                                <input type="hidden" id="profileAvatar" value="${avatarActual}">
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Avatar</label>
+                            <div id="avatarSelector">
+                                ${avatarsHtml}
                             </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label text-muted">Teléfono (WhatsApp)</label>
-                                <input type="text" id="profileTelefono" class="form-control form-control-ig" 
-                                       value="${user.telefono || ''}" placeholder="0412-1234567">
-                                <small class="text-muted">Para notificaciones y soporte</small>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label text-muted">Nueva Contraseña</label>
-                                <input type="password" id="profilePassword" class="form-control form-control-ig" 
-                                       placeholder="Dejar vacío para no cambiar">
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label text-muted">Confirmar Contraseña</label>
-                                <input type="password" id="profilePasswordConfirm" class="form-control form-control-ig">
-                            </div>
+                            <input type="hidden" id="profileAvatar" value="${avatarActual}">
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="button" class="btn btn-ig" onclick="guardarPerfil()">
-                                <i class="fas fa-save me-2"></i> Guardar Cambios
-                            </button>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Teléfono (WhatsApp)</label>
+                            <input type="text" id="profileTelefono" class="form-control form-control-ig" 
+                                   value="${user.telefono || ''}" placeholder="0412-1234567">
+                            <small class="text-muted">Para notificaciones y soporte</small>
                         </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Nueva Contraseña</label>
+                            <input type="password" id="profilePassword" class="form-control form-control-ig" 
+                                   placeholder="Dejar vacío para no cambiar">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Confirmar Contraseña</label>
+                            <input type="password" id="profilePasswordConfirm" class="form-control form-control-ig">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-ig" onclick="guardarPerfil()">
+                            <i class="fas fa-save me-2"></i> Guardar Cambios
+                        </button>
                     </div>
                 </div>
             </div>
-        `;
-        
-        // Crear modal dinámico
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = modalHtml;
-        document.body.appendChild(modalContainer);
-        
-        // Mostrar modal
-        const modal = new bootstrap.Modal(document.getElementById('modalPerfil'));
-        modal.show();
-        
-        // Limpiar al cerrar
-        modalContainer.querySelector('#modalPerfil').addEventListener('hidden.bs.modal', function () {
-            document.body.removeChild(modalContainer);
-        });
+        </div>
+    `;
+    
+    // Crear modal dinámico
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer);
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('modalPerfil'));
+    modal.show();
+    
+    // Limpiar al cerrar
+    modalContainer.querySelector('#modalPerfil').addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modalContainer);
     });
 }
 
