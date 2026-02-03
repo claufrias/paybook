@@ -395,6 +395,21 @@ def api_register():
             conn.close()
 
         user = User(user_id, email, nombre, 'free', 'user', None)
+        login_user(user, remember=True)
+
+        user_payload = {
+            'id': user.id,
+            'email': user.email,
+            'nombre': user.nombre,
+            'plan': user.plan,
+            'rol': user.rol,
+            'avatar': None,
+            'telefono': telefono,
+            'expiracion': None
+        }
+        return jsonify({
+            'success': True,
+            'user': user_payload
         user = User(user_id, email, nombre, 'free', 'user')
         login_user(user, remember=True)
 
