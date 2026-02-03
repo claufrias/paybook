@@ -29,6 +29,7 @@ async function cargarEstadisticasAdmin() {
             actualizarDashboardAdmin();
             actualizarTablaEstadisticas(adminStats);
             inicializarGraficos(adminStats);
+            inicializarGraficos();
         }
         
         if (pagosData.success) {

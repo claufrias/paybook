@@ -458,6 +458,22 @@ def solicitar_pago_manual():
 
             precio_basico = float(get_config_value(cursor, 'precio_basico', '10000'))
             precio_premium = float(get_config_value(cursor, 'precio_premium', '20000'))
+            if user_row:
+                user_plan, fecha_expiracion = user_row
+                if user_plan != 'expired' and fecha_expiracion:
+                    try:
+                        exp_date = datetime.strptime(fecha_expiracion, '%Y-%m-%d %H:%M:%S')
+                        if exp_date > datetime.now():
+                            conn.close()
+                            return jsonify({
+                                'success': False,
+                                'error': 'Ya tienes una suscripción activa. No puedes solicitar otro pago.'
+                            }), 400
+                    except ValueError:
+                        pass
+
+            precio_basico = float(get_config_value(cursor, 'precio_basico', '9.99'))
+            precio_premium = float(get_config_value(cursor, 'precio_premium', '19.99'))
             banco_nombre = get_config_value(cursor, 'banco_nombre', 'Banco')
             banco_cuenta = get_config_value(cursor, 'banco_cuenta', '0000-0000-0000-0000')
             banco_titular = get_config_value(cursor, 'banco_titular', 'RedCajeros')
