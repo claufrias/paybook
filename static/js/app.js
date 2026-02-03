@@ -341,6 +341,11 @@ function mostrarModalCarga() {
         cargarCajeros()
             .then(data => {
                 cajeros = data || [];
+                if (!cajeros.length) {
+                    mostrarAlerta('Sin cajeros', 'Debe crear al menos un cajero antes de registrar una carga', 'warning');
+                    mostrarModalCajeros();
+                    return;
+                }
                 mostrarModalCarga();
             })
             .catch(() => {
@@ -350,6 +355,11 @@ function mostrarModalCarga() {
     }
 
     const cajerosActivos = cajeros.filter(c => c.activo);
+    if (!cajerosActivos.length) {
+        mostrarAlerta('Sin cajeros activos', 'Activa o crea un cajero para registrar una carga', 'warning');
+        mostrarModalCajeros();
+        return;
+    }
     const options = cajerosActivos.map(cajero => `
         <option value="${cajero.id}">${cajero.nombre}</option>
     `).join('');
