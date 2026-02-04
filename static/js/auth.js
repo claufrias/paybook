@@ -866,20 +866,52 @@ function mostrarLoading(mostrar = true) {
 
 // ========== FUNCIONES DE PERFIL ==========
 
-async function verMiPerfil() {
-    let user = await cargarDatosUsuario();
-    if (!user) {
-        const legacyUser = localStorage.getItem('user');
-        if (legacyUser) {
-            try {
-                user = JSON.parse(legacyUser);
-                currentUser = user;
-            } catch (error) {
-                console.error('Error parseando usuario legacy:', error);
-            }
-        }
+function obtenerUsuarioLocal() {
+    const localUser = localStorage.getItem('redcajeros_user') || localStorage.getItem('user');
+    if (!localUser) return null;
+    try {
+        return JSON.parse(localUser);
+    } catch (error) {
+        console.error('Error parseando usuario local:', error);
+        return null;
     }
-    if (!user) return;
+}
+
+function actualizarPerfilModal(user) {
+    const modal = document.getElementById('modalPerfil');
+    if (!modal || !user) return;
+
+    const avatarDisplay = modal.querySelector('#avatarDisplay');
+    const nombre = modal.querySelector('[data-profile="nombre"]');
+    const email = modal.querySelector('[data-profile="email"]');
+    const plan = modal.querySelector('[data-profile="plan"]');
+    const expiracion = modal.querySelector('[data-profile="expiracion"]');
+    const rol = modal.querySelector('[data-profile="rol"]');
+    const telefono = modal.querySelector('#profileTelefono');
+    const avatarInput = modal.querySelector('#profileAvatar');
+
+    if (avatarDisplay) avatarDisplay.textContent = user.avatar || AVATAR_OPCIONES[0];
+    if (nombre) nombre.textContent = user.nombre || 'Usuario';
+    if (email) email.textContent = user.email || '';
+    if (plan) plan.textContent = user.plan ? user.plan.toUpperCase() : '--';
+    if (expiracion) {
+        expiracion.textContent = user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--';
+    }
+    if (rol) rol.textContent = (user.rol || 'user').toUpperCase();
+    if (telefono) telefono.value = user.telefono || '';
+    if (avatarInput) avatarInput.value = user.avatar || AVATAR_OPCIONES[0];
+}
+
+async function verMiPerfil() {
+    let user = obtenerUsuarioLocal();
+    if (!user) {
+        user = await cargarDatosUsuario();
+    }
+    if (!user) {
+        mostrarAlerta('Error', 'No se pudo cargar la información del perfil', 'error');
+        return;
+    }
+    currentUser = user;
     const avatarActual = user.avatar || AVATAR_OPCIONES[0];
     const avatarsHtml = AVATAR_OPCIONES.map(opcion => `
         <button type="button"
@@ -905,8 +937,8 @@ async function verMiPerfil() {
                             <div class="story-circle mx-auto mb-3" style="width: 80px; height: 80px;">
                                 <span id="avatarDisplay" style="font-size: 2rem;">${avatarActual}</span>
                             </div>
-                            <h5 class="gradient-text">${user.nombre || 'Usuario'}</h5>
-                            <p class="text-muted">${user.email}</p>
+                            <h5 class="gradient-text" data-profile="nombre">${user.nombre || 'Usuario'}</h5>
+                            <p class="text-muted" data-profile="email">${user.email}</p>
                         </div>
                         
                         <div class="ig-card mb-3">
@@ -914,15 +946,15 @@ async function verMiPerfil() {
                                 <div class="row">
                                     <div class="col-6">
                                         <small class="text-muted d-block">Plan</small>
-                                        <strong class="d-block">${user.plan.toUpperCase()}</strong>
+                                        <strong class="d-block" data-profile="plan">${user.plan ? user.plan.toUpperCase() : '--'}</strong>
                                     </div>
                                     <div class="col-6">
                                         <small class="text-muted d-block">Expiración</small>
-                                        <strong class="d-block">${user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--'}</strong>
+                                        <strong class="d-block" data-profile="expiracion">${user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--'}</strong>
                                     </div>
                                     <div class="col-6 mt-3">
                                         <small class="text-muted d-block">Rol</small>
-                                        <strong class="d-block">${(user.rol || 'user').toUpperCase()}</strong>
+                                        <strong class="d-block" data-profile="rol">${(user.rol || 'user').toUpperCase()}</strong>
                                     </div>
                                 </div>
                             </div>
@@ -978,6 +1010,14 @@ async function verMiPerfil() {
     modalContainer.querySelector('#modalPerfil').addEventListener('hidden.bs.modal', function () {
         document.body.removeChild(modalContainer);
     });
+
+    if (obtenerUsuarioLocal()) {
+        cargarDatosUsuario().then(actualizado => {
+            if (actualizado) {
+                actualizarPerfilModal(actualizado);
+            }
+        });
+    }
 }
 
 async function guardarPerfil() {
