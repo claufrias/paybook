@@ -79,7 +79,6 @@
                     <li><a class="dropdown-item" href="#" onclick="mostrarReporteSemanal()"><i class="fas fa-calendar-week me-2"></i> Reporte Semanal</a></li>
                     <li><a class="dropdown-item" href="#" onclick="mostrarReporteMensual()"><i class="fas fa-calendar-alt me-2"></i> Reporte Mensual</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-info" href="#" onclick="diagnostico()"><i class="fas fa-stethoscope me-2"></i> Diagnóstico</a></li>
                     <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión</a></li>
                 </ul>
             </div>
@@ -130,42 +129,35 @@
         <!-- Subscription Status -->
         <div class="row mb-3" id="subscriptionStatusContainer">
             <div class="col-12">
-                <div class="ig-card py-2 subscription-status">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
+                <div class="ig-card status-strip">
+                    <div class="status-strip-row status-strip-top">
+                        <div class="status-item">
                             <small class="text-muted">
                                 <i class="fas fa-crown me-1"></i>
                                 <span id="planInfo">Plan: Cargando...</span>
                             </small>
                         </div>
-                        <div>
+                        <div class="status-item">
                             <small class="text-muted" id="expirationInfo">
                                 <i class="fas fa-calendar me-1"></i>
                                 Expiración: Cargando...
                             </small>
                         </div>
-                        <div>
+                        <div class="status-item status-action">
                             <button class="btn btn-sm btn-ig" onclick="mostrarModalSuscripcion()" id="upgradeButton">
                                 <i class="fas fa-rocket me-1"></i> Actualizar
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Data Status Bar -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="ig-card py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
+                    <div class="status-strip-divider"></div>
+                    <div class="status-strip-row status-strip-bottom">
+                        <div class="status-item">
                             <small class="text-muted">
                                 <i class="fas fa-database me-1"></i>
                                 <span id="dataStatus">Cargando datos...</span>
                             </small>
                         </div>
-                        <div>
+                        <div class="status-item">
                             <small class="text-muted" id="lastUpdate">
                                 <i class="fas fa-clock me-1"></i>
                                 Última actualización: --
@@ -178,7 +170,7 @@
         
         <div class="row">
             <!-- Left Column - Forms -->
-            <div class="col-lg-4">
+            <div class="col-lg-4 order-2 order-lg-1">
                 <!-- Cajero Form -->
                 <div class="ig-card mb-4 fade-in" id="formCajero">
                     <div class="ig-card-header d-flex align-items-center">
@@ -286,23 +278,33 @@
             </div>
 
             <!-- Right Column - Data -->
-            <div class="col-lg-8">
+            <div class="col-lg-8 order-1 order-lg-2">
                 <!-- Summary Cards -->
                 <div class="row mb-4" id="seccionResumen">
                     <div class="col-md-6 mb-3">
-                        <div class="stat-card hover-lift">
-                            <div class="stat-label">TOTAL HOY</div>
+                        <div class="stat-card stat-card-highlight stat-card-today hover-lift">
+                            <div class="stat-header">
+                                <div class="stat-icon">
+                                    <i class="fas fa-sun"></i>
+                                </div>
+                                <div class="stat-label">TOTAL HOY</div>
+                            </div>
                             <div class="stat-number" id="totalHoy">$0</div>
-                            <div class="text-success small mt-2" id="totalHoyNombre">
+                            <div class="stat-subtitle text-success small mt-2" id="totalHoyNombre">
                                 <i class="fas fa-calendar-day me-1"></i> Hoy
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <div class="stat-card hover-lift">
-                            <div class="stat-label">TOP CAJERO</div>
+                        <div class="stat-card stat-card-highlight stat-card-top hover-lift">
+                            <div class="stat-header">
+                                <div class="stat-icon">
+                                    <i class="fas fa-trophy"></i>
+                                </div>
+                                <div class="stat-label">TOP CAJERO</div>
+                            </div>
                             <div class="stat-number" id="topCajero">$0</div>
-                            <div class="text-info small mt-2" id="topCajeroNombre">
+                            <div class="stat-subtitle text-info small mt-2" id="topCajeroNombre">
                                 <i class="fas fa-user me-1"></i> Sin datos
                             </div>
                         </div>
