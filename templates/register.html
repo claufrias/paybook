@@ -190,8 +190,21 @@
     
     <script>
         // Mostrar términos
-        function mostrarTerminos() {
-            alert("Términos de servicio:\n\n1. Prueba gratuita de 7 días\n2. Después: $9.99/mes (Plan Básico)\n3. Puedes cancelar cuando quieras\n4. Tus datos están seguros");
+        async function mostrarTerminos() {
+            let precioLite = '10000';
+            let planLite = 'Lite';
+            try {
+                if (window.obtenerPlanesPublicos) {
+                    const planes = await window.obtenerPlanesPublicos();
+                    if (planes && planes.lite) {
+                        precioLite = Number(planes.lite.precio).toFixed(2);
+                        planLite = planes.lite.nombre || 'Lite';
+                    }
+                }
+            } catch (error) {
+                console.error('Error cargando planes:', error);
+            }
+            alert(`Términos de servicio:\n\n1. Prueba gratuita de 7 días\n2. Después: $${precioLite}/mes (Plan ${planLite})\n3. Puedes cancelar cuando quieras\n4. Tus datos están seguros`);
         }
         
         function mostrarPrivacidad() {
