@@ -129,42 +129,35 @@
         <!-- Subscription Status -->
         <div class="row mb-3" id="subscriptionStatusContainer">
             <div class="col-12">
-                <div class="ig-card py-2 subscription-status">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
+                <div class="ig-card status-strip">
+                    <div class="status-strip-row status-strip-top">
+                        <div class="status-item">
                             <small class="text-muted">
                                 <i class="fas fa-crown me-1"></i>
                                 <span id="planInfo">Plan: Cargando...</span>
                             </small>
                         </div>
-                        <div>
+                        <div class="status-item">
                             <small class="text-muted" id="expirationInfo">
                                 <i class="fas fa-calendar me-1"></i>
                                 Expiración: Cargando...
                             </small>
                         </div>
-                        <div>
+                        <div class="status-item status-action">
                             <button class="btn btn-sm btn-ig" onclick="mostrarModalSuscripcion()" id="upgradeButton">
                                 <i class="fas fa-rocket me-1"></i> Actualizar
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Data Status Bar -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="ig-card py-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
+                    <div class="status-strip-divider"></div>
+                    <div class="status-strip-row status-strip-bottom">
+                        <div class="status-item">
                             <small class="text-muted">
                                 <i class="fas fa-database me-1"></i>
                                 <span id="dataStatus">Cargando datos...</span>
                             </small>
                         </div>
-                        <div>
+                        <div class="status-item">
                             <small class="text-muted" id="lastUpdate">
                                 <i class="fas fa-clock me-1"></i>
                                 Última actualización: --
