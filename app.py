@@ -405,7 +405,11 @@ def api_login():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute(
-                'SELECT id, email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion FROM usuarios WHERE email = ? AND activo = 1',
+                '''
+                SELECT id, email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion, fecha_registro
+                FROM usuarios
+                WHERE email = ? AND activo = 1
+                ''',
                 (email,)
             )
             row = cursor.fetchone()
@@ -414,7 +418,7 @@ def api_login():
         if not row:
             return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
-        user_id, user_email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion = row
+        user_id, user_email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion, fecha_registro = row
         if hash_password(password) != password_hash:
             return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
@@ -431,7 +435,8 @@ def api_login():
                 'rol': user.rol,
                 'avatar': avatar,
                 'telefono': telefono,
-                'expiracion': fecha_expiracion
+                'expiracion': fecha_expiracion,
+                'fecha_registro': fecha_registro
             }
         })
     except Exception as e:
@@ -469,6 +474,8 @@ def api_register():
                 (email, hash_password(password), nombre, 'free', 'user', telefono)
             )
             user_id = cursor.lastrowid
+            cursor.execute('SELECT fecha_registro FROM usuarios WHERE id = ?', (user_id,))
+            fecha_registro = cursor.fetchone()[0]
             conn.commit()
             conn.close()
 
@@ -483,7 +490,8 @@ def api_register():
             'rol': user.rol,
             'avatar': None,
             'telefono': telefono,
-            'expiracion': None
+            'expiracion': None,
+            'fecha_registro': fecha_registro
         }
         return jsonify({
             'success': True,
@@ -537,16 +545,20 @@ def api_auth_me():
     if current_user.is_authenticated:
         telefono = None
         expiracion = None
+        fecha_registro = None
         avatar = current_user.avatar
         try:
             with db_lock:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                cursor.execute('SELECT telefono, fecha_expiracion, avatar FROM usuarios WHERE id = ?', (current_user.id,))
+                cursor.execute(
+                    'SELECT telefono, fecha_expiracion, avatar, fecha_registro FROM usuarios WHERE id = ?',
+                    (current_user.id,)
+                )
                 row = cursor.fetchone()
                 conn.close()
             if row:
-                telefono, expiracion, avatar_db = row
+                telefono, expiracion, avatar_db, fecha_registro = row
                 avatar = avatar_db or avatar
         except Exception:
             pass
@@ -560,7 +572,8 @@ def api_auth_me():
                 'rol': current_user.rol,
                 'avatar': avatar,
                 'telefono': telefono,
-                'expiracion': expiracion
+                'expiracion': expiracion,
+                'fecha_registro': fecha_registro
             }
         })
     return jsonify({'success': False}), 401

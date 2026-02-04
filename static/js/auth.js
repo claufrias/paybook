@@ -886,20 +886,42 @@ function actualizarPerfilModal(user) {
     const email = modal.querySelector('[data-profile="email"]');
     const plan = modal.querySelector('[data-profile="plan"]');
     const expiracion = modal.querySelector('[data-profile="expiracion"]');
+    const expiracionLabel = modal.querySelector('[data-profile-label="expiracion"]');
     const rol = modal.querySelector('[data-profile="rol"]');
     const telefono = modal.querySelector('#profileTelefono');
     const avatarInput = modal.querySelector('#profileAvatar');
+    const planNormalizado = (user.plan || '').toLowerCase();
+    const diasRestantes = planNormalizado === 'free'
+        ? calcularDiasRestantes(user.fecha_registro)
+        : null;
 
     if (avatarDisplay) avatarDisplay.textContent = user.avatar || AVATAR_OPCIONES[0];
     if (nombre) nombre.textContent = user.nombre || 'Usuario';
     if (email) email.textContent = user.email || '';
     if (plan) plan.textContent = user.plan ? user.plan.toUpperCase() : '--';
     if (expiracion) {
-        expiracion.textContent = user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--';
+        if (planNormalizado === 'free') {
+            expiracion.textContent = `${diasRestantes} día(s)`;
+        } else {
+            expiracion.textContent = user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--';
+        }
+    }
+    if (expiracionLabel) {
+        expiracionLabel.textContent = planNormalizado === 'free' ? 'Días restantes' : 'Expiración';
     }
     if (rol) rol.textContent = (user.rol || 'user').toUpperCase();
     if (telefono) telefono.value = user.telefono || '';
     if (avatarInput) avatarInput.value = user.avatar || AVATAR_OPCIONES[0];
+}
+
+function calcularDiasRestantes(fechaRegistro) {
+    if (!fechaRegistro) return 7;
+    const inicio = new Date(fechaRegistro);
+    if (Number.isNaN(inicio.getTime())) return 7;
+    const ahora = new Date();
+    const diferenciaMs = ahora - inicio;
+    const diasTranscurridos = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
+    return Math.max(0, 7 - diasTranscurridos);
 }
 
 async function verMiPerfil() {
@@ -949,8 +971,14 @@ async function verMiPerfil() {
                                         <strong class="d-block" data-profile="plan">${user.plan ? user.plan.toUpperCase() : '--'}</strong>
                                     </div>
                                     <div class="col-6">
-                                        <small class="text-muted d-block">Expiración</small>
-                                        <strong class="d-block" data-profile="expiracion">${user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--'}</strong>
+                                        <small class="text-muted d-block" data-profile-label="expiracion">
+                                            ${user.plan === 'free' ? 'Días restantes' : 'Expiración'}
+                                        </small>
+                                        <strong class="d-block" data-profile="expiracion">
+                                            ${user.plan === 'free'
+                                                ? `${calcularDiasRestantes(user.fecha_registro)} día(s)`
+                                                : (user.expiracion ? new Date(user.expiracion).toLocaleDateString() : '--')}
+                                        </strong>
                                     </div>
                                     <div class="col-6 mt-3">
                                         <small class="text-muted d-block">Rol</small>
