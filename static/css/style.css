@@ -258,7 +258,7 @@ body {
     }
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 1200px) {
     .dashboard-left,
     .dashboard-right {
         display: contents;
