@@ -112,9 +112,12 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS cajeros (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT UNIQUE NOT NULL,
+            usuario_id INTEGER NOT NULL,
+            nombre TEXT NOT NULL,
             activo BOOLEAN DEFAULT 1,
-            fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(usuario_id, nombre),
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
         )
     ''')
     
@@ -122,6 +125,7 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS cargas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
             cajero_id INTEGER,
             plataforma TEXT,
             monto REAL,
@@ -129,7 +133,8 @@ def init_db():
             nota TEXT,
             pagado BOOLEAN DEFAULT 0,
             es_deuda BOOLEAN DEFAULT 0,
-            FOREIGN KEY(cajero_id) REFERENCES cajeros(id)
+            FOREIGN KEY(cajero_id) REFERENCES cajeros(id),
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
         )
     ''')
     
@@ -137,12 +142,14 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pagos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
             cajero_id INTEGER,
             monto_pagado REAL,
             total_comisiones REAL,
             fecha_pago TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             notas TEXT,
-            FOREIGN KEY(cajero_id) REFERENCES cajeros(id)
+            FOREIGN KEY(cajero_id) REFERENCES cajeros(id),
+            FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
         )
     ''')
     
@@ -189,6 +196,11 @@ def actualizar_bd():
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+
+        def obtener_usuario_default():
+            cursor.execute('SELECT id FROM usuarios ORDER BY id LIMIT 1')
+            row = cursor.fetchone()
+            return row[0] if row else 1
         
         # Verificar columnas
         cursor.execute("PRAGMA table_info(cargas)")
@@ -211,14 +223,80 @@ def actualizar_bd():
             cursor.execute('''
                 CREATE TABLE pagos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER NOT NULL,
                     cajero_id INTEGER,
                     monto_pagado REAL,
                     total_comisiones REAL,
                     fecha_pago TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     notas TEXT,
-                    FOREIGN KEY(cajero_id) REFERENCES cajeros(id)
+                    FOREIGN KEY(cajero_id) REFERENCES cajeros(id),
+                    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
                 )
             ''')
+
+        # Migrar cajeros para soportar usuario_id y unicidad por usuario
+        cursor.execute("PRAGMA table_info(cajeros)")
+        columnas_cajeros = [col[1] for col in cursor.fetchall()]
+        if 'usuario_id' not in columnas_cajeros:
+            usuario_default = obtener_usuario_default()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS cajeros_nuevo (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER NOT NULL,
+                    nombre TEXT NOT NULL,
+                    activo BOOLEAN DEFAULT 1,
+                    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(usuario_id, nombre),
+                    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+                )
+            ''')
+            cursor.execute('''
+                INSERT INTO cajeros_nuevo (id, usuario_id, nombre, activo, fecha_creacion)
+                SELECT id, ?, nombre, activo, fecha_creacion FROM cajeros
+            ''', (usuario_default,))
+            cursor.execute('DROP TABLE cajeros')
+            cursor.execute('ALTER TABLE cajeros_nuevo RENAME TO cajeros')
+        else:
+            cursor.execute('''
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_cajeros_usuario_nombre
+                ON cajeros (usuario_id, nombre)
+            ''')
+
+        # Agregar usuario_id a cargas
+        cursor.execute("PRAGMA table_info(cargas)")
+        columnas_cargas = [col[1] for col in cursor.fetchall()]
+        if 'usuario_id' not in columnas_cargas:
+            cursor.execute('ALTER TABLE cargas ADD COLUMN usuario_id INTEGER')
+            cursor.execute('''
+                UPDATE cargas
+                SET usuario_id = (
+                    SELECT usuario_id FROM cajeros WHERE cajeros.id = cargas.cajero_id
+                )
+                WHERE usuario_id IS NULL
+            ''')
+            cursor.execute('''
+                UPDATE cargas
+                SET usuario_id = ?
+                WHERE usuario_id IS NULL
+            ''', (obtener_usuario_default(),))
+
+        # Agregar usuario_id a pagos
+        cursor.execute("PRAGMA table_info(pagos)")
+        columnas_pagos = [col[1] for col in cursor.fetchall()]
+        if 'usuario_id' not in columnas_pagos:
+            cursor.execute('ALTER TABLE pagos ADD COLUMN usuario_id INTEGER')
+            cursor.execute('''
+                UPDATE pagos
+                SET usuario_id = (
+                    SELECT usuario_id FROM cajeros WHERE cajeros.id = pagos.cajero_id
+                )
+                WHERE usuario_id IS NULL
+            ''')
+            cursor.execute('''
+                UPDATE pagos
+                SET usuario_id = ?
+                WHERE usuario_id IS NULL
+            ''', (obtener_usuario_default(),))
 
         # Verificar tabla solicitudes_pago
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='solicitudes_pago'")
@@ -327,7 +405,11 @@ def api_login():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute(
-                'SELECT id, email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion FROM usuarios WHERE email = ? AND activo = 1',
+                '''
+                SELECT id, email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion, fecha_registro
+                FROM usuarios
+                WHERE email = ? AND activo = 1
+                ''',
                 (email,)
             )
             row = cursor.fetchone()
@@ -336,7 +418,7 @@ def api_login():
         if not row:
             return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
-        user_id, user_email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion = row
+        user_id, user_email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion, fecha_registro = row
         if hash_password(password) != password_hash:
             return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
@@ -353,7 +435,8 @@ def api_login():
                 'rol': user.rol,
                 'avatar': avatar,
                 'telefono': telefono,
-                'expiracion': fecha_expiracion
+                'expiracion': fecha_expiracion,
+                'fecha_registro': fecha_registro
             }
         })
     except Exception as e:
@@ -391,6 +474,8 @@ def api_register():
                 (email, hash_password(password), nombre, 'free', 'user', telefono)
             )
             user_id = cursor.lastrowid
+            cursor.execute('SELECT fecha_registro FROM usuarios WHERE id = ?', (user_id,))
+            fecha_registro = cursor.fetchone()[0]
             conn.commit()
             conn.close()
 
@@ -405,7 +490,8 @@ def api_register():
             'rol': user.rol,
             'avatar': None,
             'telefono': telefono,
-            'expiracion': None
+            'expiracion': None,
+            'fecha_registro': fecha_registro
         }
         return jsonify({
             'success': True,
@@ -459,16 +545,20 @@ def api_auth_me():
     if current_user.is_authenticated:
         telefono = None
         expiracion = None
+        fecha_registro = None
         avatar = current_user.avatar
         try:
             with db_lock:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                cursor.execute('SELECT telefono, fecha_expiracion, avatar FROM usuarios WHERE id = ?', (current_user.id,))
+                cursor.execute(
+                    'SELECT telefono, fecha_expiracion, avatar, fecha_registro FROM usuarios WHERE id = ?',
+                    (current_user.id,)
+                )
                 row = cursor.fetchone()
                 conn.close()
             if row:
-                telefono, expiracion, avatar_db = row
+                telefono, expiracion, avatar_db, fecha_registro = row
                 avatar = avatar_db or avatar
         except Exception:
             pass
@@ -482,7 +572,8 @@ def api_auth_me():
                 'rol': current_user.rol,
                 'avatar': avatar,
                 'telefono': telefono,
-                'expiracion': expiracion
+                'expiracion': expiracion,
+                'fecha_registro': fecha_registro
             }
         })
     return jsonify({'success': False}), 401
@@ -617,12 +708,16 @@ def mis_solicitudes_pago():
 
 # ========== API CAJEROS ==========
 @app.route('/api/cajeros', methods=['GET'])
+@login_required
 def get_cajeros():
     try:
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute('SELECT id, nombre, activo, fecha_creacion FROM cajeros ORDER BY nombre')
+            cursor.execute(
+                'SELECT id, nombre, activo, fecha_creacion FROM cajeros WHERE usuario_id = ? ORDER BY nombre',
+                (current_user.id,)
+            )
             cajeros = cursor.fetchall()
             conn.close()
         
@@ -639,6 +734,7 @@ def get_cajeros():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cajeros', methods=['POST'])
+@login_required
 def add_cajero():
     try:
         if request.json_data:
@@ -663,7 +759,10 @@ def add_cajero():
             
             try:
                 # Verificar si ya existe un cajero con el mismo nombre (case-insensitive)
-                cursor.execute('SELECT id, nombre FROM cajeros WHERE LOWER(nombre) = LOWER(?)', (nombre,))
+                cursor.execute(
+                    'SELECT id, nombre FROM cajeros WHERE usuario_id = ? AND LOWER(nombre) = LOWER(?)',
+                    (current_user.id, nombre)
+                )
                 cajero_existente = cursor.fetchone()
                 
                 if cajero_existente:
@@ -673,11 +772,17 @@ def add_cajero():
                         'error': f'Ya existe un cajero con el nombre "{cajero_existente[1]}"'
                     }), 400
                 
-                cursor.execute('INSERT INTO cajeros (nombre) VALUES (?)', (nombre,))
+                cursor.execute(
+                    'INSERT INTO cajeros (usuario_id, nombre) VALUES (?, ?)',
+                    (current_user.id, nombre)
+                )
                 conn.commit()
                 cajero_id = cursor.lastrowid
                 
-                cursor.execute('SELECT id, nombre, activo, fecha_creacion FROM cajeros WHERE id = ?', (cajero_id,))
+                cursor.execute(
+                    'SELECT id, nombre, activo, fecha_creacion FROM cajeros WHERE id = ? AND usuario_id = ?',
+                    (cajero_id, current_user.id)
+                )
                 cajero = cursor.fetchone()
                 conn.close()
                 
@@ -699,6 +804,7 @@ def add_cajero():
         return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
 
 @app.route('/api/cajeros/<int:id>', methods=['PUT'])
+@login_required
 def update_cajero(id):
     try:
         if request.json_data:
@@ -720,14 +826,20 @@ def update_cajero(id):
             cursor = conn.cursor()
             
             # Verificar si existe
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ?', (id,))
+            cursor.execute(
+                'SELECT id, nombre FROM cajeros WHERE id = ? AND usuario_id = ?',
+                (id, current_user.id)
+            )
             cajero_actual = cursor.fetchone()
             if not cajero_actual:
                 conn.close()
                 return jsonify({'success': False, 'error': 'Cajero no encontrado'}), 404
             
             # Verificar si el nuevo nombre ya existe (ignorando el cajero actual, case-insensitive)
-            cursor.execute('SELECT id FROM cajeros WHERE LOWER(nombre) = LOWER(?) AND id != ?', (nombre, id))
+            cursor.execute(
+                'SELECT id FROM cajeros WHERE usuario_id = ? AND LOWER(nombre) = LOWER(?) AND id != ?',
+                (current_user.id, nombre, id)
+            )
             if cursor.fetchone():
                 conn.close()
                 return jsonify({'success': False, 'error': 'Ya existe otro cajero con ese nombre'}), 400
@@ -736,8 +848,8 @@ def update_cajero(id):
             cursor.execute('''
                 UPDATE cajeros 
                 SET nombre = ?, activo = ?
-                WHERE id = ?
-            ''', (nombre, 1 if activo else 0, id))
+                WHERE id = ? AND usuario_id = ?
+            ''', (nombre, 1 if activo else 0, id, current_user.id))
             
             conn.commit()
             conn.close()
@@ -751,6 +863,7 @@ def update_cajero(id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cajeros/<int:id>/eliminar', methods=['DELETE'])
+@login_required
 def eliminar_cajero_completamente(id):
     """Eliminar completamente un cajero (solo si no tiene cargas)"""
     try:
@@ -759,7 +872,10 @@ def eliminar_cajero_completamente(id):
             cursor = conn.cursor()
             
             # Verificar si existe
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ?', (id,))
+            cursor.execute(
+                'SELECT id, nombre FROM cajeros WHERE id = ? AND usuario_id = ?',
+                (id, current_user.id)
+            )
             cajero = cursor.fetchone()
             
             if not cajero:
@@ -767,7 +883,10 @@ def eliminar_cajero_completamente(id):
                 return jsonify({'success': False, 'error': 'Cajero no encontrado'}), 404
             
             # Verificar si tiene cargas
-            cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ?', (id,))
+            cursor.execute(
+                'SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ?',
+                (id, current_user.id)
+            )
             tiene_cargas = cursor.fetchone()[0] > 0
             
             if tiene_cargas:
@@ -775,7 +894,7 @@ def eliminar_cajero_completamente(id):
                 return jsonify({'success': False, 'error': 'No se puede eliminar un cajero que tiene cargas registradas. Use desactivar en su lugar.'}), 400
             
             # Eliminar completamente
-            cursor.execute('DELETE FROM cajeros WHERE id = ?', (id,))
+            cursor.execute('DELETE FROM cajeros WHERE id = ? AND usuario_id = ?', (id, current_user.id))
             conn.commit()
             conn.close()
         
@@ -788,6 +907,7 @@ def eliminar_cajero_completamente(id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cajeros/<int:id>', methods=['DELETE'])
+@login_required
 def delete_cajero(id):
     """Desactivar cajero (marcar como inactivo)"""
     try:
@@ -796,7 +916,10 @@ def delete_cajero(id):
             cursor = conn.cursor()
             
             # Verificar si existe
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ?', (id,))
+            cursor.execute(
+                'SELECT id, nombre FROM cajeros WHERE id = ? AND usuario_id = ?',
+                (id, current_user.id)
+            )
             cajero = cursor.fetchone()
             
             if not cajero:
@@ -804,7 +927,7 @@ def delete_cajero(id):
                 return jsonify({'success': False, 'error': 'Cajero no encontrado'}), 404
             
             # Marcamos como inactivo
-            cursor.execute('UPDATE cajeros SET activo = 0 WHERE id = ?', (id,))
+            cursor.execute('UPDATE cajeros SET activo = 0 WHERE id = ? AND usuario_id = ?', (id, current_user.id))
             
             mensaje = f'Cajero "{cajero[1]}" marcado como inactivo'
             
@@ -821,6 +944,7 @@ def delete_cajero(id):
 
 # ========== API CARGAS - GET ==========
 @app.route('/api/cargas', methods=['GET'])
+@login_required
 def get_cargas():
     try:
         with db_lock:
@@ -838,10 +962,10 @@ def get_cargas():
                 SELECT cg.id, c.nombre, cg.plataforma, cg.monto, cg.fecha, cg.nota, cg.pagado, cg.es_deuda
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
-                WHERE 1=1
+                WHERE cg.usuario_id = ? AND c.usuario_id = ?
             '''
             
-            params = []
+            params = [current_user.id, current_user.id]
             
             if fecha_inicio and fecha_fin:
                 query += ' AND cg.fecha BETWEEN ? AND ?'
@@ -880,6 +1004,7 @@ def get_cargas():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cargas', methods=['POST'])
+@login_required
 def add_carga():
     try:
         if request.json_data:
@@ -916,16 +1041,19 @@ def add_carga():
             cursor = conn.cursor()
             
             # Verificar que el cajero existe
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE id = ? AND activo = 1', (cajero_id,))
+            cursor.execute(
+                'SELECT id, nombre FROM cajeros WHERE id = ? AND activo = 1 AND usuario_id = ?',
+                (cajero_id, current_user.id)
+            )
             cajero = cursor.fetchone()
             if not cajero:
                 conn.close()
                 return jsonify({'success': False, 'error': 'El cajero no existe o está inactivo'}), 400
             
             cursor.execute('''
-                INSERT INTO cargas (cajero_id, plataforma, monto, fecha, nota, es_deuda)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (cajero_id, plataforma, monto, fecha, nota, es_deuda))
+                INSERT INTO cargas (usuario_id, cajero_id, plataforma, monto, fecha, nota, es_deuda)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (current_user.id, cajero_id, plataforma, monto, fecha, nota, es_deuda))
             
             conn.commit()
             carga_id = cursor.lastrowid
@@ -953,6 +1081,7 @@ def add_carga():
         return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
 
 @app.route('/api/cargas/<int:id>', methods=['DELETE'])
+@login_required
 def delete_carga(id):
     try:
         with db_lock:
@@ -960,13 +1089,16 @@ def delete_carga(id):
             cursor = conn.cursor()
             
             # Verificar si existe
-            cursor.execute('SELECT id FROM cargas WHERE id = ?', (id,))
+            cursor.execute(
+                'SELECT id FROM cargas WHERE id = ? AND usuario_id = ?',
+                (id, current_user.id)
+            )
             if not cursor.fetchone():
                 conn.close()
                 return jsonify({'success': False, 'error': 'Carga no encontrada'}), 404
             
             # Eliminar carga
-            cursor.execute('DELETE FROM cargas WHERE id = ?', (id,))
+            cursor.execute('DELETE FROM cargas WHERE id = ? AND usuario_id = ?', (id, current_user.id))
             conn.commit()
             conn.close()
         
@@ -980,6 +1112,7 @@ def delete_carga(id):
 
 # ========== API RESÚMEN ==========
 @app.route('/api/resumen', methods=['GET'])
+@login_required
 def get_resumen():
     try:
         with db_lock:
@@ -992,7 +1125,10 @@ def get_resumen():
             permitir_deudas = bool(int(permitir_deudas[0])) if permitir_deudas else True
             
             # Obtener todos los cajeros activos
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE activo = 1 ORDER BY nombre')
+            cursor.execute(
+                'SELECT id, nombre FROM cajeros WHERE activo = 1 AND usuario_id = ? ORDER BY nombre',
+                (current_user.id,)
+            )
             cajeros = cursor.fetchall()
             
             resumen = []
@@ -1004,17 +1140,17 @@ def get_resumen():
                     cursor.execute('''
                         SELECT plataforma, SUM(monto) as total
                         FROM cargas 
-                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
+                        WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
                         GROUP BY plataforma
-                    ''', (cajero_id,))
+                    ''', (cajero_id, current_user.id))
                 else:
                     # Si no se permiten deudas, solo montos positivos
                     cursor.execute('''
                         SELECT plataforma, SUM(monto) as total
                         FROM cargas 
-                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
+                        WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
                         GROUP BY plataforma
-                    ''', (cajero_id,))
+                    ''', (cajero_id, current_user.id))
                 
                 montos = cursor.fetchall()
                 
@@ -1029,9 +1165,15 @@ def get_resumen():
                 
                 # Obtener cantidad de cargas NO PAGADAS
                 if permitir_deudas:
-                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)', (cajero_id,))
+                    cursor.execute(
+                        'SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)',
+                        (cajero_id, current_user.id)
+                    )
                 else:
-                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0', (cajero_id,))
+                    cursor.execute(
+                        'SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0',
+                        (cajero_id, current_user.id)
+                    )
                 
                 cantidad_cargas = cursor.fetchone()[0]
                 
@@ -1056,6 +1198,7 @@ def get_resumen():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/resumen/pendientes', methods=['GET'])
+@login_required
 def get_resumen_pendientes():
     """Obtener resumen solo de comisiones NO PAGADAS"""
     try:
@@ -1069,7 +1212,10 @@ def get_resumen_pendientes():
             permitir_deudas = bool(int(permitir_deudas[0])) if permitir_deudas else True
             
             # Obtener todos los cajeros activos
-            cursor.execute('SELECT id, nombre FROM cajeros WHERE activo = 1 ORDER BY nombre')
+            cursor.execute(
+                'SELECT id, nombre FROM cajeros WHERE activo = 1 AND usuario_id = ? ORDER BY nombre',
+                (current_user.id,)
+            )
             cajeros = cursor.fetchall()
             
             resumen = []
@@ -1080,16 +1226,16 @@ def get_resumen_pendientes():
                     cursor.execute('''
                         SELECT plataforma, SUM(monto) as total
                         FROM cargas 
-                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
+                        WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
                         GROUP BY plataforma
-                    ''', (cajero_id,))
+                    ''', (cajero_id, current_user.id))
                 else:
                     cursor.execute('''
                         SELECT plataforma, SUM(monto) as total
                         FROM cargas 
-                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
+                        WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
                         GROUP BY plataforma
-                    ''', (cajero_id,))
+                    ''', (cajero_id, current_user.id))
                 
                 montos = cursor.fetchall()
                 
@@ -1104,9 +1250,15 @@ def get_resumen_pendientes():
                 
                 # Obtener cantidad de cargas NO PAGADAS
                 if permitir_deudas:
-                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)', (cajero_id,))
+                    cursor.execute(
+                        'SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)',
+                        (cajero_id, current_user.id)
+                    )
                 else:
-                    cursor.execute('SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0', (cajero_id,))
+                    cursor.execute(
+                        'SELECT COUNT(*) FROM cargas WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0',
+                        (cajero_id, current_user.id)
+                    )
                 
                 cantidad_cargas = cursor.fetchone()[0]
                 
@@ -1132,6 +1284,7 @@ def get_resumen_pendientes():
 
 # ========== API ESTADÍSTICAS ==========
 @app.route('/api/estadisticas', methods=['GET'])
+@login_required
 def get_estadisticas():
     try:
         with db_lock:
@@ -1139,16 +1292,25 @@ def get_estadisticas():
             cursor = conn.cursor()
             
             # Total cajeros
-            cursor.execute('SELECT COUNT(*) FROM cajeros WHERE activo = 1')
+            cursor.execute(
+                'SELECT COUNT(*) FROM cajeros WHERE activo = 1 AND usuario_id = ?',
+                (current_user.id,)
+            )
             total_cajeros = cursor.fetchone()[0]
             
             # Total cargas
-            cursor.execute('SELECT COUNT(*), COALESCE(SUM(monto), 0) FROM cargas')
+            cursor.execute(
+                'SELECT COUNT(*), COALESCE(SUM(monto), 0) FROM cargas WHERE usuario_id = ?',
+                (current_user.id,)
+            )
             total_cargas, monto_total = cursor.fetchone()
             
             # Cargas hoy
             hoy = datetime.now().strftime('%Y-%m-%d')
-            cursor.execute('SELECT COUNT(*), COALESCE(SUM(monto), 0) FROM cargas WHERE fecha LIKE ?', (f'{hoy}%',))
+            cursor.execute(
+                'SELECT COUNT(*), COALESCE(SUM(monto), 0) FROM cargas WHERE usuario_id = ? AND fecha LIKE ?',
+                (current_user.id, f'{hoy}%')
+            )
             cargas_hoy, monto_hoy = cursor.fetchone()
             
             # Top cajero (de todas las cargas)
@@ -1156,10 +1318,11 @@ def get_estadisticas():
                 SELECT c.nombre, SUM(cg.monto) as total
                 FROM cajeros c
                 JOIN cargas cg ON c.id = cg.cajero_id
+                WHERE c.usuario_id = ? AND cg.usuario_id = ?
                 GROUP BY c.id
                 ORDER BY total DESC
                 LIMIT 1
-            ''')
+            ''', (current_user.id, current_user.id))
             top_cajero = cursor.fetchone()
             
             conn.close()
@@ -1187,6 +1350,7 @@ def get_estadisticas():
 
 # ========== API PAGOS ==========
 @app.route('/api/pagos', methods=['POST'])
+@login_required
 def registrar_pago():
     try:
         if request.json_data:
@@ -1209,7 +1373,10 @@ def registrar_pago():
             cursor = conn.cursor()
             
             # Verificar que el cajero existe
-            cursor.execute('SELECT nombre FROM cajeros WHERE id = ? AND activo = 1', (cajero_id,))
+            cursor.execute(
+                'SELECT nombre FROM cajeros WHERE id = ? AND activo = 1 AND usuario_id = ?',
+                (cajero_id, current_user.id)
+            )
             cajero = cursor.fetchone()
             
             if not cajero:
@@ -1226,14 +1393,14 @@ def registrar_pago():
                 cursor.execute('''
                     SELECT COALESCE(SUM(monto), 0), COUNT(*)
                     FROM cargas 
-                    WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
-                ''', (cajero_id,))
+                    WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
+                ''', (cajero_id, current_user.id))
             else:
                 cursor.execute('''
                     SELECT COALESCE(SUM(monto), 0), COUNT(*)
                     FROM cargas 
-                    WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
-                ''', (cajero_id,))
+                    WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL) AND monto > 0
+                ''', (cajero_id, current_user.id))
             
             total_comisiones, cantidad_cargas = cursor.fetchone()
             
@@ -1242,9 +1409,9 @@ def registrar_pago():
             
             # Registrar el pago
             cursor.execute('''
-                INSERT INTO pagos (cajero_id, monto_pagado, total_comisiones, notas)
-                VALUES (?, ?, ?, ?)
-            ''', (cajero_id, monto_pagado, total_comisiones, notas))
+                INSERT INTO pagos (usuario_id, cajero_id, monto_pagado, total_comisiones, notas)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (current_user.id, cajero_id, monto_pagado, total_comisiones, notas))
             
             pago_id = cursor.lastrowid
             
@@ -1254,8 +1421,8 @@ def registrar_pago():
                 cursor.execute('''
                     UPDATE cargas 
                     SET pagado = 1 
-                    WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
-                ''', (cajero_id,))
+                    WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
+                ''', (cajero_id, current_user.id))
             else:
                 # Si paga parcialmente, marcar cargas más antiguas primero
                 cursor.execute('''
@@ -1263,18 +1430,18 @@ def registrar_pago():
                     SET pagado = 1 
                     WHERE id IN (
                         SELECT id FROM cargas 
-                        WHERE cajero_id = ? AND (pagado = 0 OR pagado IS NULL)
+                        WHERE cajero_id = ? AND usuario_id = ? AND (pagado = 0 OR pagado IS NULL)
                         ORDER BY fecha ASC
                         LIMIT ?
                     )
-                ''', (cajero_id, cantidad_cargas))
+                ''', (cajero_id, current_user.id, cantidad_cargas))
             
             # Registrar carga especial en el historial para el pago
             fecha_pago = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute('''
-                INSERT INTO cargas (cajero_id, plataforma, monto, fecha, nota, pagado, es_deuda)
-                VALUES (?, ?, ?, ?, ?, 1, 0)
-            ''', (cajero_id, 'PAGO', -monto_pagado, fecha_pago, f'Pago registrado - {notas}' if notas else 'Pago registrado'))
+                INSERT INTO cargas (usuario_id, cajero_id, plataforma, monto, fecha, nota, pagado, es_deuda)
+                VALUES (?, ?, ?, ?, ?, ?, 1, 0)
+            ''', (current_user.id, cajero_id, 'PAGO', -monto_pagado, fecha_pago, f'Pago registrado - {notas}' if notas else 'Pago registrado'))
             
             conn.commit()
             
@@ -1283,8 +1450,8 @@ def registrar_pago():
                 SELECT p.*, c.nombre 
                 FROM pagos p
                 JOIN cajeros c ON p.cajero_id = c.id
-                WHERE p.id = ?
-            ''', (pago_id,))
+                WHERE p.id = ? AND p.usuario_id = ? AND c.usuario_id = ?
+            ''', (pago_id, current_user.id, current_user.id))
             
             pago = cursor.fetchone()
             conn.close()
@@ -1293,13 +1460,13 @@ def registrar_pago():
             'success': True,
             'data': {
                 'id': pago[0],
-                'cajero_id': pago[1],
-                'cajero_nombre': pago[6],
-                'monto_pagado': pago[2],
-                'total_comisiones': pago[3],
-                'fecha_pago': pago[4],
-                'notas': pago[5],
-                'diferencia': pago[2] - pago[3],
+                'cajero_id': pago[2],
+                'cajero_nombre': pago[7],
+                'monto_pagado': pago[3],
+                'total_comisiones': pago[4],
+                'fecha_pago': pago[5],
+                'notas': pago[6],
+                'diferencia': pago[3] - pago[4],
                 'cargas_afectadas': cantidad_cargas
             },
             'message': f'Pago registrado exitosamente para {cajero[0]}'
@@ -1310,6 +1477,7 @@ def registrar_pago():
 
 # ========== API EXPORTACIÓN ==========
 @app.route('/api/exportar/excel', methods=['GET'])
+@login_required
 def exportar_excel():
     try:
         # Obtener parámetros
@@ -1334,10 +1502,10 @@ def exportar_excel():
                        END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
-                WHERE 1=1
+                WHERE cg.usuario_id = ? AND c.usuario_id = ?
             '''
             
-            params = []
+            params = [current_user.id, current_user.id]
             if fecha_inicio and fecha_fin:
                 query_cargas += ' AND cg.fecha BETWEEN ? AND ?'
                 params.extend([fecha_inicio, fecha_fin])
@@ -1442,6 +1610,7 @@ def exportar_excel():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/exportar/pdf', methods=['GET'])
+@login_required
 def exportar_pdf():
     try:
         # Obtener parámetros
@@ -1467,10 +1636,10 @@ def exportar_pdf():
                        END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
-                WHERE 1=1
+                WHERE cg.usuario_id = ? AND c.usuario_id = ?
             '''
             
-            params = []
+            params = [current_user.id, current_user.id]
             if fecha_inicio and fecha_fin:
                 query_cargas += ' AND cg.fecha BETWEEN ? AND ?'
                 params.extend([fecha_inicio, fecha_fin])
@@ -1607,6 +1776,7 @@ def exportar_pdf():
 
 # ========== API REPORTES ==========
 @app.route('/api/reportes/diario', methods=['GET'])
+@login_required
 def get_reporte_diario():
     try:
         hoy = datetime.now().strftime('%Y-%m-%d')
@@ -1631,9 +1801,9 @@ def get_reporte_diario():
                        END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
-                WHERE cg.fecha BETWEEN ? AND ?
+                WHERE cg.fecha BETWEEN ? AND ? AND cg.usuario_id = ? AND c.usuario_id = ?
                 ORDER BY cg.fecha DESC
-            ''', (fecha_inicio, fecha_fin))
+            ''', (fecha_inicio, fecha_fin, current_user.id, current_user.id))
             
             cargas = cursor.fetchall()
             
@@ -1641,8 +1811,8 @@ def get_reporte_diario():
             cursor.execute('''
                 SELECT COUNT(*), COALESCE(SUM(monto), 0)
                 FROM cargas 
-                WHERE fecha BETWEEN ? AND ?
-            ''', (fecha_inicio, fecha_fin))
+                WHERE fecha BETWEEN ? AND ? AND usuario_id = ?
+            ''', (fecha_inicio, fecha_fin, current_user.id))
             
             total_cargas, monto_total = cursor.fetchone()
             
@@ -1670,6 +1840,7 @@ def get_reporte_diario():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/reportes/semanal', methods=['GET'])
+@login_required
 def get_reporte_semanal():
     try:
         hoy = datetime.now()
@@ -1697,9 +1868,9 @@ def get_reporte_semanal():
                        END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
-                WHERE cg.fecha BETWEEN ? AND ?
+                WHERE cg.fecha BETWEEN ? AND ? AND cg.usuario_id = ? AND c.usuario_id = ?
                 ORDER BY cg.fecha DESC
-            ''', (fecha_inicio, fecha_fin))
+            ''', (fecha_inicio, fecha_fin, current_user.id, current_user.id))
             
             cargas = cursor.fetchall()
             
@@ -1707,8 +1878,8 @@ def get_reporte_semanal():
             cursor.execute('''
                 SELECT COUNT(*), COALESCE(SUM(monto), 0)
                 FROM cargas 
-                WHERE fecha BETWEEN ? AND ?
-            ''', (fecha_inicio, fecha_fin))
+                WHERE fecha BETWEEN ? AND ? AND usuario_id = ?
+            ''', (fecha_inicio, fecha_fin, current_user.id))
             
             total_cargas, monto_total = cursor.fetchone()
             
@@ -1737,6 +1908,7 @@ def get_reporte_semanal():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/reportes/mensual', methods=['GET'])
+@login_required
 def get_reporte_mensual():
     try:
         hoy = datetime.now()
@@ -1767,9 +1939,9 @@ def get_reporte_mensual():
                        END as tipo
                 FROM cargas cg
                 JOIN cajeros c ON cg.cajero_id = c.id
-                WHERE cg.fecha BETWEEN ? AND ?
+                WHERE cg.fecha BETWEEN ? AND ? AND cg.usuario_id = ? AND c.usuario_id = ?
                 ORDER BY cg.fecha DESC
-            ''', (fecha_inicio, fecha_fin))
+            ''', (fecha_inicio, fecha_fin, current_user.id, current_user.id))
             
             cargas = cursor.fetchall()
             
@@ -1777,8 +1949,8 @@ def get_reporte_mensual():
             cursor.execute('''
                 SELECT COUNT(*), COALESCE(SUM(monto), 0)
                 FROM cargas 
-                WHERE fecha BETWEEN ? AND ?
-            ''', (fecha_inicio, fecha_fin))
+                WHERE fecha BETWEEN ? AND ? AND usuario_id = ?
+            ''', (fecha_inicio, fecha_fin, current_user.id))
             
             total_cargas, monto_total = cursor.fetchone()
             
@@ -1808,6 +1980,7 @@ def get_reporte_mensual():
 
 # ========== API CONFIGURACIÓN ==========
 @app.route('/api/configuracion', methods=['GET'])
+@login_required
 def get_configuracion():
     try:
         with db_lock:
@@ -1828,6 +2001,7 @@ def get_configuracion():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/configuracion', methods=['PUT'])
+@login_required
 def update_configuracion():
     try:
         if request.json_data:
