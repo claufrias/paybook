@@ -70,6 +70,9 @@ def hash_password(password):
 # Ruta de la base de datos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
+BACKUP_DIR = os.path.join(BASE_DIR, 'backups')
+CACHE_DIR = os.path.join(BASE_DIR, 'cache')
+BACKUP_METADATA_PATH = os.path.join(BACKUP_DIR, 'backup_metadata.json')
 
 # Lock para operaciones de base de datos
 db_lock = Lock()
@@ -78,6 +81,46 @@ def get_config_value(cursor, clave, default=None):
     cursor.execute('SELECT valor FROM configuraciones WHERE clave = ?', (clave,))
     row = cursor.fetchone()
     return row[0] if row else default
+
+def ensure_dirs():
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+def load_backup_metadata():
+    ensure_dirs()
+    if not os.path.exists(BACKUP_METADATA_PATH):
+        return []
+    try:
+        with open(BACKUP_METADATA_PATH, 'r', encoding='utf-8') as metadata_file:
+            data = json.load(metadata_file)
+            return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+def save_backup_metadata(entries):
+    ensure_dirs()
+    with open(BACKUP_METADATA_PATH, 'w', encoding='utf-8') as metadata_file:
+        json.dump(entries, metadata_file, ensure_ascii=False, indent=2)
+
+def register_backup(filename, status='ok'):
+    entries = load_backup_metadata()
+    backup_path = os.path.join(BACKUP_DIR, filename)
+    size_bytes = os.path.getsize(backup_path) if os.path.exists(backup_path) else 0
+    entry = {
+        'filename': filename,
+        'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'size': size_bytes,
+        'status': status
+    }
+    entries.insert(0, entry)
+    save_backup_metadata(entries)
+    return entry
+
+def get_latest_backup():
+    entries = load_backup_metadata()
+    if not entries:
+        return None
+    return entries[0]
 
 def require_admin():
     if not current_user.is_authenticated:
@@ -341,6 +384,7 @@ def actualizar_bd():
 # Inicializar BD
 init_db()
 actualizar_bd()
+ensure_dirs()
 
 # ========== MIDDLEWARE ==========
 @app.before_request
@@ -2076,6 +2120,9 @@ def estadisticas_admin():
         if os.path.exists(DB_PATH):
             db_size = os.path.getsize(DB_PATH) / (1024 * 1024)
 
+        ultimo_backup = get_latest_backup()
+        ultimo_backup_label = ultimo_backup['created_at'] if ultimo_backup else '--'
+
         return jsonify({
             'success': True,
             'data': {
@@ -2085,7 +2132,7 @@ def estadisticas_admin():
                 'ingresos_hoy': round(ingresos_hoy, 2),
                 'ingresos_mes': round(ingresos_mes, 2),
                 'db_size': f'{db_size:.2f} MB',
-                'ultimo_backup': '--'
+                'ultimo_backup': ultimo_backup_label
             }
         })
     except Exception as e:
@@ -2338,7 +2385,82 @@ def admin_backup_crear():
     admin_check = require_admin()
     if admin_check:
         return admin_check
-    return jsonify({'success': True, 'message': 'Backup creado correctamente'})
+    try:
+        ensure_dirs()
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'backup_{timestamp}.db'
+        backup_path = os.path.join(BACKUP_DIR, filename)
+
+        with db_lock:
+            source_conn = sqlite3.connect(DB_PATH)
+            backup_conn = sqlite3.connect(backup_path)
+            source_conn.backup(backup_conn)
+            backup_conn.close()
+            source_conn.close()
+
+        entry = register_backup(filename)
+        download_url = f'/api/admin/backup/descargar/{quote(filename)}'
+        return jsonify({
+            'success': True,
+            'message': 'Backup creado correctamente',
+            'data': {
+                'backup': entry,
+                'download_url': download_url
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/backup/listar', methods=['GET'])
+def admin_backup_listar():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        entries = load_backup_metadata()
+        return jsonify({'success': True, 'data': entries})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/backup/descargar/<path:filename>', methods=['GET'])
+def admin_backup_descargar(filename):
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        safe_name = os.path.basename(filename)
+        backup_path = os.path.join(BACKUP_DIR, safe_name)
+        if not os.path.exists(backup_path):
+            return jsonify({'success': False, 'error': 'Backup no encontrado'}), 404
+        return send_file(backup_path, as_attachment=True, download_name=safe_name)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/backup/restaurar', methods=['POST'])
+def admin_backup_restaurar():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        data = request.get_json(silent=True) or {}
+        filename = os.path.basename((data.get('filename') or '').strip())
+        if not filename:
+            return jsonify({'success': False, 'error': 'Archivo de backup requerido'}), 400
+
+        backup_path = os.path.join(BACKUP_DIR, filename)
+        if not os.path.exists(backup_path):
+            return jsonify({'success': False, 'error': 'Backup no encontrado'}), 404
+
+        with db_lock:
+            source_conn = sqlite3.connect(backup_path)
+            dest_conn = sqlite3.connect(DB_PATH)
+            source_conn.backup(dest_conn)
+            dest_conn.close()
+            source_conn.close()
+
+        return jsonify({'success': True, 'message': 'Backup restaurado correctamente'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/admin/db/optimizar', methods=['POST'])
 def admin_db_optimizar():
@@ -2355,6 +2477,30 @@ def admin_db_optimizar():
         return jsonify({'success': True, 'message': 'Base de datos optimizada'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/cache/limpiar', methods=['POST'])
+def admin_cache_limpiar():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    try:
+        ensure_dirs()
+        removed = 0
+        for name in os.listdir(CACHE_DIR):
+            path = os.path.join(CACHE_DIR, name)
+            if os.path.isfile(path):
+                os.remove(path)
+                removed += 1
+        return jsonify({'success': True, 'message': f'Cache limpiado ({removed} archivos)'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/sistema/reiniciar', methods=['POST'])
+def admin_sistema_reiniciar():
+    admin_check = require_admin()
+    if admin_check:
+        return admin_check
+    return jsonify({'success': True, 'message': 'Solicitud de reinicio registrada'})
 
 # ========== MANEJADOR DE ERRORES ==========
 @app.errorhandler(404)

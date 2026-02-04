@@ -79,7 +79,6 @@
                     <li><a class="dropdown-item" href="#" onclick="mostrarReporteSemanal()"><i class="fas fa-calendar-week me-2"></i> Reporte Semanal</a></li>
                     <li><a class="dropdown-item" href="#" onclick="mostrarReporteMensual()"><i class="fas fa-calendar-alt me-2"></i> Reporte Mensual</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-info" href="#" onclick="diagnostico()"><i class="fas fa-stethoscope me-2"></i> Diagnóstico</a></li>
                     <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión</a></li>
                 </ul>
             </div>
@@ -290,19 +289,29 @@
                 <!-- Summary Cards -->
                 <div class="row mb-4" id="seccionResumen">
                     <div class="col-md-6 mb-3">
-                        <div class="stat-card hover-lift">
-                            <div class="stat-label">TOTAL HOY</div>
+                        <div class="stat-card stat-card-highlight stat-card-today hover-lift">
+                            <div class="stat-header">
+                                <div class="stat-icon">
+                                    <i class="fas fa-sun"></i>
+                                </div>
+                                <div class="stat-label">TOTAL HOY</div>
+                            </div>
                             <div class="stat-number" id="totalHoy">$0</div>
-                            <div class="text-success small mt-2" id="totalHoyNombre">
+                            <div class="stat-subtitle text-success small mt-2" id="totalHoyNombre">
                                 <i class="fas fa-calendar-day me-1"></i> Hoy
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <div class="stat-card hover-lift">
-                            <div class="stat-label">TOP CAJERO</div>
+                        <div class="stat-card stat-card-highlight stat-card-top hover-lift">
+                            <div class="stat-header">
+                                <div class="stat-icon">
+                                    <i class="fas fa-trophy"></i>
+                                </div>
+                                <div class="stat-label">TOP CAJERO</div>
+                            </div>
                             <div class="stat-number" id="topCajero">$0</div>
-                            <div class="text-info small mt-2" id="topCajeroNombre">
+                            <div class="stat-subtitle text-info small mt-2" id="topCajeroNombre">
                                 <i class="fas fa-user me-1"></i> Sin datos
                             </div>
                         </div>
