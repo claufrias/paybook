@@ -148,6 +148,134 @@ body {
     padding: 1.5rem;
 }
 
+/* Summary stats */
+.stat-card {
+    position: relative;
+    padding: 1.5rem;
+    border-radius: 18px;
+    border: 1px solid var(--dark-border);
+    background: rgba(18, 22, 30, 0.9);
+    box-shadow: var(--glow);
+    overflow: hidden;
+}
+
+.stat-card-highlight {
+    border: 1px solid transparent;
+    background:
+        linear-gradient(180deg, rgba(24, 28, 38, 0.92), rgba(14, 17, 24, 0.95)) padding-box,
+        linear-gradient(135deg, rgba(91, 140, 255, 0.6), rgba(255, 122, 89, 0.35)) border-box;
+}
+
+.stat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.1rem;
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
+}
+
+.stat-card-today .stat-icon {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.stat-card-top .stat-icon {
+    background: linear-gradient(135deg, #facc15, #f97316);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 1.2px;
+}
+
+.stat-subtitle {
+    opacity: 0.85;
+}
+
+/* Status strip */
+.status-strip {
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.status-strip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+}
+
+.status-strip-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+}
+
+.status-action {
+    margin-left: auto;
+}
+
+@media (max-width: 768px) {
+    .status-strip {
+        padding: 1rem;
+    }
+
+    .status-strip-row {
+        justify-content: flex-start;
+    }
+
+    .status-action {
+        width: 100%;
+    }
+
+    .status-action .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 1200px) {
+    .dashboard-left,
+    .dashboard-right {
+        display: contents;
+    }
+
+    .dashboard-module {
+        width: 100%;
+    }
+
+    .order-mobile-0 { order: 0; }
+    .order-mobile-1 { order: 1; }
+    .order-mobile-2 { order: 2; }
+    .order-mobile-3 { order: 3; }
+    .order-mobile-4 { order: 4; }
+    .order-mobile-5 { order: 5; }
+}
+
 /* Buttons */
 .btn-ig {
     background: var(--primary-gradient);
