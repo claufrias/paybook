@@ -321,10 +321,15 @@ function mostrarModalCajeros() {
     };
 
     if (!cajeros.length) {
-        cargarCajeros().then(data => {
-            cajeros = data || [];
-            abrirModal();
-        });
+        abrirModal();
+        cargarCajeros()
+            .then(data => {
+                cajeros = data || [];
+                renderCajerosModal();
+            })
+            .catch(() => {
+                mostrarAlerta('Error', 'No se pudieron cargar los cajeros', 'error');
+            });
     } else {
         abrirModal();
     }
@@ -426,7 +431,6 @@ function mostrarModalCarga() {
         document.body.removeChild(modalContainer);
     });
     const input = document.getElementById('modalMonto');
-    const input = document.getElementById('montoCarga');
     if (input) input.focus();
 }
 
@@ -568,6 +572,22 @@ function forzarOcultarLoading() {
         clearTimeout(window.loadingTimeout);
         window.loadingTimeout = null;
     }
+}
+
+function diagnostico() {
+    const plan = usuarioActual?.plan ? usuarioActual.plan.toUpperCase() : 'N/A';
+    const nombre = usuarioActual?.nombre || 'Sin usuario';
+    const correo = usuarioActual?.email || 'Sin email';
+
+    const mensaje = `Usuario: ${nombre}\nEmail: ${correo}\nPlan: ${plan}\nCajeros: ${cajeros.length}\nCargas: ${cargas.length}`;
+    mostrarAlerta('Diagnóstico', mensaje, 'info');
+    console.table({
+        usuario: nombre,
+        email: correo,
+        plan,
+        cajeros: cajeros.length,
+        cargas: cargas.length
+    });
 }
 
 // ========== UI USUARIO ==========
@@ -2315,6 +2335,7 @@ window.mostrarEstadisticas = function() {
 window.mostrarModalPago = mostrarModalPago;
 window.pagarCajero = pagarCajero;
 window.verPendientes = verPendientes;
+window.diagnostico = diagnostico;
 window.forzarOcultarLoading = forzarOcultarLoading;
 window.cerrarAlerta = cerrarAlerta;
 window.login = login;
