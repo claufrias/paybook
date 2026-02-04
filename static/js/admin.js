@@ -1066,7 +1066,9 @@ async function crearBackup() {
         
         if (data.success) {
             mostrarAlertaAdmin('¡Éxito!', 'Backup creado correctamente', 'success');
-            
+            await cargarHistorialBackups();
+            await cargarEstadisticasAdmin();
+
             // Ofrecer descarga si hay URL
             if (data.data && data.data.download_url) {
                 if (confirm('¿Descargar el backup ahora?')) {
@@ -1084,9 +1086,171 @@ async function crearBackup() {
     }
 }
 
-function restaurarBackup() {
-    alert('Función en desarrollo: Restaurar backup');
-    // Implementar subida de archivo y restauración
+async function restaurarBackup() {
+    await cargarHistorialBackups(true);
+}
+
+async function cargarHistorialBackups(abrirModal = false) {
+    try {
+        const response = await fetch('/api/admin/backup/listar');
+        const data = await response.json();
+        if (data.success) {
+            actualizarTablaBackups(data.data);
+            if (abrirModal) {
+                mostrarModalRestaurarBackup(data.data);
+            }
+        } else {
+            mostrarAlertaAdmin('Error', data.error || 'No se pudieron cargar los backups', 'error');
+        }
+    } catch (error) {
+        console.error('Error cargando backups:', error);
+        mostrarAlertaAdmin('Error', 'No se pudo conectar con el servidor', 'error');
+    }
+}
+
+function actualizarTablaBackups(backups) {
+    const tbody = document.getElementById('backupHistoryTable');
+    if (!tbody) return;
+    if (!Array.isArray(backups) || backups.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">No hay backups creados</td>
+            </tr>
+        `;
+        return;
+    }
+
+    const rows = backups.map(backup => {
+        const sizeMb = backup.size ? `${(backup.size / (1024 * 1024)).toFixed(2)} MB` : '--';
+        const statusBadge = backup.status === 'ok'
+            ? '<span class="badge bg-success">OK</span>'
+            : '<span class="badge bg-warning">Aviso</span>';
+        const downloadUrl = `/api/admin/backup/descargar/${encodeURIComponent(backup.filename)}`;
+
+        return `
+            <tr>
+                <td>${backup.created_at}</td>
+                <td>${sizeMb}</td>
+                <td>Manual</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a class="btn btn-outline-info" href="${downloadUrl}" target="_blank">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button class="btn btn-outline-warning" onclick="confirmarRestauracionBackup('${backup.filename}')">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = rows.join('');
+}
+
+function mostrarModalRestaurarBackup(backups) {
+    if (!Array.isArray(backups) || backups.length === 0) {
+        mostrarAlertaAdmin('Aviso', 'No hay backups disponibles para restaurar', 'warning');
+        return;
+    }
+
+    const options = backups
+        .map(backup => `<option value="${backup.filename}">${backup.created_at} - ${backup.filename}</option>`)
+        .join('');
+
+    const modalHtml = `
+        <div class="modal fade" id="modalRestaurarBackup" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content ig-card">
+                    <div class="modal-header ig-card-header">
+                        <h5 class="modal-title gradient-text">
+                            <i class="fas fa-upload me-2"></i>Restaurar Backup
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body ig-card-body">
+                        <p class="text-muted">Selecciona un backup para restaurar la base de datos.</p>
+                        <div class="mb-3">
+                            <label class="form-label">Backup disponible</label>
+                            <select id="restoreBackupSelect" class="form-select form-select-ig">
+                                ${options}
+                            </select>
+                        </div>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Esta acción sobrescribirá la base de datos actual.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger" onclick="ejecutarRestauracionSeleccionada()">
+                            <i class="fas fa-undo me-2"></i> Restaurar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer);
+
+    const modal = new bootstrap.Modal(document.getElementById('modalRestaurarBackup'));
+    modal.show();
+
+    modalContainer.querySelector('#modalRestaurarBackup').addEventListener('hidden.bs.modal', function () {
+        document.body.removeChild(modalContainer);
+    });
+}
+
+function confirmarRestauracionBackup(filename) {
+    if (!confirm('¿Restaurar este backup? Se sobrescribirán los datos actuales.')) {
+        return;
+    }
+    restaurarBackupPorNombre(filename);
+}
+
+async function ejecutarRestauracionSeleccionada() {
+    const select = document.getElementById('restoreBackupSelect');
+    if (!select) return;
+    const filename = select.value;
+    if (!filename) return;
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalRestaurarBackup'));
+    if (modal) modal.hide();
+
+    restaurarBackupPorNombre(filename);
+}
+
+async function restaurarBackupPorNombre(filename) {
+    if (!filename) return;
+    mostrarLoading(true);
+
+    try {
+        const response = await fetch('/api/admin/backup/restaurar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarAlertaAdmin('¡Éxito!', data.message || 'Backup restaurado correctamente', 'success');
+            await cargarHistorialBackups();
+            await cargarEstadisticasAdmin();
+        } else {
+            mostrarAlertaAdmin('Error', data.error || 'No se pudo restaurar el backup', 'error');
+        }
+    } catch (error) {
+        console.error('Error restaurando backup:', error);
+        mostrarAlertaAdmin('Error', 'No se pudo conectar con el servidor', 'error');
+    } finally {
+        mostrarLoading(false);
+    }
 }
 
 async function optimizarBD() {
@@ -1122,11 +1286,22 @@ function limpiarCache() {
     }
     
     mostrarLoading(true);
-    
-    setTimeout(() => {
-        mostrarLoading(false);
-        mostrarAlertaAdmin('¡Éxito!', 'Cache limpiado correctamente', 'success');
-    }, 1000);
+
+    fetch('/api/admin/cache/limpiar', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlertaAdmin('¡Éxito!', data.message || 'Cache limpiado correctamente', 'success');
+            } else {
+                mostrarAlertaAdmin('Error', data.error || 'No se pudo limpiar el cache', 'error');
+            }
+        })
+        .catch(() => {
+            mostrarAlertaAdmin('Error', 'No se pudo conectar con el servidor', 'error');
+        })
+        .finally(() => {
+            mostrarLoading(false);
+        });
 }
 
 function reiniciarSistema() {
@@ -1139,12 +1314,22 @@ function reiniciarSistema() {
     }
     
     mostrarLoading(true);
-    
-    // En un sistema real, aquí llamarías a la API de reinicio
-    setTimeout(() => {
-        mostrarLoading(false);
-        mostrarAlertaAdmin('Sistema reiniciado', 'El sistema se ha reiniciado. Recarga la página.', 'warning');
-    }, 2000);
+
+    fetch('/api/admin/sistema/reiniciar', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlertaAdmin('Sistema reiniciado', data.message || 'El sistema se ha reiniciado. Recarga la página.', 'warning');
+            } else {
+                mostrarAlertaAdmin('Error', data.error || 'No se pudo reiniciar el sistema', 'error');
+            }
+        })
+        .catch(() => {
+            mostrarAlertaAdmin('Error', 'No se pudo conectar con el servidor', 'error');
+        })
+        .finally(() => {
+            mostrarLoading(false);
+        });
 }
 
 // ========== INICIALIZACIÓN ==========
@@ -1231,6 +1416,7 @@ window.activarUsuario = activarUsuario;
 window.desactivarUsuario = desactivarUsuario;
 window.guardarConfiguracion = guardarConfiguracion;
 window.crearBackup = crearBackup;
+window.cargarHistorialBackups = cargarHistorialBackups;
 window.optimizarBD = optimizarBD;
 window.limpiarCache = limpiarCache;
 window.reiniciarSistema = reiniciarSistema;
