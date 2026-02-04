@@ -23,7 +23,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background:
+                radial-gradient(circle at top, rgba(91, 140, 255, 0.2), transparent 55%),
+                radial-gradient(circle at 20% 30%, rgba(255, 90, 200, 0.16), transparent 50%),
+                #0a0c10;
             padding: 20px;
         }
         
@@ -46,8 +49,10 @@
         .auth-features {
             margin-top: 30px;
             padding: 20px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(110, 118, 129, 0.2);
+            box-shadow: 0 12px 24px rgba(8, 12, 24, 0.4);
         }
         
         .feature-item {
@@ -58,13 +63,13 @@
         }
         
         .feature-item i {
-            color: #00ff88;
+            color: #7dd3fc;
             margin-right: 10px;
             font-size: 0.9rem;
         }
         
         .trial-badge {
-            background: linear-gradient(45deg, #ff6b6b, #ffa726);
+            background: linear-gradient(135deg, #ff5ac8, #ff7a59);
             color: white;
             padding: 4px 12px;
             border-radius: 20px;
@@ -81,7 +86,7 @@
             transform: translateY(-50%);
             background: none;
             border: none;
-            color: #666;
+            color: #9aa5b1;
             cursor: pointer;
         }
         
