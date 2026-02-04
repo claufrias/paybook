@@ -7,6 +7,16 @@ let usuariosList = [];
 let usuariosChartInstance = null;
 let ingresosChartInstance = null;
 
+function getPlanLabel(plan) {
+    if (!plan) return '--';
+    if (plan === 'basic') return 'Lite';
+    if (plan === 'premium') return 'Pro';
+    if (plan === 'trial') return 'Prueba';
+    if (plan === 'expired') return 'Expirado';
+    if (plan === 'admin') return 'Admin';
+    return plan.toUpperCase();
+}
+
 // ========== FUNCIONES DEL DASHBOARD ==========
 
 async function cargarEstadisticasAdmin() {
@@ -484,7 +494,7 @@ function actualizarTablaUsuarios(usuarios) {
                 </td>
                 <td>${usuario.nombre || '--'}</td>
                 <td>
-                    <span class="${planClass} fw-bold">${usuario.plan.toUpperCase()}</span>
+                    <span class="${planClass} fw-bold">${getPlanLabel(usuario.plan)}</span>
                 </td>
                 <td>
                     ${fechaExpiracion ? `
@@ -604,7 +614,7 @@ async function verUsuario(id) {
                                         <div class="col-6 mb-2">
                                             <small class="text-muted d-block">Plan</small>
                                             <span class="badge bg-${usuario.plan === 'premium' ? 'warning' : usuario.plan === 'admin' ? 'danger' : 'info'}">
-                                                ${usuario.plan.toUpperCase()}
+                                                ${getPlanLabel(usuario.plan)}
                                             </span>
                                         </div>
                                         <div class="col-6 mb-2">
@@ -701,8 +711,8 @@ async function editarUsuario(id) {
                                 <label class="form-label">Plan</label>
                                 <select id="editUsuarioPlan" class="form-select form-select-ig">
                                     <option value="trial" ${usuario.plan === 'trial' ? 'selected' : ''}>Prueba</option>
-                                    <option value="basic" ${usuario.plan === 'basic' ? 'selected' : ''}>Básico</option>
-                                    <option value="premium" ${usuario.plan === 'premium' ? 'selected' : ''}>Premium</option>
+                                    <option value="basic" ${usuario.plan === 'basic' ? 'selected' : ''}>Lite</option>
+                                    <option value="premium" ${usuario.plan === 'premium' ? 'selected' : ''}>Pro</option>
                                     <option value="admin" ${usuario.plan === 'admin' ? 'selected' : ''}>Admin</option>
                                 </select>
                             </div>
@@ -885,8 +895,12 @@ async function cargarConfiguracion() {
             document.getElementById('configBancoNombre').value = config.banco_nombre || '';
             document.getElementById('configBancoCuenta').value = config.banco_cuenta || '';
             document.getElementById('configBancoTitular').value = config.banco_titular || '';
-            document.getElementById('configPrecioBasico').value = config.precio_basico || '10000';
-            document.getElementById('configPrecioPremium').value = config.precio_premium || '20000';
+            document.getElementById('configPrecioLite').value = config.precio_basico || '10000';
+            document.getElementById('configPrecioPro').value = config.precio_premium || '20000';
+            document.getElementById('configCajerosLite').value = config.plan_lite_cajeros || '15';
+            document.getElementById('configCajerosPro').value = config.plan_pro_cajeros || '0';
+            document.getElementById('configFeaturesLite').value = config.plan_lite_features || '';
+            document.getElementById('configFeaturesPro').value = config.plan_pro_features || '';
             document.getElementById('configMensajeBienvenida').value = config.mensaje_bienvenida || '';
         }
     } catch (error) {
@@ -900,8 +914,12 @@ async function guardarConfiguracion() {
         banco_nombre: document.getElementById('configBancoNombre').value.trim(),
         banco_cuenta: document.getElementById('configBancoCuenta').value.trim(),
         banco_titular: document.getElementById('configBancoTitular').value.trim(),
-        precio_basico: document.getElementById('configPrecioBasico').value,
-        precio_premium: document.getElementById('configPrecioPremium').value,
+        precio_basico: document.getElementById('configPrecioLite').value,
+        precio_premium: document.getElementById('configPrecioPro').value,
+        plan_lite_cajeros: document.getElementById('configCajerosLite').value,
+        plan_pro_cajeros: document.getElementById('configCajerosPro').value,
+        plan_lite_features: document.getElementById('configFeaturesLite').value.trim(),
+        plan_pro_features: document.getElementById('configFeaturesPro').value.trim(),
         mensaje_bienvenida: document.getElementById('configMensajeBienvenida').value.trim()
     };
     

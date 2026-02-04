@@ -10,7 +10,74 @@ let cajeros = [];
 let resumen = [];
 let estadisticas = {};
 let configuracion = {};
+let planesConfig = null;
 let isLoading = false;
+
+function buildFallbackPlanesConfig() {
+    return {
+        lite: {
+            nombre: 'Lite',
+            precio: 10000,
+            features: [
+                { text: 'Hasta 15 cajeros', included: true },
+                { text: 'Cargas ilimitadas', included: true },
+                { text: 'Reportes básicos', included: true },
+                { text: 'WhatsApp API', included: false },
+                { text: 'Reportes avanzados', included: false }
+            ]
+        },
+        pro: {
+            nombre: 'Pro',
+            precio: 20000,
+            features: [
+                { text: 'Cajeros ilimitados', included: true },
+                { text: 'Cargas ilimitadas', included: true },
+                { text: 'Reportes avanzados', included: true },
+                { text: 'WhatsApp API', included: true },
+                { text: 'Soporte prioritario', included: true }
+            ]
+        }
+    };
+}
+
+async function obtenerPlanesConfig(forceRefresh = false) {
+    if (planesConfig && !forceRefresh) return planesConfig;
+    try {
+        const response = await fetch(`${API_BASE}/api/planes`);
+        const data = await response.json();
+        if (data.success) {
+            planesConfig = data.data;
+            return planesConfig;
+        }
+    } catch (error) {
+        console.error('Error cargando planes:', error);
+    }
+    planesConfig = buildFallbackPlanesConfig();
+    return planesConfig;
+}
+
+function formatPrice(value) {
+    const parsed = parseFloat(value);
+    if (!Number.isFinite(parsed)) return value;
+    return parsed.toFixed(2);
+}
+
+function renderPlanFeatures(features) {
+    return (features || []).map(feature => {
+        const iconClass = feature.included ? 'fa-check text-success' : 'fa-times text-danger';
+        return `<li><i class="fas ${iconClass} me-2"></i>${feature.text}</li>`;
+    }).join('');
+}
+
+function getPlanLabel(plan) {
+    if (!plan) return '';
+    if (plan === 'basic') return 'Lite';
+    if (plan === 'premium') return 'Pro';
+    if (plan === 'trial') return 'Prueba';
+    if (plan === 'expired') return 'Expirado';
+    if (plan === 'admin') return 'Admin';
+    return plan.toUpperCase();
+}
 
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', function() {
@@ -575,7 +642,7 @@ function forzarOcultarLoading() {
 }
 
 function diagnostico() {
-    const plan = usuarioActual?.plan ? usuarioActual.plan.toUpperCase() : 'N/A';
+    const plan = usuarioActual?.plan ? getPlanLabel(usuarioActual.plan) : 'N/A';
     const nombre = usuarioActual?.nombre || 'Sin usuario';
     const correo = usuarioActual?.email || 'Sin email';
 
@@ -610,7 +677,7 @@ function actualizarUIUsuario() {
                         <small class="text-muted">${usuarioActual.email}</small>
                     </li>
                     <li class="dropdown-item disabled">
-                        <small class="text-muted">Plan: ${usuarioActual.plan}</small>
+                        <small class="text-muted">Plan: ${getPlanLabel(usuarioActual.plan)}</small>
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#" onclick="cargarDatosIniciales()"><i class="fas fa-sync-alt me-2"></i> Actualizar</a></li>
@@ -659,7 +726,7 @@ function actualizarInfoSuscripcion() {
                 <h6><i class="fas fa-crown me-2"></i>Tu Suscripción</h6>
                 <div class="d-flex justify-content-between align-items-center mt-2">
                     <div>
-                        <div class="fw-bold">Plan ${usuarioActual.plan.toUpperCase()}</div>
+                        <div class="fw-bold">Plan ${getPlanLabel(usuarioActual.plan)}</div>
                         <small class="text-muted">Expira: ${expiracion.toLocaleDateString('es-ES')}</small>
                     </div>
                     <span class="badge ${badgeClass}">${badgeText}</span>
@@ -1561,6 +1628,10 @@ async function mostrarModalPago() {
         return;
     }
     
+    const planes = await obtenerPlanesConfig(true);
+    const litePlan = planes.lite || buildFallbackPlanesConfig().lite;
+    const proPlan = planes.pro || buildFallbackPlanesConfig().pro;
+
     let html = `
         <div class="pago-modal">
             <h4 class="gradient-text mb-4">Renovar Suscripción</h4>
@@ -1570,15 +1641,11 @@ async function mostrarModalPago() {
                     <div class="plan-card ${usuarioActual.plan === 'basic' ? 'selected' : ''}" 
                          onclick="seleccionarPlan('basic')" id="planBasic">
                         <div class="plan-header">
-                            <h5>Plan Básico</h5>
-                            <div class="plan-price">$9.99<span class="period">/mes</span></div>
+                            <h5>Plan ${litePlan.nombre}</h5>
+                            <div class="plan-price">$${formatPrice(litePlan.precio)}<span class="period">/mes</span></div>
                         </div>
                         <ul class="plan-features">
-                            <li><i class="fas fa-check text-success me-2"></i>Hasta 15 cajeros</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Cargas ilimitadas</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Reportes básicos</li>
-                            <li><i class="fas fa-times text-danger me-2"></i>WhatsApp API</li>
-                            <li><i class="fas fa-times text-danger me-2"></i>Reportes avanzados</li>
+                            ${renderPlanFeatures(litePlan.features)}
                         </ul>
                     </div>
                 </div>
@@ -1586,15 +1653,11 @@ async function mostrarModalPago() {
                     <div class="plan-card ${usuarioActual.plan === 'premium' ? 'selected' : ''}" 
                          onclick="seleccionarPlan('premium')" id="planPremium">
                         <div class="plan-header">
-                            <h5>Plan Premium</h5>
-                            <div class="plan-price">$19.99<span class="period">/mes</span></div>
+                            <h5>Plan ${proPlan.nombre}</h5>
+                            <div class="plan-price">$${formatPrice(proPlan.precio)}<span class="period">/mes</span></div>
                         </div>
                         <ul class="plan-features">
-                            <li><i class="fas fa-check text-success me-2"></i>Cajeros ilimitados</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Cargas ilimitadas</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Reportes avanzados</li>
-                            <li><i class="fas fa-check text-success me-2"></i>WhatsApp API</li>
-                            <li><i class="fas fa-check text-success me-2"></i>Soporte prioritario</li>
+                            ${renderPlanFeatures(proPlan.features)}
                         </ul>
                     </div>
                 </div>
@@ -1602,8 +1665,8 @@ async function mostrarModalPago() {
             
             <div class="mt-4" id="planSeleccionadoContainer" style="display: none;">
                 <div class="ig-card">
-                    <h6>Plan seleccionado: <span id="planSeleccionadoNombre">Básico</span></h6>
-                    <p class="mb-0">Total: $<span id="planSeleccionadoPrecio">9.99</span>/mes</p>
+                    <h6>Plan seleccionado: <span id="planSeleccionadoNombre">${litePlan.nombre}</span></h6>
+                    <p class="mb-0">Total: $<span id="planSeleccionadoPrecio">${formatPrice(litePlan.precio)}</span>/mes</p>
                 </div>
                 
                 <div class="mt-3">
@@ -1657,6 +1720,7 @@ let planSeleccionado = 'basic';
 
 function seleccionarPlan(plan) {
     planSeleccionado = plan;
+    const planes = planesConfig || buildFallbackPlanesConfig();
     
     // Actualizar UI
     document.querySelectorAll('.plan-card').forEach(card => {
@@ -1675,8 +1739,9 @@ function seleccionarPlan(plan) {
     
     if (container && nombre && precio) {
         container.style.display = 'block';
-        nombre.textContent = plan === 'basic' ? 'Básico' : 'Premium';
-        precio.textContent = plan === 'basic' ? '10000' : '20000';
+        const planData = plan === 'basic' ? planes.lite : planes.pro;
+        nombre.textContent = planData.nombre;
+        precio.textContent = formatPrice(planData.precio);
     }
 }
 
@@ -1748,8 +1813,8 @@ function mostrarInstruccionesPago(datosPago) {
                             <tr><td>Banco:</td><td><strong>${datosPago.banco_nombre}</strong></td></tr>
                             <tr><td>Cuenta:</td><td><strong>${datosPago.banco_cuenta}</strong></td></tr>
                             <tr><td>Titular:</td><td><strong>${datosPago.banco_titular}</strong></td></tr>
-                            <tr><td>Monto:</td><td><strong>$${datosPago.monto}</strong></td></tr>
-                            <tr><td>Plan:</td><td><strong>${datosPago.plan}</strong></td></tr>
+                            <tr><td>Monto:</td><td><strong>$${formatPrice(datosPago.monto)}</strong></td></tr>
+                            <tr><td>Plan:</td><td><strong>${getPlanLabel(datosPago.plan)}</strong></td></tr>
                         </table>
                     </div>
                 </div>
@@ -1838,8 +1903,8 @@ async function verificarEstadoPago(mostrarAlerta = false) {
                 if (mostrarAlerta) {
                     let mensaje = `Estado: ${data.data.estado.toUpperCase()}\n`;
                     mensaje += `Código: ${data.data.codigo}\n`;
-                    mensaje += `Monto: $${data.data.monto}\n`;
-                    mensaje += `Plan: ${data.data.plan}\n`;
+                    mensaje += `Monto: $${formatPrice(data.data.monto)}\n`;
+                    mensaje += `Plan: ${getPlanLabel(data.data.plan)}\n`;
                     
                     if (data.data.estado === 'verificado') {
                         mensaje += `Verificado: ${new Date(data.data.fecha_verificacion).toLocaleString()}`;
