@@ -265,7 +265,7 @@ async function cargarDatosUsuario() {
         console.warn('⚠️ No se pudo verificar sesión, usando datos locales');
         
         // Intentar usar datos locales
-        const localUser = localStorage.getItem('redcajeros_user');
+        const localUser = localStorage.getItem('redcajeros_user') || localStorage.getItem('user');
         if (localUser) {
             try {
                 currentUser = JSON.parse(localUser);
@@ -867,7 +867,18 @@ function mostrarLoading(mostrar = true) {
 // ========== FUNCIONES DE PERFIL ==========
 
 async function verMiPerfil() {
-    const user = await cargarDatosUsuario();
+    let user = await cargarDatosUsuario();
+    if (!user) {
+        const legacyUser = localStorage.getItem('user');
+        if (legacyUser) {
+            try {
+                user = JSON.parse(legacyUser);
+                currentUser = user;
+            } catch (error) {
+                console.error('Error parseando usuario legacy:', error);
+            }
+        }
+    }
     if (!user) return;
     const avatarActual = user.avatar || AVATAR_OPCIONES[0];
     const avatarsHtml = AVATAR_OPCIONES.map(opcion => `
