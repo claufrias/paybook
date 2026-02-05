@@ -190,6 +190,8 @@ def init_db():
             rol TEXT DEFAULT 'user',
             telefono TEXT,
             avatar TEXT,
+            theme_primary TEXT,
+            theme_accent TEXT,
             fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             fecha_expiracion TIMESTAMP,
             activo INTEGER DEFAULT 1
@@ -308,6 +310,10 @@ def actualizar_bd():
         columnas_usuarios = [col[1] for col in cursor.fetchall()]
         if 'avatar' not in columnas_usuarios:
             cursor.execute('ALTER TABLE usuarios ADD COLUMN avatar TEXT')
+        if 'theme_primary' not in columnas_usuarios:
+            cursor.execute('ALTER TABLE usuarios ADD COLUMN theme_primary TEXT')
+        if 'theme_accent' not in columnas_usuarios:
+            cursor.execute('ALTER TABLE usuarios ADD COLUMN theme_accent TEXT')
         
         # Verificar tabla pagos
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pagos'")
@@ -515,7 +521,7 @@ def api_login():
             cursor = conn.cursor()
             cursor.execute(
                 '''
-                SELECT id, email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion, fecha_registro
+                SELECT id, email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion, fecha_registro, theme_primary, theme_accent
                 FROM usuarios
                 WHERE email = ? AND activo = 1
                 ''',
@@ -527,7 +533,7 @@ def api_login():
         if not row:
             return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
-        user_id, user_email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion, fecha_registro = row
+        user_id, user_email, password_hash, nombre, plan, rol, avatar, telefono, fecha_expiracion, fecha_registro, theme_primary, theme_accent = row
         if hash_password(password) != password_hash:
             return jsonify({'success': False, 'error': 'Credenciales inválidas'}), 401
 
@@ -545,7 +551,9 @@ def api_login():
                 'avatar': avatar,
                 'telefono': telefono,
                 'expiracion': fecha_expiracion,
-                'fecha_registro': fecha_registro
+                'fecha_registro': fecha_registro,
+                'theme_primary': theme_primary,
+                'theme_accent': theme_accent
             }
         })
     except Exception as e:
@@ -603,7 +611,9 @@ def api_register():
             'avatar': None,
             'telefono': telefono,
             'expiracion': None,
-            'fecha_registro': fecha_registro
+            'fecha_registro': fecha_registro,
+            'theme_primary': None,
+            'theme_accent': None
         }
         return jsonify({
             'success': True,
@@ -627,15 +637,23 @@ def api_auth_update():
         telefono = (data.get('telefono') or '').strip()
         password = (data.get('password') or '').strip()
         avatar = (data.get('avatar') or '').strip() or None
+        theme_primary = (data.get('theme_primary') or '').strip() or None
+        theme_accent = (data.get('theme_accent') or '').strip() or None
+
+        hex_pattern = re.compile(r'^#[0-9A-Fa-f]{6}$')
+        if theme_primary and not hex_pattern.match(theme_primary):
+            return jsonify({'success': False, 'error': 'Color principal inválido'}), 400
+        if theme_accent and not hex_pattern.match(theme_accent):
+            return jsonify({'success': False, 'error': 'Color secundario inválido'}), 400
 
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             cursor.execute('''
                 UPDATE usuarios
-                SET telefono = ?, avatar = ?
+                SET telefono = ?, avatar = ?, theme_primary = ?, theme_accent = ?
                 WHERE id = ?
-            ''', (telefono, avatar, current_user.id))
+            ''', (telefono, avatar, theme_primary, theme_accent, current_user.id))
 
             if password:
                 cursor.execute('''
@@ -659,18 +677,20 @@ def api_auth_me():
         expiracion = None
         fecha_registro = None
         avatar = current_user.avatar
+        theme_primary = None
+        theme_accent = None
         try:
             with db_lock:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
                 cursor.execute(
-                    'SELECT telefono, fecha_expiracion, avatar, fecha_registro FROM usuarios WHERE id = ?',
+                    'SELECT telefono, fecha_expiracion, avatar, fecha_registro, theme_primary, theme_accent FROM usuarios WHERE id = ?',
                     (current_user.id,)
                 )
                 row = cursor.fetchone()
                 conn.close()
             if row:
-                telefono, expiracion, avatar_db, fecha_registro = row
+                telefono, expiracion, avatar_db, fecha_registro, theme_primary, theme_accent = row
                 avatar = avatar_db or avatar
         except Exception:
             pass
@@ -685,7 +705,9 @@ def api_auth_me():
                 'avatar': avatar,
                 'telefono': telefono,
                 'expiracion': expiracion,
-                'fecha_registro': fecha_registro
+                'fecha_registro': fecha_registro,
+                'theme_primary': theme_primary,
+                'theme_accent': theme_accent
             }
         })
     return jsonify({'success': False}), 401

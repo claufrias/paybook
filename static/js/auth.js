@@ -6,6 +6,44 @@ let userSubscription = null;
 const AVATAR_OPCIONES = ['😎', '😊', '🧑', '👩‍💼', '🧔', '👩‍🎨', '🤓', '🚀', '🍳', '🧑‍', '🦊', '🐼', '🐸','🧙‍♂️', '🧙‍♀️', '🐲', '🧛','🧟', '🧝‍♂️', '🦄','⚔️','🕹️','👾','🛸', '🤖',];
 let planesPublicos = null;
 
+const DEFAULT_THEME_PRIMARY = '#33D4B6';
+const DEFAULT_THEME_ACCENT = '#33A1D4';
+
+function isValidHexColor(value) {
+    return /^#[0-9A-Fa-f]{6}$/.test(value || '');
+}
+
+function hexToRgbTuple(hex) {
+    if (!isValidHexColor(hex)) return null;
+    const normalized = hex.replace('#', '');
+    const r = parseInt(normalized.slice(0, 2), 16);
+    const g = parseInt(normalized.slice(2, 4), 16);
+    const b = parseInt(normalized.slice(4, 6), 16);
+    return `${r}, ${g}, ${b}`;
+}
+
+function shadeHexColor(hex, factor = 0.85) {
+    if (!isValidHexColor(hex)) return hex;
+    const n = hex.replace('#', '');
+    const r = Math.max(0, Math.min(255, Math.round(parseInt(n.slice(0, 2), 16) * factor)));
+    const g = Math.max(0, Math.min(255, Math.round(parseInt(n.slice(2, 4), 16) * factor)));
+    const b = Math.max(0, Math.min(255, Math.round(parseInt(n.slice(4, 6), 16) * factor)));
+    return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function applyUserTheme(user = null) {
+    const root = document.documentElement;
+    const current = user || obtenerUsuarioLocal() || currentUser;
+    const primary = isValidHexColor(current?.theme_primary) ? current.theme_primary : DEFAULT_THEME_PRIMARY;
+    const accent = isValidHexColor(current?.theme_accent) ? current.theme_accent : DEFAULT_THEME_ACCENT;
+    root.style.setProperty('--primary', primary);
+    root.style.setProperty('--accent', accent);
+    root.style.setProperty('--primary-dark', shadeHexColor(primary, 0.88));
+    root.style.setProperty('--accent-dark', shadeHexColor(accent, 0.86));
+    root.style.setProperty('--primary-rgb', hexToRgbTuple(primary) || '51, 212, 182');
+    root.style.setProperty('--accent-rgb', hexToRgbTuple(accent) || '51, 161, 212');
+}
+
 function buildFallbackPlanesConfig() {
     return {
         lite: {
@@ -332,6 +370,7 @@ async function cargarDatosUsuario() {
             // Actualizar localStorage con datos frescos
             localStorage.setItem('redcajeros_user', JSON.stringify(data.user));
             currentUser = data.user;
+            applyUserTheme(data.user);
             
             // Actualizar UI
             actualizarUIUsuario(data.user);
@@ -853,7 +892,7 @@ async function mostrarModalSuscripcion() {
                                         </ul>
                                         <div class="d-grid gap-2">
                                             ${upgradeNote}
-                                            <button class="btn btn-ig d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, #f7d774, #e9b949); color: #1b1b1b; border: none;" onclick="solicitarPagoManual('pro')">
+                                            <button class="btn btn-ig d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: #fff; border: none;" onclick="solicitarPagoManual('pro')">
                                                 <i class="fa-solid fa-star"></i>
                                                 <span>${premiumLabel}</span>
                                             </button>
@@ -1044,6 +1083,10 @@ function actualizarPerfilModal(user) {
     if (rol) rol.textContent = (user.rol || 'user').toUpperCase();
     if (telefono) telefono.value = user.telefono || '';
     if (avatarInput) avatarInput.value = user.avatar || AVATAR_OPCIONES[0];
+    const themePrimaryInput = modal.querySelector('#profileThemePrimary');
+    const themeAccentInput = modal.querySelector('#profileThemeAccent');
+    if (themePrimaryInput) themePrimaryInput.value = user.theme_primary || DEFAULT_THEME_PRIMARY;
+    if (themeAccentInput) themeAccentInput.value = user.theme_accent || DEFAULT_THEME_ACCENT;
 }
 
 function calcularDiasRestantes(fechaRegistro) {
@@ -1127,6 +1170,24 @@ async function verMiPerfil() {
                             </div>
                             <input type="hidden" id="profileAvatar" value="${avatarActual}">
                         </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Colores de la web</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <small class="text-muted d-block mb-1">Principal</small>
+                                    <input type="color" id="profileThemePrimary" class="form-control form-control-color w-100" value="${user.theme_primary || DEFAULT_THEME_PRIMARY}">
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted d-block mb-1">Secundario</small>
+                                    <input type="color" id="profileThemeAccent" class="form-control form-control-color w-100" value="${user.theme_accent || DEFAULT_THEME_ACCENT}">
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-2">
+                                <button type="button" class="btn btn-sm btn-ig-outline" onclick="previewThemeColors()">Vista previa</button>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="resetThemeColors()">Restablecer</button>
+                            </div>
+                        </div>
                         
                         <div class="mb-3">
                             <label class="form-label text-muted">Teléfono (WhatsApp)</label>
@@ -1172,11 +1233,10 @@ async function verMiPerfil() {
     });
 
     if (obtenerUsuarioLocal()) {
-        cargarDatosUsuario().then(actualizado => {
-            if (actualizado) {
-                actualizarPerfilModal(actualizado);
-            }
-        });
+        const actualizado = await cargarDatosUsuario();
+        if (actualizado) {
+            actualizarPerfilModal(actualizado);
+        }
     }
 }
 
@@ -1185,6 +1245,8 @@ async function guardarPerfil() {
     const password = document.getElementById('profilePassword').value;
     const passwordConfirm = document.getElementById('profilePasswordConfirm').value;
     const avatar = document.getElementById('profileAvatar')?.value || '';
+    const themePrimary = document.getElementById('profileThemePrimary')?.value || DEFAULT_THEME_PRIMARY;
+    const themeAccent = document.getElementById('profileThemeAccent')?.value || DEFAULT_THEME_ACCENT;
     
     // Validar contraseñas si se están cambiando
     if (password && password !== passwordConfirm) {
@@ -1200,7 +1262,12 @@ async function guardarPerfil() {
     mostrarLoading(true);
     
     try {
-        const updateData = { telefono, avatar };
+        if (!isValidHexColor(themePrimary) || !isValidHexColor(themeAccent)) {
+            mostrarAlerta('Error', 'Selecciona colores válidos', 'error');
+            return;
+        }
+
+        const updateData = { telefono, avatar, theme_primary: themePrimary, theme_accent: themeAccent };
         if (password) {
             updateData.password = password;
         }
@@ -1217,7 +1284,8 @@ async function guardarPerfil() {
             mostrarAlerta('¡Éxito!', 'Perfil actualizado correctamente', 'success');
             
             // Actualizar datos del usuario
-            await cargarDatosUsuario();
+            const updated = await cargarDatosUsuario();
+            applyUserTheme(updated || obtenerUsuarioLocal());
             
             // Cerrar modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('modalPerfil'));
@@ -1231,6 +1299,20 @@ async function guardarPerfil() {
     } finally {
         mostrarLoading(false);
     }
+}
+
+function previewThemeColors() {
+    const themePrimary = document.getElementById('profileThemePrimary')?.value || DEFAULT_THEME_PRIMARY;
+    const themeAccent = document.getElementById('profileThemeAccent')?.value || DEFAULT_THEME_ACCENT;
+    applyUserTheme({ theme_primary: themePrimary, theme_accent: themeAccent });
+}
+
+function resetThemeColors() {
+    const primaryInput = document.getElementById('profileThemePrimary');
+    const accentInput = document.getElementById('profileThemeAccent');
+    if (primaryInput) primaryInput.value = DEFAULT_THEME_PRIMARY;
+    if (accentInput) accentInput.value = DEFAULT_THEME_ACCENT;
+    applyUserTheme({ theme_primary: DEFAULT_THEME_PRIMARY, theme_accent: DEFAULT_THEME_ACCENT });
 }
 
 function seleccionarAvatar(avatar) {
@@ -1279,3 +1361,9 @@ window.verMisSuscripciones = verMisSuscripciones;
 window.mostrarModalSuscripcion = mostrarModalSuscripcion;
 window.verMiPerfil = verMiPerfil;
 window.seleccionarAvatar = seleccionarAvatar;
+window.previewThemeColors = previewThemeColors;
+window.resetThemeColors = resetThemeColors;
+
+document.addEventListener('DOMContentLoaded', function() {
+    applyUserTheme(obtenerUsuarioLocal());
+});

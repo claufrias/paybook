@@ -3,119 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔴 RedCajeros - Gestión Profesional</title>
-    
-    <!-- Bootstrap 5 Dark -->
+    <title>RedCajeros - Acceso</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.1.3/dist/css/bootstrap-night.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Nuestro CSS personalizado -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    
+
     <style>
         .auth-container {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 28px 16px;
             background:
-                radial-gradient(circle at top, rgba(91, 140, 255, 0.2), transparent 55%),
-                radial-gradient(circle at 20% 30%, rgba(255, 90, 200, 0.16), transparent 50%),
-                #0a0c10;
-            padding: 20px;
+                radial-gradient(circle at 10% 10%, rgba(39, 245, 139, 0.25), transparent 45%),
+                radial-gradient(circle at 95% 90%, rgba(245, 39, 145, 0.2), transparent 40%),
+                linear-gradient(150deg, #04141e 0%, #071a26 45%, #111827 100%);
         }
-        
-        .auth-card {
+
+        .auth-shell {
             width: 100%;
-            max-width: 980px;
-            animation: fadeIn 0.5s ease;
-        }
-        
-        .auth-logo {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .auth-switch {
-            text-align: center;
-            margin-top: 20px;
-        }
-        
-        .auth-features {
-            margin-top: 30px;
-            padding: 20px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(110, 118, 129, 0.2);
-            box-shadow: 0 12px 24px rgba(8, 12, 24, 0.4);
-        }
-        
-        .feature-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            padding: 8px 0;
-        }
-        
-        .feature-item i {
-            color: #7dd3fc;
-            margin-right: 10px;
-            font-size: 0.9rem;
-        }
-        
-        .trial-badge {
-            background: linear-gradient(135deg, #ff5ac8, #ff7a59);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: inline-block;
-            margin-left: 10px;
-        }
-        
-        .password-toggle {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #9aa5b1;
-            cursor: pointer;
-        }
-        
-        .password-input {
-            position: relative;
-        }
-
-
-        .auth-layout {
+            max-width: 1080px;
             display: grid;
-            grid-template-columns: minmax(320px, 470px) minmax(260px, 360px);
-            gap: 24px;
-            width: 100%;
-            align-items: start;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 22px;
+        }
+
+        .auth-panel,
+        .auth-side {
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            background: linear-gradient(180deg, rgba(7, 24, 34, 0.95), rgba(3, 14, 22, 0.95));
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
         }
 
         .auth-panel {
-            padding: 24px;
-            border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: linear-gradient(180deg, rgba(14, 17, 25, 0.92), rgba(10, 12, 18, 0.92));
-            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+            padding: 28px;
         }
 
-        .auth-side {
-            padding: 24px;
-            border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: rgba(12, 16, 23, 0.85);
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .brand-title {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #cffafe;
+        }
+
+        .brand-subtitle {
+            margin-top: 6px;
+            color: #a5b4c7;
+        }
+
+        .auth-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 6px;
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(39, 245, 139, 0.32);
+        }
+
+        .toggle-btn {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px;
+            font-weight: 600;
+            color: #cbd5e1;
+            background: transparent;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, #33D4B6, #33A1D4);
+            color: #082f49;
+        }
+
+        .ig-card {
+            border-radius: 18px;
+            border: 1px solid rgba(39, 245, 139, 0.2);
+            background: rgba(8, 20, 31, 0.85);
+        }
+
+        .ig-card-header {
+            border-bottom: 1px solid rgba(39, 245, 139, 0.28);
+            background: rgba(15, 33, 49, 0.45);
+        }
+
+        .accent-title {
+            color: #33D4B6;
+        }
+
+        .form-control-ig {
+            background: rgba(15, 30, 46, 0.86);
+            border: 1px solid rgba(39, 245, 139, 0.25);
+            color: #f8fafc;
+        }
+
+        .form-control-ig:focus {
+            border-color: #33D4B6;
+            box-shadow: 0 0 0 0.2rem rgba(39, 245, 139, 0.2);
+            background: rgba(17, 34, 50, 0.95);
+            color: #fff;
+        }
+
+        .btn-auth {
+            background: linear-gradient(135deg, #33D4B6, #2CB99F);
+            border: none;
+            color: #06263c;
+            font-weight: 700;
+            border-radius: 12px;
+            padding: 11px 14px;
+        }
+
+        .btn-register-spotlight {
+            width: 100%;
+            border-radius: 12px;
+            padding: 11px 14px;
+            background: linear-gradient(135deg, #33A1D4, #2B89B4);
+            border: none;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .auth-switch { text-align: center; margin-top: 18px; }
+
+        .password-input { position: relative; }
+
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            color: #94a3b8;
         }
 
         .field-row {
@@ -126,272 +154,206 @@
 
         .password-hints {
             margin-top: 8px;
-            padding: 10px;
-            border-radius: 12px;
-            background: rgba(91, 140, 255, 0.08);
-            border: 1px solid rgba(91, 140, 255, 0.22);
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(14, 116, 144, 0.18);
+            border: 1px solid rgba(39, 245, 139, 0.3);
         }
 
-        .password-hints ul {
-            margin: 0;
-            padding-left: 18px;
+        .password-hints li { color: #cbd5e1; font-size: 0.8rem; }
+        .password-hints li.ok { color: #86efac; }
+
+        .auth-side {
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .password-hints li {
-            font-size: 0.8rem;
-            color: #b7c0ca;
-            margin-bottom: 4px;
+        .auth-side h5 {
+            color: #33A1D4;
+            font-weight: 700;
         }
 
-        .password-hints li.ok {
-            color: #86efac;
+        .side-feature {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+            color: #dbeafe;
         }
 
-        @media (max-width: 900px) {
-            .auth-layout {
-                grid-template-columns: 1fr;
-            }
+        .side-feature i { color: #33D4B6; margin-top: 2px; }
+
+        .quick-register {
+            margin-top: 16px;
+            border-radius: 14px;
+            padding: 14px;
+            background: rgba(245, 39, 145, 0.12);
+            border: 1px solid rgba(245, 39, 145, 0.32);
+            color: #ffedd5;
         }
 
+        @media (max-width: 940px) {
+            .auth-shell { grid-template-columns: 1fr; max-width: 560px; }
+            .auth-panel, .auth-side { padding: 22px; }
+        }
+
+        @media (max-width: 540px) {
+            .field-row { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-    <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-content">
-            <div class="story-circle mb-4 pulse" style="width: 80px; height: 80px; border: none; background: linear-gradient(45deg, #ff416c, #ff4b2b);">
-                <i class="fa-solid fa-users fa-2x"></i>
+            <div class="story-circle mb-4 pulse" style="width: 80px; height: 80px; border: none; background: linear-gradient(135deg, #33D4B6, #33A1D4);">
+                <i class="fa-solid fa-wallet fa-2x"></i>
             </div>
-            <h4 class="gradient-text mb-3">RedCajeros</h4>
-            <p class="text-muted">Cargando...</p>
+            <h4 class="mb-2" style="color:#33D4B6;">RedCajeros</h4>
+            <p class="text-muted mb-0">Preparando tu acceso...</p>
         </div>
     </div>
 
-    <!-- Main Auth Container -->
     <div class="auth-container">
-        <div class="auth-layout">
-        <div class="auth-card auth-panel">
-            <!-- Logo -->
-            <div class="auth-logo">
-                <div class="story-circle mx-auto mb-3" style="width: 80px; height: 80px; background: linear-gradient(45deg, #ff416c, #ff4b2b);">
-                    <i class="fa-solid fa-users fa-2x"></i>
-                </div>
-                <h2 class="gradient-text-red">RedCajeros</h2>
-                <p class="text-muted">Gestión profesional de comisiones</p>
-            </div>
-
-            <!-- Contenedor de alertas (login/register) -->
-            <div id="authAlertContainer" class="mb-3"></div>
-
-            <!-- Login Form (default) -->
-            <div class="ig-card mb-4" id="loginForm">
-                <div class="ig-card-header">
-                    <h5 class="mb-0 gradient-text-red">
-                        <i class="fa-solid fa-right-to-bracket me-2"></i>Iniciar Sesión
-                    </h5>
-                </div>
-                <div class="ig-card-body">
-                    <div class="mb-3">
-                        <label class="form-label text-muted" for="loginEmail">Email</label>
-                        <input type="email" id="loginEmail" class="form-control form-control-ig" 
-                               placeholder="tu@email.com" autocomplete="off">
+        <div class="auth-shell">
+            <div class="auth-panel">
+                <div class="auth-logo">
+                    <div class="story-circle mx-auto mb-3" style="width: 78px; height: 78px; background: linear-gradient(135deg, #33D4B6, #33A1D4);">
+                        <i class="fa-solid fa-wallet fa-xl"></i>
                     </div>
-                    
-                    <div class="mb-3 password-input">
-                        <label class="form-label text-muted" for="loginPassword">Contraseña</label>
-                        <input type="password" id="loginPassword" class="form-control form-control-ig" 
-                               placeholder="••••••••">
-                        <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
+                    <h1 class="brand-title">RedCajeros</h1>
+                    <p class="brand-subtitle">Controla cajeros, cargas y comisiones en un solo lugar.</p>
+                </div>
+
+                <div class="auth-toggle">
+                    <button id="btnLogin" class="toggle-btn active" onclick="mostrarLogin()">Iniciar sesión</button>
+                    <button id="btnRegister" class="toggle-btn" onclick="mostrarRegistro()">Crear cuenta</button>
+                </div>
+
+                <div id="authAlertContainer" class="mb-3"></div>
+
+                <div class="ig-card mb-4" id="loginForm">
+                    <div class="ig-card-header">
+                        <h5 class="mb-0 accent-title"><i class="fa-solid fa-right-to-bracket me-2"></i>Bienvenido de nuevo</h5>
                     </div>
-                    
-                    <button class="btn btn-ig-red w-100 mb-3" onclick="login()">
-                        <i class="fa-solid fa-right-to-bracket me-2"></i> Iniciar Sesión
-                    </button>
-                    
-                    <div class="text-center">
-                        <small class="text-muted">
+                    <div class="ig-card-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted" for="loginEmail">Correo electrónico</label>
+                            <input type="email" id="loginEmail" class="form-control form-control-ig" placeholder="tu@email.com" autocomplete="off">
+                        </div>
+                        <div class="mb-3 password-input">
+                            <label class="form-label text-muted" for="loginPassword">Contraseña</label>
+                            <input type="password" id="loginPassword" class="form-control form-control-ig" placeholder="••••••••">
+                            <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')"><i class="fa-solid fa-eye"></i></button>
+                        </div>
+                        <button class="btn btn-auth w-100 mb-3" onclick="login()"><i class="fa-solid fa-arrow-right-to-bracket me-2"></i>Entrar</button>
+                        <button class="btn-register-spotlight" onclick="mostrarRegistro()"><i class="fa-solid fa-user-plus me-2"></i>¿Eres nuevo? Crea tu cuenta gratis</button>
+                        <div class="text-center mt-3">
                             <a href="#" onclick="mostrarRecuperar()" class="text-info">¿Olvidaste tu contraseña?</a>
-                        </small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Register Form (hidden by default) -->
-            <div class="ig-card mb-4 d-none" id="registerForm">
-                <div class="ig-card-header">
-                    <h5 class="mb-0 gradient-text-red">
-                        <i class="fa-solid fa-user-plus me-2"></i>Crear Cuenta
-                    </h5>
-                </div>
-                <div class="ig-card-body">
-                    <div class="mb-3 field-row">
-                        <div>
-                            <label class="form-label text-muted" for="registerNombre">Nombre</label>
-                            <input type="text" id="registerNombre" class="form-control form-control-ig" 
-                                   placeholder="Juan" autocomplete="off">
-                        </div>
-                        <div>
-                            <label class="form-label text-muted" for="registerApellido">Apellido</label>
-                            <input type="text" id="registerApellido" class="form-control form-control-ig" 
-                                   placeholder="Pérez" autocomplete="off">
                         </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label text-muted" for="registerEmail">Email</label>
-                        <input type="email" id="registerEmail" class="form-control form-control-ig" 
-                               placeholder="tu@email.com" autocomplete="off">
+                </div>
+
+                <div class="ig-card mb-4 d-none" id="registerForm">
+                    <div class="ig-card-header">
+                        <h5 class="mb-0 accent-title"><i class="fa-solid fa-user-plus me-2"></i>Registro de nuevo usuario</h5>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label text-muted" for="registerTelefono">Teléfono (WhatsApp)</label>
-                        <input type="text" id="registerTelefono" class="form-control form-control-ig" 
-                               placeholder="0412-1234567" autocomplete="off">
-                        <small class="text-muted">Para contactarte sobre pagos</small>
-                    </div>
-                    
-                    <div class="mb-3 password-input">
-                        <label class="form-label text-muted" for="registerPassword">Contraseña</label>
-                        <input type="password" id="registerPassword" class="form-control form-control-ig" 
-                               placeholder="Mínimo 10 caracteres">
-                        <button type="button" class="password-toggle" onclick="togglePassword('registerPassword')">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
-                        <div class="password-hints">
-                            <ul>
-                                <li id="hintLength">Mínimo 10 caracteres</li>
-                                <li id="hintUpper">Al menos una mayúscula (A-Z)</li>
-                                <li id="hintLower">Al menos una minúscula (a-z)</li>
-                                <li id="hintNumber">Al menos un número (0-9)</li>
-                                <li id="hintSymbol">Al menos un símbolo (!@#$...)</li>
-                            </ul>
+                    <div class="ig-card-body">
+                        <div class="mb-3 field-row">
+                            <div>
+                                <label class="form-label text-muted" for="registerNombre">Nombre</label>
+                                <input type="text" id="registerNombre" class="form-control form-control-ig" placeholder="Juan" autocomplete="off">
+                            </div>
+                            <div>
+                                <label class="form-label text-muted" for="registerApellido">Apellido</label>
+                                <input type="text" id="registerApellido" class="form-control form-control-ig" placeholder="Pérez" autocomplete="off">
+                            </div>
                         </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted" for="registerEmail">Correo electrónico</label>
+                            <input type="email" id="registerEmail" class="form-control form-control-ig" placeholder="tu@email.com" autocomplete="off">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted" for="registerTelefono">Teléfono (WhatsApp)</label>
+                            <input type="text" id="registerTelefono" class="form-control form-control-ig" placeholder="0412-1234567" autocomplete="off">
+                        </div>
+
+                        <div class="mb-3 password-input">
+                            <label class="form-label text-muted" for="registerPassword">Contraseña</label>
+                            <input type="password" id="registerPassword" class="form-control form-control-ig" placeholder="Mínimo 10 caracteres">
+                            <button type="button" class="password-toggle" onclick="togglePassword('registerPassword')"><i class="fa-solid fa-eye"></i></button>
+                            <div class="password-hints">
+                                <ul class="mb-0">
+                                    <li id="hintLength">Mínimo 10 caracteres</li>
+                                    <li id="hintUpper">Al menos una mayúscula (A-Z)</li>
+                                    <li id="hintLower">Al menos una minúscula (a-z)</li>
+                                    <li id="hintNumber">Al menos un número (0-9)</li>
+                                    <li id="hintSymbol">Al menos un símbolo (!@#$...)</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 password-input">
+                            <label class="form-label text-muted" for="registerConfirm">Confirmar contraseña</label>
+                            <input type="password" id="registerConfirm" class="form-control form-control-ig" placeholder="••••••••">
+                            <button type="button" class="password-toggle" onclick="togglePassword('registerConfirm')"><i class="fa-solid fa-eye"></i></button>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="registerTerms">
+                            <label class="form-check-label text-muted small" for="registerTerms">
+                                Acepto los <a href="#" class="text-info">Términos de Servicio</a> y <a href="#" class="text-info">Política de Privacidad</a>
+                            </label>
+                        </div>
+
+                        <button class="btn btn-auth w-100" onclick="register()"><i class="fa-solid fa-user-check me-2"></i>Crear cuenta gratis</button>
                     </div>
-                    
-                    <div class="mb-3 password-input">
-                        <label class="form-label text-muted" for="registerConfirm">Confirmar Contraseña</label>
-                        <input type="password" id="registerConfirm" class="form-control form-control-ig" 
-                               placeholder="••••••••">
-                        <button type="button" class="password-toggle" onclick="togglePassword('registerConfirm')">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
+                </div>
+
+                <div class="ig-card mb-4 d-none" id="forgotForm">
+                    <div class="ig-card-header">
+                        <h5 class="mb-0 accent-title"><i class="fa-solid fa-key me-2"></i>Recuperar contraseña</h5>
                     </div>
-                    
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="registerTerms">
-                        <label class="form-check-label text-muted small" for="registerTerms">
-                            Acepto los <a href="#" class="text-info">Términos de Servicio</a> y 
-                            <a href="#" class="text-info">Política de Privacidad</a>
-                        </label>
+                    <div class="ig-card-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted" for="forgotEmail">Email registrado</label>
+                            <input type="email" id="forgotEmail" class="form-control form-control-ig" placeholder="tu@email.com" autocomplete="off">
+                        </div>
+                        <button class="btn btn-auth w-100 mb-3" onclick="recuperarContrasena()"><i class="fa-solid fa-paper-plane me-2"></i>Enviar instrucciones</button>
+                        <div class="text-center"><a href="#" onclick="mostrarLogin()" class="text-info"><i class="fa-solid fa-arrow-left me-1"></i>Volver al login</a></div>
                     </div>
-                    
-                    <button class="btn btn-ig-red w-100 mb-3" onclick="register()">
-                        <i class="fa-solid fa-user-check me-2"></i> Crear Cuenta Gratis
-                    </button>
-                    
-                    <div class="text-center">
-                        <span class="trial-badge">7 DÍAS GRATIS</span>
-                    </div>
+                </div>
+
+                <div class="auth-switch">
+                    <div id="loginSwitch" class="d-none"><small class="text-muted">¿No tienes cuenta?</small> <a href="#" onclick="mostrarRegistro()" class="text-info">Regístrate gratis</a></div>
+                    <div id="registerSwitch"><small class="text-muted">¿Ya tienes cuenta?</small> <a href="#" onclick="mostrarLogin()" class="text-info">Inicia sesión</a></div>
                 </div>
             </div>
 
-            <!-- Forgot Password Form (hidden by default) -->
-            <div class="ig-card mb-4 d-none" id="forgotForm">
-                <div class="ig-card-header">
-                    <h5 class="mb-0 gradient-text-red">
-                        <i class="fa-solid fa-key me-2"></i>Recuperar Contraseña
-                    </h5>
+            <aside class="auth-side">
+                <h5 class="mb-3">Prueba gratuita de 7 días</h5>
+                <div class="side-feature"><i class="fa-solid fa-circle-check"></i><span>Alta de cajeros y gestión completa de operaciones.</span></div>
+                <div class="side-feature"><i class="fa-solid fa-circle-check"></i><span>Control diario de comisiones y balances.</span></div>
+                <div class="side-feature"><i class="fa-solid fa-circle-check"></i><span>Reportes claros para seguimiento y cierre de caja.</span></div>
+                <div class="side-feature"><i class="fa-solid fa-circle-check"></i><span>Soporte por WhatsApp para ayudarte a iniciar rápido.</span></div>
+                <div class="quick-register">
+                    <strong>Nuevo en la plataforma?</strong>
+                    <p class="mb-2 mt-2">Empieza creando tu usuario ahora. Solo tomará unos minutos.</p>
+                    <button class="btn-register-spotlight" onclick="mostrarRegistro()"><i class="fa-solid fa-sparkles me-2"></i>Ir al registro</button>
                 </div>
-                <div class="ig-card-body">
-                    <div class="mb-3">
-                        <label class="form-label text-muted" for="forgotEmail">Email registrado</label>
-                        <input type="email" id="forgotEmail" class="form-control form-control-ig" 
-                               placeholder="tu@email.com" autocomplete="off">
-                    </div>
-                    
-                    <button class="btn btn-ig-red w-100 mb-3" onclick="recuperarContrasena()">
-                        <i class="fa-solid fa-paper-plane me-2"></i> Enviar Instrucciones
-                    </button>
-                    
-                    <div class="text-center">
-                        <small class="text-muted">
-                            <a href="#" onclick="mostrarLogin()" class="text-info">
-                                <i class="fa-solid fa-arrow-left me-1"></i> Volver al login
-                            </a>
-                        </small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Auth Switch -->
-            <div class="auth-switch">
-                <div id="loginSwitch" class="d-none">
-                    <small class="text-muted">¿No tienes cuenta? </small>
-                    <a href="#" onclick="mostrarRegistro()" class="text-info">Regístrate gratis</a>
-                </div>
-                
-                <div id="registerSwitch">
-                    <small class="text-muted">¿Ya tienes cuenta? </small>
-                    <a href="#" onclick="mostrarLogin()" class="text-info">Inicia sesión</a>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Features -->
-        <div class="auth-features auth-side">
-            <h6 class="text-center mb-3 gradient-text-red">Todo incluido en tu prueba gratis:</h6>
-            
-            <div class="feature-item">
-                <i class="fa-solid fa-check-circle"></i>
-                <span class="small">Gestión ilimitada de cajeros</span>
-            </div>
-            
-            <div class="feature-item">
-                <i class="fa-solid fa-check-circle"></i>
-                <span class="small">Registro de cargas y comisiones</span>
-            </div>
-            
-            <div class="feature-item">
-                <i class="fa-solid fa-check-circle"></i>
-                <span class="small">Reportes y estadísticas</span>
-            </div>
-            
-            <div class="feature-item">
-                <i class="fa-solid fa-check-circle"></i>
-                <span class="small">Soporte por WhatsApp</span>
-            </div>
-            
-            <div class="feature-item">
-                <i class="fa-solid fa-check-circle"></i>
-                <span class="small">Sin tarjeta de crédito requerida</span>
-            </div>
-
-            <!-- Admin Access (solo para ti) -->
-            <div class="text-center mt-4">
-                <small class="text-muted">
-                    <i class="fa-solid fa-shield-halved me-1"></i>
-                    <a href="/admin" class="text-warning">Acceso Administrador</a>
-                </small>
-            </div>
-        </div>
+            </aside>
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Nuestro JavaScript -->
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
-    
+
     <script>
-        // Mostrar/ocultar contraseña
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
             const icon = input.parentElement.querySelector('i');
-            
             if (input.type === 'password') {
                 input.type = 'text';
                 icon.classList.remove('fa-eye');
@@ -402,48 +364,53 @@
                 icon.classList.add('fa-eye');
             }
         }
-        
-        // Cambiar entre formularios
+
+        function setActiveTab(isRegister) {
+            document.getElementById('btnLogin').classList.toggle('active', !isRegister);
+            document.getElementById('btnRegister').classList.toggle('active', isRegister);
+        }
+
         function mostrarLogin() {
             document.getElementById('loginForm').classList.remove('d-none');
             document.getElementById('registerForm').classList.add('d-none');
             document.getElementById('forgotForm').classList.add('d-none');
             document.getElementById('loginSwitch').classList.add('d-none');
             document.getElementById('registerSwitch').classList.remove('d-none');
+            setActiveTab(false);
         }
-        
+
         function mostrarRegistro() {
             document.getElementById('loginForm').classList.add('d-none');
             document.getElementById('registerForm').classList.remove('d-none');
             document.getElementById('forgotForm').classList.add('d-none');
             document.getElementById('loginSwitch').classList.remove('d-none');
             document.getElementById('registerSwitch').classList.add('d-none');
+            setActiveTab(true);
         }
-        
+
         function mostrarRecuperar() {
             document.getElementById('loginForm').classList.add('d-none');
             document.getElementById('registerForm').classList.add('d-none');
             document.getElementById('forgotForm').classList.remove('d-none');
             document.getElementById('loginSwitch').classList.remove('d-none');
             document.getElementById('registerSwitch').classList.add('d-none');
+            setActiveTab(false);
         }
-        
+
         function updatePasswordHints(password) {
             const checks = [
-                { id: "hintLength", valid: password.length >= 10 },
-                { id: "hintUpper", valid: /[A-Z]/.test(password) },
-                { id: "hintLower", valid: /[a-z]/.test(password) },
-                { id: "hintNumber", valid: /\d/.test(password) },
-                { id: "hintSymbol", valid: /[^A-Za-z0-9]/.test(password) },
+                { id: 'hintLength', valid: password.length >= 10 },
+                { id: 'hintUpper', valid: /[A-Z]/.test(password) },
+                { id: 'hintLower', valid: /[a-z]/.test(password) },
+                { id: 'hintNumber', valid: /\d/.test(password) },
+                { id: 'hintSymbol', valid: /[^A-Za-z0-9]/.test(password) }
             ];
             checks.forEach(({ id, valid }) => {
                 const el = document.getElementById(id);
-                if (!el) return;
-                el.classList.toggle("ok", valid);
+                if (el) el.classList.toggle('ok', valid);
             });
         }
 
-        // Verificar si ya está logueado (no redirigir si venimos del dashboard por sesión inválida = evita loop)
         async function checkAuth() {
             try {
                 if (sessionStorage.getItem('auth_redirect_from_dashboard') === '1') {
@@ -458,30 +425,17 @@
                     }
                 }
             } catch (error) {
-                // No autenticado, mostrar login
+                // no-op
             }
         }
-        
-        // Al cargar la página
+
         document.addEventListener('DOMContentLoaded', function() {
             checkAuth();
-            
-            // Enter key en formularios
-            document.getElementById('loginPassword').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') login();
-            });
-            
-            document.getElementById('registerConfirm').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') register();
-            });
-
-            document.getElementById('registerPassword').addEventListener('input', function(e) {
-                updatePasswordHints(e.target.value);
-            });
-            
-            document.getElementById('forgotEmail').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') recuperarContrasena();
-            });
+            document.getElementById('loginPassword').addEventListener('keypress', function(e) { if (e.key === 'Enter') login(); });
+            document.getElementById('registerConfirm').addEventListener('keypress', function(e) { if (e.key === 'Enter') register(); });
+            document.getElementById('registerPassword').addEventListener('input', function(e) { updatePasswordHints(e.target.value); });
+            document.getElementById('forgotEmail').addEventListener('keypress', function(e) { if (e.key === 'Enter') recuperarContrasena(); });
+            setActiveTab(false);
         });
     </script>
 </body>
