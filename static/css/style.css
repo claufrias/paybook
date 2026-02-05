@@ -17,17 +17,35 @@
     --glow: 0 10px 30px rgba(9, 17, 36, 0.55);
 }
 
-/* Hugeicons helpers */
+/* Material Icons helpers */
 .hugeicons {
+    font-family: 'Material Symbols Outlined', sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    font-size: 1em;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
     display: inline-block;
     line-height: 1;
     vertical-align: middle;
+}
+
+.hugeicons::before {
+    display: inline-block;
 }
 
 .hugeicons-lg {
     font-size: 1.333333em;
     line-height: 0.75em;
     vertical-align: -0.0667em;
+}
+
+.hugeicons-xs {
+    font-size: 0.75em;
 }
 
 .hugeicons-2x {
@@ -49,6 +67,314 @@
     100% {
         transform: rotate(360deg);
     }
+}
+
+.hugeicons-arrow-left::before {
+    content: "arrow_back";
+}
+
+.hugeicons-bell::before {
+    content: "notifications";
+}
+
+.hugeicons-bolt::before {
+    content: "bolt";
+}
+
+.hugeicons-broom::before {
+    content: "cleaning_services";
+}
+
+.hugeicons-calendar::before {
+    content: "calendar_month";
+}
+
+.hugeicons-calendar-alt::before {
+    content: "event";
+}
+
+.hugeicons-calendar-day::before {
+    content: "today";
+}
+
+.hugeicons-calendar-week::before {
+    content: "view_week";
+}
+
+.hugeicons-chart-bar::before {
+    content: "bar_chart";
+}
+
+.hugeicons-chart-line::before {
+    content: "show_chart";
+}
+
+.hugeicons-chart-pie::before {
+    content: "pie_chart";
+}
+
+.hugeicons-check::before {
+    content: "check";
+}
+
+.hugeicons-check-circle::before {
+    content: "check_circle";
+}
+
+.hugeicons-circle::before {
+    content: "circle";
+}
+
+.hugeicons-clock::before {
+    content: "schedule";
+}
+
+.hugeicons-code::before {
+    content: "code";
+}
+
+.hugeicons-cog::before {
+    content: "settings";
+}
+
+.hugeicons-copy::before {
+    content: "content_copy";
+}
+
+.hugeicons-credit-card::before {
+    content: "credit_card";
+}
+
+.hugeicons-crown::before {
+    content: "workspace_premium";
+}
+
+.hugeicons-database::before {
+    content: "storage";
+}
+
+.hugeicons-download::before {
+    content: "download";
+}
+
+.hugeicons-edit::before {
+    content: "edit";
+}
+
+.hugeicons-envelope::before {
+    content: "mail";
+}
+
+.hugeicons-exclamation-circle::before {
+    content: "error";
+}
+
+.hugeicons-exclamation-triangle::before {
+    content: "warning";
+}
+
+.hugeicons-eye::before {
+    content: "visibility";
+}
+
+.hugeicons-eye-slash::before {
+    content: "visibility_off";
+}
+
+.hugeicons-file-alt::before {
+    content: "description";
+}
+
+.hugeicons-file-pdf::before {
+    content: "picture_as_pdf";
+}
+
+.hugeicons-filter::before {
+    content: "filter_list";
+}
+
+.hugeicons-gamepad::before {
+    content: "sports_esports";
+}
+
+.hugeicons-history::before {
+    content: "history";
+}
+
+.hugeicons-home::before {
+    content: "home";
+}
+
+.hugeicons-inbox::before {
+    content: "inbox";
+}
+
+.hugeicons-info-circle::before {
+    content: "info";
+}
+
+.hugeicons-key::before {
+    content: "key";
+}
+
+.hugeicons-leaf::before {
+    content: "eco";
+}
+
+.hugeicons-lightbulb::before {
+    content: "lightbulb";
+}
+
+.hugeicons-list::before {
+    content: "list";
+}
+
+.hugeicons-list-ol::before {
+    content: "format_list_numbered";
+}
+
+.hugeicons-lock::before {
+    content: "lock";
+}
+
+.hugeicons-mobile-alt::before {
+    content: "smartphone";
+}
+
+.hugeicons-money-bill::before {
+    content: "attach_money";
+}
+
+.hugeicons-money-bill-wave::before {
+    content: "payments";
+}
+
+.hugeicons-palette::before {
+    content: "palette";
+}
+
+.hugeicons-paper-plane::before {
+    content: "send";
+}
+
+.hugeicons-phone::before {
+    content: "call";
+}
+
+.hugeicons-plus::before {
+    content: "add";
+}
+
+.hugeicons-plus-circle::before {
+    content: "add_circle";
+}
+
+.hugeicons-question-circle::before {
+    content: "help";
+}
+
+.hugeicons-redo::before {
+    content: "redo";
+}
+
+.hugeicons-rocket::before {
+    content: "rocket_launch";
+}
+
+.hugeicons-save::before {
+    content: "save";
+}
+
+.hugeicons-search::before {
+    content: "search";
+}
+
+.hugeicons-shield-alt::before {
+    content: "shield";
+}
+
+.hugeicons-sign-in-alt::before {
+    content: "login";
+}
+
+.hugeicons-sign-out-alt::before {
+    content: "logout";
+}
+
+.hugeicons-spinner::before {
+    content: "autorenew";
+}
+
+.hugeicons-star::before {
+    content: "star";
+}
+
+.hugeicons-sun::before {
+    content: "light_mode";
+}
+
+.hugeicons-sync-alt::before {
+    content: "sync";
+}
+
+.hugeicons-tachometer-alt::before {
+    content: "speed";
+}
+
+.hugeicons-times::before {
+    content: "close";
+}
+
+.hugeicons-tools::before {
+    content: "build";
+}
+
+.hugeicons-trash::before {
+    content: "delete";
+}
+
+.hugeicons-trophy::before {
+    content: "emoji_events";
+}
+
+.hugeicons-undo::before {
+    content: "undo";
+}
+
+.hugeicons-university::before {
+    content: "account_balance";
+}
+
+.hugeicons-upload::before {
+    content: "upload";
+}
+
+.hugeicons-user::before {
+    content: "person";
+}
+
+.hugeicons-user-check::before {
+    content: "how_to_reg";
+}
+
+.hugeicons-user-plus::before {
+    content: "person_add";
+}
+
+.hugeicons-user-slash::before {
+    content: "person_off";
+}
+
+.hugeicons-users::before {
+    content: "groups";
+}
+
+.hugeicons-whatsapp::before {
+    content: "chat";
+}
+
+.hugeicons-bank::before {
+    content: "account_balance";
 }
 
 /* Estilos básicos */
