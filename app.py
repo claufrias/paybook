@@ -18,6 +18,7 @@ from reportlab.lib.units import inch
 import tempfile
 import secrets
 from urllib.parse import quote
+import re
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'paybook-secret-key-cambiar-en-produccion')
@@ -66,6 +67,19 @@ def load_user(user_id):
 def hash_password(password):
     salt = "paybook_salt_2024"
     return hashlib.sha256((password + salt).encode()).hexdigest()
+
+def validate_password_security(password):
+    if len(password) < 10:
+        return 'La contraseña debe tener al menos 10 caracteres'
+    if not re.search(r'[A-Z]', password):
+        return 'La contraseña debe incluir al menos una letra mayúscula'
+    if not re.search(r'[a-z]', password):
+        return 'La contraseña debe incluir al menos una letra minúscula'
+    if not re.search(r'\d', password):
+        return 'La contraseña debe incluir al menos un número'
+    if not re.search(r'[^A-Za-z0-9]', password):
+        return 'La contraseña debe incluir al menos un símbolo especial'
+    return None
 
 # Ruta de la base de datos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -543,15 +557,18 @@ def api_register():
     try:
         data = request.get_json(silent=True) or {}
         nombre = (data.get('nombre') or '').strip()
+        apellido = (data.get('apellido') or '').strip()
         email = (data.get('email') or '').strip().lower()
         password = (data.get('password') or '').strip()
         telefono = (data.get('telefono') or '').strip()
+        nombre_completo = f"{nombre} {apellido}".strip()
 
-        if not nombre or not email or not password:
-            return jsonify({'success': False, 'error': 'Nombre, email y contraseña son obligatorios'}), 400
+        if not nombre or not apellido or not email or not password:
+            return jsonify({'success': False, 'error': 'Nombre, apellido, email y contraseña son obligatorios'}), 400
 
-        if len(password) < 6:
-            return jsonify({'success': False, 'error': 'La contraseña debe tener al menos 6 caracteres'}), 400
+        password_error = validate_password_security(password)
+        if password_error:
+            return jsonify({'success': False, 'error': password_error}), 400
 
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
@@ -566,7 +583,7 @@ def api_register():
                 INSERT INTO usuarios (email, password_hash, nombre, plan, rol, telefono, activo)
                 VALUES (?, ?, ?, ?, ?, ?, 1)
                 ''',
-                (email, hash_password(password), nombre, 'free', 'user', telefono)
+                (email, hash_password(password), nombre_completo, 'free', 'user', telefono)
             )
             user_id = cursor.lastrowid
             cursor.execute('SELECT fecha_registro FROM usuarios WHERE id = ?', (user_id,))
@@ -574,7 +591,7 @@ def api_register():
             conn.commit()
             conn.close()
 
-        user = User(user_id, email, nombre, 'free', 'user', None)
+        user = User(user_id, email, nombre_completo, 'free', 'user', None)
         login_user(user, remember=True)
 
         user_payload = {
