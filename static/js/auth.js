@@ -143,18 +143,32 @@ async function register(event = null) {
     if (event) event.preventDefault();
     
     const nombre = document.getElementById('registerNombre').value.trim();
+    const apellido = document.getElementById('registerApellido').value.trim();
     const email = document.getElementById('registerEmail').value.trim().toLowerCase();
     const password = document.getElementById('registerPassword').value;
+    const confirmPassword = document.getElementById('registerConfirm').value;
     const telefono = document.getElementById('registerTelefono').value.trim();
+    const termsAccepted = document.getElementById('registerTerms').checked;
     
     // Validaciones
-    if (!nombre || !email || !password) {
-        mostrarAlertaAuth('Error', 'Por favor completa los campos obligatorios', 'error');
+    if (!nombre || !apellido || !email || !password) {
+        mostrarAlertaAuth('Error', 'Completa nombre, apellido, email y contraseña', 'error');
         return false;
     }
-    
-    if (password.length < 6) {
-        mostrarAlertaAuth('Error', 'La contraseña debe tener al menos 6 caracteres', 'error');
+
+    if (password !== confirmPassword) {
+        mostrarAlertaAuth('Error', 'Las contraseñas no coinciden', 'error');
+        return false;
+    }
+
+    if (!termsAccepted) {
+        mostrarAlertaAuth('Error', 'Debes aceptar los términos para continuar', 'error');
+        return false;
+    }
+
+    const passwordError = validatePasswordSecurity(password);
+    if (passwordError) {
+        mostrarAlertaAuth('Error', passwordError, 'error');
         return false;
     }
     
@@ -169,7 +183,7 @@ async function register(event = null) {
         const response = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre, email, password, telefono })
+            body: JSON.stringify({ nombre, apellido, email, password, telefono })
         });
         
         const data = await response.json();
@@ -952,6 +966,16 @@ function mostrarAlertaAuth(titulo, mensaje, tipo = 'info') {
             alerta.remove();
         }
     }, 5000);
+}
+
+
+function validatePasswordSecurity(password) {
+    if (password.length < 10) return 'La contraseña debe tener al menos 10 caracteres';
+    if (!/[A-Z]/.test(password)) return 'Incluye al menos una letra mayúscula';
+    if (!/[a-z]/.test(password)) return 'Incluye al menos una letra minúscula';
+    if (!/\d/.test(password)) return 'Incluye al menos un número';
+    if (!/[^A-Za-z0-9]/.test(password)) return 'Incluye al menos un símbolo especial';
+    return null;
 }
 
 function validateEmail(email) {
