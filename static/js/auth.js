@@ -791,8 +791,9 @@ async function mostrarModalSuscripcion() {
                                         <ul class="plan-features">
                                             ${renderPlanFeatures(liteFeatures)}
                                         </ul>
-                                        <button class="btn btn-ig w-100 mt-3" onclick="solicitarPagoManual('basic')">
-                                            <i class="fas fa-shopping-cart me-2"></i> Seleccionar ${litePlan.nombre}
+                                        <button class="btn btn-ig w-100 mt-3 d-flex align-items-center justify-content-center gap-2" onclick="solicitarPagoManual('basic')">
+                                            <i class="fas fa-check-circle"></i>
+                                            <span>Seleccionar ${litePlan.nombre}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -814,8 +815,9 @@ async function mostrarModalSuscripcion() {
                                             ${renderPlanFeatures(proFeatures)}
                                         </ul>
                                         ${upgradeNote}
-                                        <button class="btn btn-gradient w-100 mt-3" onclick="solicitarPagoManual('premium')">
-                                            <i class="fas fa-rocket me-2"></i> ${premiumLabel}
+                                        <button class="btn btn-gradient w-100 mt-3 d-flex align-items-center justify-content-center gap-2" onclick="solicitarPagoManual('premium')">
+                                            <i class="fas fa-star"></i>
+                                            <span>${premiumLabel}</span>
                                         </button>
                                     </div>
                                 </div>
