@@ -1,12 +1,12 @@
 /* static/css/style.css - CONTENIDO MÍNIMO */
 
 :root {
-    --primary: #27F58B;
-    --primary-dark: #20D67A;
-    --primary-rgb: 39, 245, 139;
-    --accent: #F52791;
-    --accent-dark: #D81E7C;
-    --accent-rgb: 245, 39, 145;
+    --primary: #33D4B6;
+    --primary-dark: #2CB99F;
+    --primary-rgb: 51, 212, 182;
+    --accent: #33A1D4;
+    --accent-dark: #2B89B4;
+    --accent-rgb: 51, 161, 212;
     --primary-gradient: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     --accent-gradient: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
     --dark-bg: #0d1117;
@@ -16,10 +16,10 @@
     --dark-border-strong: rgba(110, 118, 129, 0.35);
     --text-primary: #f5f7fb;
     --text-secondary: #9aa5b1;
-    --success: #27F58B;
+    --success: #33D4B6;
     --danger: #f87171;
-    --warning: #F52791;
-    --info: #27F58B;
+    --warning: #33A1D4;
+    --info: #33D4B6;
     --glow: 0 10px 30px rgba(9, 17, 36, 0.55);
 }
 
@@ -206,7 +206,7 @@ body {
 }
 
 .stat-card-top .stat-icon {
-    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    background: linear-gradient(135deg, #4fb8e2, var(--accent-dark));
 }
 
 .stat-number {
