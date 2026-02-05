@@ -7,14 +7,23 @@ let usuariosList = [];
 let usuariosChartInstance = null;
 let ingresosChartInstance = null;
 
+function normalizePlanValue(plan) {
+    if (!plan) return '';
+    const normalized = String(plan).trim().toLowerCase();
+    if (normalized === 'basic') return 'lite';
+    if (normalized === 'premium') return 'pro';
+    return normalized;
+}
+
 function getPlanLabel(plan) {
-    if (!plan) return '--';
-    if (plan === 'basic') return 'Lite';
-    if (plan === 'premium') return 'Pro';
-    if (plan === 'trial') return 'Prueba';
-    if (plan === 'expired') return 'Expirado';
-    if (plan === 'admin') return 'Admin';
-    return plan.toUpperCase();
+    const normalized = normalizePlanValue(plan);
+    if (!normalized) return '--';
+    if (normalized === 'lite') return 'Lite';
+    if (normalized === 'pro') return 'Pro';
+    if (normalized === 'trial') return 'Prueba';
+    if (normalized === 'expired') return 'Expirado';
+    if (normalized === 'admin') return 'Admin';
+    return normalized.toUpperCase();
 }
 
 // ========== FUNCIONES DEL DASHBOARD ==========
@@ -480,7 +489,7 @@ function actualizarTablaUsuarios(usuarios) {
         
         // Determinar color de plan
         let planClass = 'text-muted';
-        if (usuario.plan === 'premium') planClass = 'text-warning';
+        if (normalizePlanValue(usuario.plan) === 'pro') planClass = 'text-warning';
         if (usuario.plan === 'admin') planClass = 'text-danger';
         
         html += `
@@ -613,7 +622,7 @@ async function verUsuario(id) {
                                         </div>
                                         <div class="col-6 mb-2">
                                             <small class="text-muted d-block">Plan</small>
-                                            <span class="badge bg-${usuario.plan === 'premium' ? 'warning' : usuario.plan === 'admin' ? 'danger' : 'info'}">
+                                            <span class="badge bg-${normalizePlanValue(usuario.plan) === 'pro' ? 'warning' : usuario.plan === 'admin' ? 'danger' : 'info'}">
                                                 ${getPlanLabel(usuario.plan)}
                                             </span>
                                         </div>
@@ -711,8 +720,8 @@ async function editarUsuario(id) {
                                 <label class="form-label">Plan</label>
                                 <select id="editUsuarioPlan" class="form-select form-select-ig">
                                     <option value="trial" ${usuario.plan === 'trial' ? 'selected' : ''}>Prueba</option>
-                                    <option value="basic" ${usuario.plan === 'basic' ? 'selected' : ''}>Lite</option>
-                                    <option value="premium" ${usuario.plan === 'premium' ? 'selected' : ''}>Pro</option>
+                                    <option value="lite" ${normalizePlanValue(usuario.plan) === 'lite' ? 'selected' : ''}>Lite</option>
+                                    <option value="pro" ${normalizePlanValue(usuario.plan) === 'pro' ? 'selected' : ''}>Pro</option>
                                     <option value="admin" ${usuario.plan === 'admin' ? 'selected' : ''}>Admin</option>
                                 </select>
                             </div>

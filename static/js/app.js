@@ -69,14 +69,23 @@ function renderPlanFeatures(features) {
     }).join('');
 }
 
-function getPlanLabel(plan) {
+function normalizePlanValue(plan) {
     if (!plan) return '';
-    if (plan === 'basic') return 'Lite';
-    if (plan === 'premium') return 'Pro';
-    if (plan === 'trial') return 'Prueba';
-    if (plan === 'expired') return 'Expirado';
-    if (plan === 'admin') return 'Admin';
-    return plan.toUpperCase();
+    const normalized = String(plan).trim().toLowerCase();
+    if (normalized === 'basic') return 'lite';
+    if (normalized === 'premium') return 'pro';
+    return normalized;
+}
+
+function getPlanLabel(plan) {
+    const normalized = normalizePlanValue(plan);
+    if (!normalized) return '';
+    if (normalized === 'lite') return 'Lite';
+    if (normalized === 'pro') return 'Pro';
+    if (normalized === 'trial') return 'Prueba';
+    if (normalized === 'expired') return 'Expirado';
+    if (normalized === 'admin') return 'Admin';
+    return normalized.toUpperCase();
 }
 
 // ========== INICIALIZACIÓN ==========
@@ -1638,8 +1647,8 @@ async function mostrarModalPago() {
             
             <div class="row g-3">
                 <div class="col-md-6">
-                    <div class="plan-card ${usuarioActual.plan === 'basic' ? 'selected' : ''}" 
-                         onclick="seleccionarPlan('basic')" id="planBasic">
+                    <div class="plan-card ${normalizePlanValue(usuarioActual.plan) === 'lite' ? 'selected' : ''}" 
+                         onclick="seleccionarPlan('lite')" id="planLite">
                         <div class="plan-header">
                             <h5>Plan ${litePlan.nombre}</h5>
                             <div class="plan-price">$${formatPrice(litePlan.precio)}<span class="period">/mes</span></div>
@@ -1650,8 +1659,8 @@ async function mostrarModalPago() {
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="plan-card ${usuarioActual.plan === 'premium' ? 'selected' : ''}" 
-                         onclick="seleccionarPlan('premium')" id="planPremium">
+                    <div class="plan-card ${normalizePlanValue(usuarioActual.plan) === 'pro' ? 'selected' : ''}" 
+                         onclick="seleccionarPlan('pro')" id="planPro">
                         <div class="plan-header">
                             <h5>Plan ${proPlan.nombre}</h5>
                             <div class="plan-price">$${formatPrice(proPlan.precio)}<span class="period">/mes</span></div>
@@ -1713,13 +1722,13 @@ async function mostrarModalPago() {
     });
     
     // Seleccionar plan actual por defecto
-    seleccionarPlan(usuarioActual.plan);
+    seleccionarPlan(normalizePlanValue(usuarioActual.plan) || 'lite');
 }
 
-let planSeleccionado = 'basic';
+let planSeleccionado = 'lite';
 
 function seleccionarPlan(plan) {
-    planSeleccionado = plan;
+    planSeleccionado = normalizePlanValue(plan) || 'lite';
     const planes = planesConfig || buildFallbackPlanesConfig();
     
     // Actualizar UI
@@ -1727,7 +1736,8 @@ function seleccionarPlan(plan) {
         card.classList.remove('selected');
     });
     
-    const planCard = document.getElementById(`plan${plan.charAt(0).toUpperCase() + plan.slice(1)}`);
+    const planId = `plan${planSeleccionado.charAt(0).toUpperCase() + planSeleccionado.slice(1)}`;
+    const planCard = document.getElementById(planId);
     if (planCard) {
         planCard.classList.add('selected');
     }
@@ -1739,7 +1749,7 @@ function seleccionarPlan(plan) {
     
     if (container && nombre && precio) {
         container.style.display = 'block';
-        const planData = plan === 'basic' ? planes.lite : planes.pro;
+        const planData = planSeleccionado === 'lite' ? planes.lite : planes.pro;
         nombre.textContent = planData.nombre;
         precio.textContent = formatPrice(planData.precio);
     }

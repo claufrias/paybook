@@ -62,14 +62,23 @@ function renderPlanFeatures(features) {
     }).join('');
 }
 
-function getPlanLabel(plan) {
+function normalizePlanValue(plan) {
     if (!plan) return '';
-    if (plan === 'basic') return 'Lite';
-    if (plan === 'premium') return 'Pro';
-    if (plan === 'trial') return 'Prueba';
-    if (plan === 'expired') return 'Expirado';
-    if (plan === 'admin') return 'Admin';
-    return plan.toUpperCase();
+    const normalized = String(plan).trim().toLowerCase();
+    if (normalized === 'basic') return 'lite';
+    if (normalized === 'premium') return 'pro';
+    return normalized;
+}
+
+function getPlanLabel(plan) {
+    const normalized = normalizePlanValue(plan);
+    if (!normalized) return '';
+    if (normalized === 'lite') return 'Lite';
+    if (normalized === 'pro') return 'Pro';
+    if (normalized === 'trial') return 'Prueba';
+    if (normalized === 'expired') return 'Expirado';
+    if (normalized === 'admin') return 'Admin';
+    return normalized.toUpperCase();
 }
 
 window.obtenerPlanesPublicos = obtenerPlanesPublicos;
@@ -467,19 +476,20 @@ function actualizarEstadoSuscripcionUI(user) {
 
 // ========== SISTEMA DE PAGOS MANUALES ==========
 
-async function solicitarPagoManual(plan = 'basic') {
+async function solicitarPagoManual(plan = 'lite') {
     if (!currentUser) {
         mostrarAlerta('Error', 'Debes iniciar sesión primero', 'error');
         return;
     }
-    
+
+    const normalizedPlan = normalizePlanValue(plan) || 'lite';
     mostrarLoading(true);
     
     try {
         const response = await fetch('/api/pagos/solicitar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plan })
+            body: JSON.stringify({ plan: normalizedPlan })
         });
         
         const data = await response.json();
@@ -741,12 +751,13 @@ async function mostrarModalSuscripcion() {
             currentPlan = '';
         }
     }
+    currentPlan = normalizePlanValue(currentPlan);
 
     const planes = await obtenerPlanesPublicos(true);
     const litePlan = planes.lite || buildFallbackPlanesConfig().lite;
     const proPlan = planes.pro || buildFallbackPlanesConfig().pro;
 
-    const showUpgradeOnly = currentPlan === 'basic';
+    const showUpgradeOnly = currentPlan === 'lite';
     const diferencia = Math.max(parseFloat(proPlan.precio) - parseFloat(litePlan.precio), 0);
     const premiumLabel = showUpgradeOnly
         ? `Actualizar a ${proPlan.nombre} (solo diferencia)`
@@ -766,7 +777,7 @@ async function mostrarModalSuscripcion() {
 
     const modalHtml = `
         <div class="modal fade" id="modalSuscripcion" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
@@ -775,24 +786,31 @@ async function mostrarModalSuscripcion() {
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body ig-card-body">
-                        <div class="row">
+                        <div class="text-center mb-4">
+                            <p class="mb-2 text-white-50">Elige el plan ideal para tu operación y activa en minutos.</p>
+                            <span class="badge rounded-pill bg-dark bg-opacity-50 px-3 py-2">Soporte rápido • Activación segura</span>
+                        </div>
+                        <div class="row g-4 align-items-stretch">
                             ${showUpgradeOnly ? '' : `
-                            <div class="col-md-6 mb-3">
-                                <div class="plan-card h-100 border border-light border-opacity-10 shadow-sm">
-                                    <div class="plan-header bg-primary text-center py-3">
-                                        <div class="plan-icon mb-2 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 48px; height: 48px;">
+                            <div class="col-lg-6">
+                                <div class="plan-card h-100 border border-light border-opacity-10 rounded-4 overflow-hidden shadow-sm">
+                                    <div class="plan-header px-3 py-4 text-center bg-primary bg-opacity-75">
+                                        <div class="plan-icon mb-3 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 56px; height: 56px;">
                                             <i class="fa-solid fa-leaf fa-lg"></i>
                                         </div>
-                                        <h4 class="mb-0">${litePlan.nombre}</h4>
+                                        <h4 class="mb-1">${litePlan.nombre}</h4>
                                         <small class="text-white-50">Ideal para empezar</small>
-                                        <div class="plan-price">$${formatPrice(litePlan.precio)}<span class="plan-period">/mes</span></div>
+                                        <div class="d-flex justify-content-center align-items-baseline gap-1 mt-3">
+                                            <span class="fw-bold fs-2">$${formatPrice(litePlan.precio)}</span>
+                                            <span class="text-white-50">/mes</span>
+                                        </div>
                                     </div>
-                                    <div class="plan-body pt-3 d-flex flex-column">
-                                        <ul class="plan-features mb-3" style="min-height: 180px;">
+                                    <div class="plan-body p-4 d-flex flex-column">
+                                        <ul class="plan-features list-unstyled mb-4 flex-grow-1">
                                             ${renderPlanFeatures(liteFeatures)}
                                         </ul>
-                                        <div class="pt-2">
-                                            <button class="btn btn-ig w-100 d-flex align-items-center justify-content-center gap-2" onclick="solicitarPagoManual('basic')">
+                                        <div class="d-grid">
+                                            <button class="btn btn-ig d-flex align-items-center justify-content-center gap-2" onclick="solicitarPagoManual('lite')">
                                                 <i class="fa-solid fa-check-circle"></i>
                                                 <span>Seleccionar ${litePlan.nombre}</span>
                                             </button>
@@ -801,24 +819,27 @@ async function mostrarModalSuscripcion() {
                                 </div>
                             </div>
                             `}
-                            <div class="col-md-6 mb-3">
-                                <div class="plan-card h-100 border border-light border-opacity-10 shadow-sm">
-                                    <div class="plan-header bg-gradient text-center py-3">
-                                        <div class="plan-icon mb-2 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 48px; height: 48px;">
+                            <div class="col-lg-6">
+                                <div class="plan-card h-100 border border-light border-opacity-10 rounded-4 overflow-hidden shadow-sm">
+                                    <div class="plan-header px-3 py-4 text-center bg-gradient">
+                                        <div class="plan-icon mb-3 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 56px; height: 56px;">
                                             <i class="fa-solid fa-rocket fa-lg"></i>
                                         </div>
-                                        <h4 class="mb-0">${proPlan.nombre}</h4>
+                                        <h4 class="mb-1">${proPlan.nombre}</h4>
                                         <small class="text-white-50">Más crecimiento y soporte</small>
-                                        <div class="plan-price">${premiumPrice}<span class="plan-period">/mes</span></div>
-                                        <span class="plan-badge">Recomendado</span>
+                                        <div class="d-flex justify-content-center align-items-baseline gap-1 mt-3">
+                                            <span class="fw-bold fs-2">${premiumPrice}</span>
+                                            <span class="text-white-50">/mes</span>
+                                        </div>
+                                        <span class="plan-badge mt-3">Recomendado</span>
                                     </div>
-                                    <div class="plan-body pt-3 d-flex flex-column">
-                                        <ul class="plan-features mb-3" style="min-height: 180px;">
+                                    <div class="plan-body p-4 d-flex flex-column">
+                                        <ul class="plan-features list-unstyled mb-4 flex-grow-1">
                                             ${renderPlanFeatures(proFeatures)}
                                         </ul>
-                                        <div class="pt-2">
+                                        <div class="d-grid gap-2">
                                             ${upgradeNote}
-                                            <button class="btn btn-ig w-100 d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, #f7d774, #e9b949); color: #1b1b1b; border: none;" onclick="solicitarPagoManual('premium')">
+                                            <button class="btn btn-ig d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, #f7d774, #e9b949); color: #1b1b1b; border: none;" onclick="solicitarPagoManual('pro')">
                                                 <i class="fa-solid fa-star"></i>
                                                 <span>${premiumLabel}</span>
                                             </button>
