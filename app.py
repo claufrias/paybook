@@ -82,6 +82,27 @@ def get_config_value(cursor, clave, default=None):
     row = cursor.fetchone()
     return row[0] if row else default
 
+def parse_plan_features(raw_value, fallback):
+    lines = [line.strip() for line in (raw_value or '').splitlines() if line.strip()]
+    if not lines:
+        lines = fallback
+    features = []
+    for line in lines:
+        included = True
+        text = line
+        if line.startswith(('-', '!')):
+            included = False
+            text = line.lstrip('-!').strip()
+        features.append({'text': text, 'included': included})
+    return features
+
+def parse_max_cajeros(value):
+    try:
+        max_cajeros = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return max_cajeros if max_cajeros > 0 else None
+
 def ensure_dirs():
     os.makedirs(BACKUP_DIR, exist_ok=True)
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -228,7 +249,11 @@ def init_db():
                ('plataformas', 'Zeus,Gana,Ganamos'),
                ('permitir_deudas', '1'),
                ('precio_basico', '10000'),
-               ('precio_premium', '20000')
+               ('precio_premium', '20000'),
+               ('plan_lite_cajeros', '15'),
+               ('plan_pro_cajeros', '0'),
+               ('plan_lite_features', 'Cargas ilimitadas\nReportes básicos\n- WhatsApp API\n- Reportes avanzados'),
+               ('plan_pro_features', 'Cargas ilimitadas\nReportes avanzados\nWhatsApp API\nSoporte prioritario')
     ''')
     
     conn.commit()
@@ -363,6 +388,22 @@ def actualizar_bd():
         cursor.execute("SELECT clave FROM configuraciones WHERE clave = 'permitir_deudas'")
         if not cursor.fetchone():
             cursor.execute("INSERT INTO configuraciones (clave, valor) VALUES ('permitir_deudas', '1')")
+
+        configuraciones_por_defecto = {
+            'precio_basico': '10000',
+            'precio_premium': '20000',
+            'plan_lite_cajeros': '15',
+            'plan_pro_cajeros': '0',
+            'plan_lite_features': 'Cargas ilimitadas\nReportes básicos\n- WhatsApp API\n- Reportes avanzados',
+            'plan_pro_features': 'Cargas ilimitadas\nReportes avanzados\nWhatsApp API\nSoporte prioritario'
+        }
+        for clave, valor in configuraciones_por_defecto.items():
+            cursor.execute('SELECT clave FROM configuraciones WHERE clave = ?', (clave,))
+            if not cursor.fetchone():
+                cursor.execute(
+                    'INSERT INTO configuraciones (clave, valor) VALUES (?, ?)',
+                    (clave, valor)
+                )
 
         # Usuario admin por defecto si no hay usuarios (email: admin@paybook.local, contraseña: Admin123)
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usuarios'")
@@ -656,8 +697,6 @@ def solicitar_pago_manual():
                     'error': 'Ya tienes una suscripción activa. No puedes solicitar otro pago.'
                 }), 400
 
-            precio_basico = float(get_config_value(cursor, 'precio_basico', '10000'))
-            precio_premium = float(get_config_value(cursor, 'precio_premium', '20000'))
             if user_row:
                 user_plan, fecha_expiracion = user_row
                 if user_plan != 'expired' and fecha_expiracion:
@@ -672,8 +711,8 @@ def solicitar_pago_manual():
                     except ValueError:
                         pass
 
-            precio_basico = float(get_config_value(cursor, 'precio_basico', '9.99'))
-            precio_premium = float(get_config_value(cursor, 'precio_premium', '19.99'))
+            precio_basico = float(get_config_value(cursor, 'precio_basico', '10000'))
+            precio_premium = float(get_config_value(cursor, 'precio_premium', '20000'))
             banco_nombre = get_config_value(cursor, 'banco_nombre', 'Banco')
             banco_cuenta = get_config_value(cursor, 'banco_cuenta', '0000-0000-0000-0000')
             banco_titular = get_config_value(cursor, 'banco_titular', 'RedCajeros')
@@ -802,6 +841,27 @@ def add_cajero():
             cursor = conn.cursor()
             
             try:
+                plan_actual = (current_user.plan or 'basic').lower()
+                if plan_actual in ['basic', 'premium', 'trial']:
+                    max_cajeros = None
+                    if plan_actual in ['basic', 'trial']:
+                        max_cajeros = parse_max_cajeros(get_config_value(cursor, 'plan_lite_cajeros', '15'))
+                    elif plan_actual == 'premium':
+                        max_cajeros = parse_max_cajeros(get_config_value(cursor, 'plan_pro_cajeros', '0'))
+
+                    if max_cajeros is not None:
+                        cursor.execute(
+                            'SELECT COUNT(*) FROM cajeros WHERE usuario_id = ? AND activo = 1',
+                            (current_user.id,)
+                        )
+                        total_cajeros = cursor.fetchone()[0]
+                        if total_cajeros >= max_cajeros:
+                            conn.close()
+                            return jsonify({
+                                'success': False,
+                                'error': f'Has alcanzado el límite de {max_cajeros} cajeros para tu plan.'
+                            }), 400
+
                 # Verificar si ya existe un cajero con el mismo nombre (case-insensitive)
                 cursor.execute(
                     'SELECT id, nombre FROM cajeros WHERE usuario_id = ? AND LOWER(nombre) = LOWER(?)',
@@ -2074,6 +2134,79 @@ def update_configuracion():
             'message': 'Configuración actualizada exitosamente'
         })
         
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ========== API PLANES (PUBLICO) ==========
+@app.route('/api/planes', methods=['GET'])
+def get_planes():
+    try:
+        with db_lock:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+
+            def parse_price(value, default):
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    return float(default)
+
+            precio_basico = parse_price(get_config_value(cursor, 'precio_basico', '10000'), '10000')
+            precio_premium = parse_price(get_config_value(cursor, 'precio_premium', '20000'), '20000')
+            lite_cajeros_raw = get_config_value(cursor, 'plan_lite_cajeros', '15')
+            pro_cajeros_raw = get_config_value(cursor, 'plan_pro_cajeros', '0')
+
+            lite_features_raw = get_config_value(
+                cursor,
+                'plan_lite_features',
+                'Cargas ilimitadas\nReportes básicos\n- WhatsApp API\n- Reportes avanzados'
+            )
+            pro_features_raw = get_config_value(
+                cursor,
+                'plan_pro_features',
+                'Cargas ilimitadas\nReportes avanzados\nWhatsApp API\nSoporte prioritario'
+            )
+
+            conn.close()
+
+        lite_cajeros_max = parse_max_cajeros(lite_cajeros_raw)
+        pro_cajeros_max = parse_max_cajeros(pro_cajeros_raw)
+
+        lite_features = parse_plan_features(
+            lite_features_raw,
+            ['Cargas ilimitadas', 'Reportes básicos', '- WhatsApp API', '- Reportes avanzados']
+        )
+        pro_features = parse_plan_features(
+            pro_features_raw,
+            ['Cargas ilimitadas', 'Reportes avanzados', 'WhatsApp API', 'Soporte prioritario']
+        )
+
+        lite_features.insert(0, {
+            'text': 'Cajeros ilimitados' if lite_cajeros_max is None else f'Hasta {lite_cajeros_max} cajeros',
+            'included': True
+        })
+        pro_features.insert(0, {
+            'text': 'Cajeros ilimitados' if pro_cajeros_max is None else f'Hasta {pro_cajeros_max} cajeros',
+            'included': True
+        })
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'lite': {
+                    'nombre': 'Lite',
+                    'precio': precio_basico,
+                    'cajeros_max': lite_cajeros_max,
+                    'features': lite_features
+                },
+                'pro': {
+                    'nombre': 'Pro',
+                    'precio': precio_premium,
+                    'cajeros_max': pro_cajeros_max,
+                    'features': pro_features
+                }
+            }
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

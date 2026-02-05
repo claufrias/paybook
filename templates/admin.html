@@ -330,14 +330,40 @@
                                 </div>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Precio Plan Básico ($)</label>
+                                        <label class="form-label">Precio Plan Lite ($)</label>
                                         <input type="number" step="0.01" class="form-control form-control-ig" 
-                                               id="configPrecioBasico" value="9.99">
+                                               id="configPrecioLite" value="10000">
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Precio Plan Premium ($)</label>
+                                        <label class="form-label">Precio Plan Pro ($)</label>
                                         <input type="number" step="0.01" class="form-control form-control-ig" 
-                                               id="configPrecioPremium" value="19.99">
+                                               id="configPrecioPro" value="20000">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Cajeros permitidos (Plan Lite)</label>
+                                        <input type="number" min="0" class="form-control form-control-ig" 
+                                               id="configCajerosLite" placeholder="15">
+                                        <small class="text-muted">Usa 0 para ilimitados</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Cajeros permitidos (Plan Pro)</label>
+                                        <input type="number" min="0" class="form-control form-control-ig" 
+                                               id="configCajerosPro" placeholder="0">
+                                        <small class="text-muted">Usa 0 para ilimitados</small>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Características Plan Lite</label>
+                                        <textarea class="form-control form-control-ig" id="configFeaturesLite" 
+                                                  rows="4" placeholder="Una por línea. Usa '-' al inicio para marcar como no incluido"></textarea>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Características Plan Pro</label>
+                                        <textarea class="form-control form-control-ig" id="configFeaturesPro" 
+                                                  rows="4" placeholder="Una por línea. Usa '-' al inicio para marcar como no incluido"></textarea>
                                     </div>
                                 </div>
                                 <div class="row">
