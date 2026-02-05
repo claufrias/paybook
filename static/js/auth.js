@@ -772,6 +772,9 @@ async function mostrarModalSuscripcion() {
                             <div class="col-md-6 mb-3">
                                 <div class="plan-card">
                                     <div class="plan-header bg-primary">
+                                        <div class="plan-icon mb-2">
+                                            <i class="fas fa-leaf fa-lg"></i>
+                                        </div>
                                         <h4 class="mb-0">${litePlan.nombre}</h4>
                                         <div class="plan-price">$${formatPrice(litePlan.precio)}<span class="plan-period">/mes</span></div>
                                     </div>
@@ -789,6 +792,9 @@ async function mostrarModalSuscripcion() {
                             <div class="col-md-6 mb-3">
                                 <div class="plan-card">
                                     <div class="plan-header bg-gradient">
+                                        <div class="plan-icon mb-2">
+                                            <i class="fas fa-rocket fa-lg"></i>
+                                        </div>
                                         <h4 class="mb-0">${proPlan.nombre}</h4>
                                         <div class="plan-price">${premiumPrice}<span class="plan-period">/mes</span></div>
                                         <span class="plan-badge">Recomendado</span>
