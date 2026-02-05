@@ -8,8 +8,8 @@
     <!-- Bootstrap 5 Dark -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.1.3/dist/css/bootstrap-night.min.css" rel="stylesheet">
     
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Hugeicons Free -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hugeicons@latest/hugeicons.min.css">
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -22,7 +22,7 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-content">
             <div class="story-circle mb-4 pulse" style="width: 80px; height: 80px; border: none;">
-                <i class="fas fa-shield-alt fa-2x"></i>
+                <i class="hugeicons hugeicons-shield-alt hugeicons-2x"></i>
             </div>
             <h4 class="gradient-text mb-3">Cargando...</h4>
             <div class="progress mt-3" style="height: 4px; width: 200px;">
@@ -35,18 +35,18 @@
     <nav class="navbar navbar-dark" style="background: #1a1a2e;">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">
-                <i class="fas fa-shield-alt me-2"></i>
+                <i class="hugeicons hugeicons-shield-alt me-2"></i>
                 <span class="gradient-text">RedCajeros Admin</span>
             </a>
             <div class="d-flex">
                 <a href="/dashboard" class="btn btn-ig-outline me-2">
-                    <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+                    <i class="hugeicons hugeicons-arrow-left me-2"></i> Volver al Dashboard
                 </a>
                 <button class="btn btn-ig-outline me-2" onclick="verMiPerfil()">
-                    <i class="fas fa-user me-2"></i> Mi Perfil
+                    <i class="hugeicons hugeicons-user me-2"></i> Mi Perfil
                 </button>
                 <button class="btn btn-ig" onclick="logout()">
-                    <i class="fas fa-sign-out-alt me-2"></i> Salir
+                    <i class="hugeicons hugeicons-sign-out-alt me-2"></i> Salir
                 </button>
             </div>
         </div>
@@ -60,30 +60,30 @@
                 <div class="ig-card sticky-top" style="top: 20px;">
                     <div class="ig-card-header">
                         <h6 class="gradient-text mb-0">
-                            <i class="fas fa-tachometer-alt me-2"></i>Panel de Control
+                            <i class="hugeicons hugeicons-tachometer-alt me-2"></i>Panel de Control
                         </h6>
                     </div>
                     <div class="ig-card-body p-0">
                         <div class="list-group list-group-flush">
                             <a href="#" class="list-group-item list-group-item-action active" onclick="mostrarSeccionAdmin('dashboard')">
-                                <i class="fas fa-home me-2"></i> Dashboard
+                                <i class="hugeicons hugeicons-home me-2"></i> Dashboard
                             </a>
                             <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('pagos')">
-                                <i class="fas fa-money-bill-wave me-2"></i> Pagos Pendientes
+                                <i class="hugeicons hugeicons-money-bill-wave me-2"></i> Pagos Pendientes
                                 <span class="badge bg-danger float-end" id="pagosPendientesCount">0</span>
                             </a>
                             <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('usuarios')">
-                                <i class="fas fa-users me-2"></i> Usuarios
+                                <i class="hugeicons hugeicons-users me-2"></i> Usuarios
                                 <span class="badge bg-info float-end" id="totalUsuariosCount">0</span>
                             </a>
                             <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('configuracion')">
-                                <i class="fas fa-cog me-2"></i> Configuración
+                                <i class="hugeicons hugeicons-cog me-2"></i> Configuración
                             </a>
                             <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('estadisticas')">
-                                <i class="fas fa-chart-bar me-2"></i> Estadísticas
+                                <i class="hugeicons hugeicons-chart-bar me-2"></i> Estadísticas
                             </a>
                             <a href="#" class="list-group-item list-group-item-action" onclick="mostrarSeccionAdmin('backup')">
-                                <i class="fas fa-database me-2"></i> Backup
+                                <i class="hugeicons hugeicons-database me-2"></i> Backup
                             </a>
                         </div>
                     </div>
@@ -102,7 +102,7 @@
                             <div class="ig-card">
                                 <div class="ig-card-header">
                                     <h4 class="gradient-text mb-0">
-                                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard Administrativo
+                                        <i class="hugeicons hugeicons-tachometer-alt me-2"></i>Dashboard Administrativo
                                     </h4>
                                 </div>
                                 <div class="ig-card-body">
@@ -110,7 +110,7 @@
                                         <div class="col-md-3 mb-3">
                                             <div class="stat-card-admin">
                                                 <div class="stat-icon">
-                                                    <i class="fas fa-users"></i>
+                                                    <i class="hugeicons hugeicons-users"></i>
                                                 </div>
                                                 <div class="stat-number" id="adminTotalUsuarios">0</div>
                                                 <div class="stat-label">Usuarios Totales</div>
@@ -119,7 +119,7 @@
                                         <div class="col-md-3 mb-3">
                                             <div class="stat-card-admin">
                                                 <div class="stat-icon">
-                                                    <i class="fas fa-money-bill-wave"></i>
+                                                    <i class="hugeicons hugeicons-money-bill-wave"></i>
                                                 </div>
                                                 <div class="stat-number" id="adminPagosHoy">$0</div>
                                                 <div class="stat-label">Ingresos Hoy</div>
@@ -128,7 +128,7 @@
                                         <div class="col-md-3 mb-3">
                                             <div class="stat-card-admin">
                                                 <div class="stat-icon">
-                                                    <i class="fas fa-clock"></i>
+                                                    <i class="hugeicons hugeicons-clock"></i>
                                                 </div>
                                                 <div class="stat-number" id="adminPagosPendientes">0</div>
                                                 <div class="stat-label">Pagos Pendientes</div>
@@ -137,7 +137,7 @@
                                         <div class="col-md-3 mb-3">
                                             <div class="stat-card-admin">
                                                 <div class="stat-icon">
-                                                    <i class="fas fa-chart-line"></i>
+                                                    <i class="hugeicons hugeicons-chart-line"></i>
                                                 </div>
                                                 <div class="stat-number" id="adminIngresosMes">$0</div>
                                                 <div class="stat-label">Ingresos del Mes</div>
@@ -159,16 +159,16 @@
                                 <div class="ig-card-body">
                                     <div class="d-grid gap-2">
                                         <button class="btn btn-ig" onclick="mostrarSeccionAdmin('pagos')">
-                                            <i class="fas fa-check-circle me-2"></i> Verificar Pagos
+                                            <i class="hugeicons hugeicons-check-circle me-2"></i> Verificar Pagos
                                         </button>
                                         <button class="btn btn-ig-outline" onclick="crearUsuarioAdmin()">
-                                            <i class="fas fa-user-plus me-2"></i> Crear Usuario
+                                            <i class="hugeicons hugeicons-user-plus me-2"></i> Crear Usuario
                                         </button>
                                         <button class="btn btn-ig-outline" onclick="generarReporteAdmin()">
-                                            <i class="fas fa-file-pdf me-2"></i> Generar Reporte
+                                            <i class="hugeicons hugeicons-file-pdf me-2"></i> Generar Reporte
                                         </button>
                                         <button class="btn btn-ig-outline" onclick="enviarRecordatorios()">
-                                            <i class="fas fa-bell me-2"></i> Enviar Recordatorios
+                                            <i class="hugeicons hugeicons-bell me-2"></i> Enviar Recordatorios
                                         </button>
                                     </div>
                                 </div>
@@ -184,7 +184,7 @@
                                         <div class="info-item">
                                             <span class="label">Estado:</span>
                                             <span class="value text-success">
-                                                <i class="fas fa-circle"></i> Online
+                                                <i class="hugeicons hugeicons-circle"></i> Online
                                             </span>
                                         </div>
                                         <div class="info-item">
@@ -211,10 +211,10 @@
                     <div class="ig-card">
                         <div class="ig-card-header d-flex justify-content-between align-items-center">
                             <h4 class="gradient-text mb-0">
-                                <i class="fas fa-money-bill-wave me-2"></i>Pagos Pendientes
+                                <i class="hugeicons hugeicons-money-bill-wave me-2"></i>Pagos Pendientes
                             </h4>
                             <button class="btn btn-sm btn-ig" onclick="cargarPagosPendientes()">
-                                <i class="fas fa-sync-alt"></i>
+                                <i class="hugeicons hugeicons-sync-alt"></i>
                             </button>
                         </div>
                         <div class="ig-card-body">
@@ -235,7 +235,7 @@
                                         <tr>
                                             <td colspan="7" class="text-center text-muted py-5">
                                                 <div class="mb-3">
-                                                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                                    <i class="hugeicons hugeicons-spinner hugeicons-spin hugeicons-2x"></i>
                                                 </div>
                                                 <h6>Cargando pagos pendientes...</h6>
                                             </td>
@@ -252,13 +252,13 @@
                     <div class="ig-card">
                         <div class="ig-card-header d-flex justify-content-between align-items-center">
                             <h4 class="gradient-text mb-0">
-                                <i class="fas fa-users me-2"></i>Gestión de Usuarios
+                                <i class="hugeicons hugeicons-users me-2"></i>Gestión de Usuarios
                             </h4>
                             <div>
                                 <input type="text" id="buscarUsuario" class="form-control form-control-ig-sm d-inline-block me-2" 
                                        placeholder="Buscar usuario..." style="width: 200px;">
                                 <button class="btn btn-sm btn-ig" onclick="cargarUsuarios()">
-                                    <i class="fas fa-sync-alt"></i>
+                                    <i class="hugeicons hugeicons-sync-alt"></i>
                                 </button>
                             </div>
                         </div>
@@ -281,7 +281,7 @@
                                         <tr>
                                             <td colspan="8" class="text-center text-muted py-5">
                                                 <div class="mb-3">
-                                                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                                    <i class="hugeicons hugeicons-spinner hugeicons-spin hugeicons-2x"></i>
                                                 </div>
                                                 <h6>Cargando usuarios...</h6>
                                             </td>
@@ -298,7 +298,7 @@
                     <div class="ig-card">
                         <div class="ig-card-header">
                             <h4 class="gradient-text mb-0">
-                                <i class="fas fa-cog me-2"></i>Configuración del Sistema
+                                <i class="hugeicons hugeicons-cog me-2"></i>Configuración del Sistema
                             </h4>
                         </div>
                         <div class="ig-card-body">
@@ -374,7 +374,7 @@
                                     </div>
                                 </div>
                                 <button type="button" class="btn btn-ig" onclick="guardarConfiguracion()">
-                                    <i class="fas fa-save me-2"></i> Guardar Configuración
+                                    <i class="hugeicons hugeicons-save me-2"></i> Guardar Configuración
                                 </button>
                             </form>
                         </div>
@@ -386,7 +386,7 @@
                     <div class="ig-card">
                         <div class="ig-card-header">
                             <h4 class="gradient-text mb-0">
-                                <i class="fas fa-chart-bar me-2"></i>Estadísticas del Sistema
+                                <i class="hugeicons hugeicons-chart-bar me-2"></i>Estadísticas del Sistema
                             </h4>
                         </div>
                         <div class="ig-card-body">
@@ -430,7 +430,7 @@
                     <div class="ig-card">
                         <div class="ig-card-header">
                             <h4 class="gradient-text mb-0">
-                                <i class="fas fa-database me-2"></i>Backup y Mantenimiento
+                                <i class="hugeicons hugeicons-database me-2"></i>Backup y Mantenimiento
                             </h4>
                         </div>
                         <div class="ig-card-body">
@@ -443,10 +443,10 @@
                                         <div class="ig-card-body">
                                             <p class="text-muted">Crea una copia de seguridad de toda la base de datos.</p>
                                             <button class="btn btn-ig w-100 mb-2" onclick="crearBackup()">
-                                                <i class="fas fa-download me-2"></i> Crear Backup
+                                                <i class="hugeicons hugeicons-download me-2"></i> Crear Backup
                                             </button>
                                             <button class="btn btn-ig-outline w-100" onclick="restaurarBackup()">
-                                                <i class="fas fa-upload me-2"></i> Restaurar Backup
+                                                <i class="hugeicons hugeicons-upload me-2"></i> Restaurar Backup
                                             </button>
                                         </div>
                                     </div>
@@ -459,13 +459,13 @@
                                         <div class="ig-card-body">
                                             <p class="text-muted">Opciones de mantenimiento del sistema.</p>
                                             <button class="btn btn-ig-outline w-100 mb-2" onclick="optimizarBD()">
-                                                <i class="fas fa-broom me-2"></i> Optimizar Base de Datos
+                                                <i class="hugeicons hugeicons-broom me-2"></i> Optimizar Base de Datos
                                             </button>
                                             <button class="btn btn-ig-outline w-100 mb-2" onclick="limpiarCache()">
-                                                <i class="fas fa-trash me-2"></i> Limpiar Cache
+                                                <i class="hugeicons hugeicons-trash me-2"></i> Limpiar Cache
                                             </button>
                                             <button class="btn btn-danger w-100" onclick="reiniciarSistema()">
-                                                <i class="fas fa-redo me-2"></i> Reiniciar Sistema
+                                                <i class="hugeicons hugeicons-redo me-2"></i> Reiniciar Sistema
                                             </button>
                                         </div>
                                     </div>
@@ -588,7 +588,7 @@
             alerta.className = `alert-ig ${tipos[tipo]} fade-in`;
             alerta.innerHTML = `
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-circle' : tipo === 'warning' ? 'exclamation-triangle' : 'info-circle'} fa-lg me-3"></i>
+                    <i class="hugeicons hugeicons-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-circle' : tipo === 'warning' ? 'exclamation-triangle' : 'info-circle'} hugeicons-lg me-3"></i>
                     <div class="flex-grow-1">
                         <h6 class="mb-1 fw-bold">${titulo}</h6>
                         <small>${mensaje}</small>
