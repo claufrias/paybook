@@ -338,7 +338,7 @@ function mostrarModalCajeros() {
                     <div class="modal-content ig-card">
                         <div class="modal-header ig-card-header">
                             <h5 class="modal-title gradient-text">
-                                <i class="fas fa-users me-2"></i>Gestión de Cajeros
+                                <i class="hugeicons hugeicons-users me-2"></i>Gestión de Cajeros
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
@@ -350,7 +350,7 @@ function mostrarModalCajeros() {
                                 </div>
                                 <div class="col-md-4">
                                     <button class="btn btn-ig w-100" onclick="agregarCajeroDesdeModal()">
-                                        <i class="fas fa-plus me-2"></i>Agregar
+                                        <i class="hugeicons hugeicons-plus me-2"></i>Agregar
                                     </button>
                                 </div>
                             </div>
@@ -447,7 +447,7 @@ function mostrarModalCarga() {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-plus-circle me-2"></i>Nueva Carga
+                            <i class="hugeicons hugeicons-plus-circle me-2"></i>Nueva Carga
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -479,7 +479,7 @@ function mostrarModalCarga() {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-ig" onclick="agregarCargaDesdeModal()">
-                            <i class="fas fa-save me-2"></i>Guardar Carga
+                            <i class="hugeicons hugeicons-save me-2"></i>Guardar Carga
                         </button>
                     </div>
                 </div>
@@ -509,19 +509,19 @@ function mostrarModalReportes() {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-file-alt me-2"></i>Reportes
+                            <i class="hugeicons hugeicons-file-alt me-2"></i>Reportes
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body ig-card-body">
                         <button class="btn btn-ig w-100 mb-2" onclick="mostrarReporteDiario()">
-                            <i class="fas fa-calendar-day me-2"></i>Reporte Diario
+                            <i class="hugeicons hugeicons-calendar-day me-2"></i>Reporte Diario
                         </button>
                         <button class="btn btn-ig w-100 mb-2" onclick="mostrarReporteSemanal()">
-                            <i class="fas fa-calendar-week me-2"></i>Reporte Semanal
+                            <i class="hugeicons hugeicons-calendar-week me-2"></i>Reporte Semanal
                         </button>
                         <button class="btn btn-ig w-100" onclick="mostrarReporteMensual()">
-                            <i class="fas fa-calendar-alt me-2"></i>Reporte Mensual
+                            <i class="hugeicons hugeicons-calendar-alt me-2"></i>Reporte Mensual
                         </button>
                     </div>
                 </div>
@@ -553,10 +553,10 @@ function mostrarAlerta(titulo, mensaje, tipo = 'info') {
     };
 
     const iconos = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
+        success: 'hugeicons-check-circle',
+        error: 'hugeicons-exclamation-circle',
+        warning: 'hugeicons-exclamation-triangle',
+        info: 'hugeicons-info-circle'
     };
 
     const alerta = document.createElement('div');
@@ -564,7 +564,7 @@ function mostrarAlerta(titulo, mensaje, tipo = 'info') {
 
     alerta.innerHTML = `
         <div class="d-flex align-items-center">
-            <i class="fas ${iconos[tipo]} fa-lg me-3"></i>
+            <i class="hugeicons ${iconos[tipo]} hugeicons-lg me-3"></i>
             <div class="flex-grow-1">
                 <h6 class="mb-1 fw-bold">${titulo}</h6>
                 <small>${mensaje}</small>
@@ -668,7 +668,7 @@ function actualizarUIUsuario() {
             <div class="dropdown">
                 <button class="btn btn-ig-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <div class="story-circle small me-2">
-                        <i class="fas fa-user"></i>
+                        <i class="hugeicons hugeicons-user"></i>
                     </div>
                     ${usuarioActual.nombre}
                 </button>
@@ -680,13 +680,13 @@ function actualizarUIUsuario() {
                         <small class="text-muted">Plan: ${getPlanLabel(usuarioActual.plan)}</small>
                     </li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="cargarDatosIniciales()"><i class="fas fa-sync-alt me-2"></i> Actualizar</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportarReporte()"><i class="fas fa-file-pdf me-2"></i> Exportar PDF</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="verPendientes()"><i class="fas fa-clock me-2"></i> Ver Pendientes</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="cargarDatosIniciales()"><i class="hugeicons hugeicons-sync-alt me-2"></i> Actualizar</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportarReporte()"><i class="hugeicons hugeicons-file-pdf me-2"></i> Exportar PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="verPendientes()"><i class="hugeicons hugeicons-clock me-2"></i> Ver Pendientes</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="mostrarModalPago()"><i class="fas fa-credit-card me-2"></i> Renovar Plan</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="mostrarModalPago()"><i class="hugeicons hugeicons-credit-card me-2"></i> Renovar Plan</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión</a></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="hugeicons hugeicons-sign-out-alt me-2"></i> Cerrar Sesión</a></li>
                 </ul>
             </div>
         `;
@@ -723,7 +723,7 @@ function actualizarInfoSuscripcion() {
         
         subscriptionInfo.innerHTML = `
             <div class="ig-card">
-                <h6><i class="fas fa-crown me-2"></i>Tu Suscripción</h6>
+                <h6><i class="hugeicons hugeicons-crown me-2"></i>Tu Suscripción</h6>
                 <div class="d-flex justify-content-between align-items-center mt-2">
                     <div>
                         <div class="fw-bold">Plan ${getPlanLabel(usuarioActual.plan)}</div>
@@ -734,7 +734,7 @@ function actualizarInfoSuscripcion() {
                 ${diasRestantes <= 3 ? `
                 <div class="mt-3">
                     <button class="btn btn-ig btn-sm w-100" onclick="mostrarModalPago()">
-                        <i class="fas fa-credit-card me-2"></i> Renovar Ahora
+                        <i class="hugeicons hugeicons-credit-card me-2"></i> Renovar Ahora
                     </button>
                 </div>
                 ` : ''}
@@ -833,13 +833,13 @@ function renderCajerosModal() {
             <td>
                 <div class="btn-group btn-group-sm">
                     <button class="btn btn-outline-primary" onclick="editarCajero(${cajero.id})">
-                        <i class="fas fa-edit"></i>
+                        <i class="hugeicons hugeicons-edit"></i>
                     </button>
                     <button class="btn btn-outline-warning" onclick="eliminarCajero(${cajero.id})">
-                        <i class="fas fa-user-slash"></i>
+                        <i class="hugeicons hugeicons-user-slash"></i>
                     </button>
                     <button class="btn btn-outline-danger" onclick="eliminarCajeroCompleto(${cajero.id})">
-                        <i class="fas fa-trash"></i>
+                        <i class="hugeicons hugeicons-trash"></i>
                     </button>
                 </div>
             </td>
@@ -953,7 +953,7 @@ function actualizarContadoresCajeros() {
     // Cajeros count
     const cajerosCountEl = document.getElementById('cajerosCount');
     if (cajerosCountEl) {
-        cajerosCountEl.innerHTML = `<i class="fas fa-users me-1"></i> ${activos} ${activos === 1 ? 'cajero activo' : 'cajeros activos'}`;
+        cajerosCountEl.innerHTML = `<i class="hugeicons hugeicons-users me-1"></i> ${activos} ${activos === 1 ? 'cajero activo' : 'cajeros activos'}`;
     }
 }
 
@@ -1167,7 +1167,7 @@ function actualizarTablaCargas() {
             <tr>
                 <td colspan="5" class="text-center text-muted py-5">
                     <div class="mb-3">
-                        <i class="fas fa-inbox fa-3x"></i>
+                        <i class="hugeicons hugeicons-inbox hugeicons-3x"></i>
                     </div>
                     <h6>No hay cargas registradas</h6>
                     <small class="text-muted">Agrega tu primera carga usando el formulario</small>
@@ -1206,13 +1206,13 @@ function actualizarTablaCargas() {
             }
             
             // Icono según tipo
-            let icono = 'fa-calendar-alt';
+            let icono = 'hugeicons-calendar-alt';
             if (carga.plataforma === 'PAGO') {
-                icono = 'fa-money-bill-wave text-success';
+                icono = 'hugeicons-money-bill-wave text-success';
             } else if (carga.es_deuda) {
-                icono = 'fa-exclamation-triangle text-danger';
+                icono = 'hugeicons-exclamation-triangle text-danger';
             } else if (carga.pagado) {
-                icono = 'fa-check-circle text-warning';
+                icono = 'hugeicons-check-circle text-warning';
             }
             
             tr.innerHTML = `
@@ -1220,7 +1220,7 @@ function actualizarTablaCargas() {
                     <div class="d-flex align-items-center">
                         <div class="bg-dark rounded-circle d-flex align-items-center justify-content-center me-2" 
                              style="width: 32px; height: 32px;">
-                            <i class="fas ${icono} fa-xs"></i>
+                            <i class="hugeicons ${icono} hugeicons-xs"></i>
                         </div>
                         <div>
                             <div class="fw-medium">${fechaFormateada}</div>
@@ -1231,7 +1231,7 @@ function actualizarTablaCargas() {
                 <td>
                     <div class="d-flex align-items-center">
                         <div class="story-circle small me-2" style="width: 28px; height: 28px; font-size: 0.8rem;">
-                            <i class="fas fa-user"></i>
+                            <i class="hugeicons hugeicons-user"></i>
                         </div>
                         <span>${carga.cajero || 'Sin nombre'}</span>
                     </div>
@@ -1250,7 +1250,7 @@ function actualizarTablaCargas() {
                     ${carga.plataforma !== 'PAGO' ? `
                     <button class="btn btn-outline-danger btn-sm hover-lift" onclick="eliminarCarga(${carga.id})" 
                             title="Eliminar carga">
-                        <i class="fas fa-trash"></i>
+                        <i class="hugeicons hugeicons-trash"></i>
                     </button>
                     ` : '<small class="text-muted">PAGO</small>'}
                 </td>
@@ -1266,7 +1266,7 @@ function actualizarTablaCargas() {
     // Actualizar contador
     const cargasCount = document.getElementById('cargasCount');
     if (cargasCount) {
-        cargasCount.innerHTML = `<i class="fas fa-list me-1"></i> ${cargas.length} ${cargas.length === 1 ? 'carga registrada' : 'cargas registradas'}`;
+        cargasCount.innerHTML = `<i class="hugeicons hugeicons-list me-1"></i> ${cargas.length} ${cargas.length === 1 ? 'carga registrada' : 'cargas registradas'}`;
     }
 }
 
@@ -1466,7 +1466,7 @@ function actualizarTablaResumen() {
             <tr>
                 <td colspan="6" class="text-center text-muted py-5">
                     <div class="mb-3">
-                        <i class="fas fa-chart-line fa-3x"></i>
+                        <i class="hugeicons hugeicons-chart-line hugeicons-3x"></i>
                     </div>
                     <h6>No hay datos para mostrar</h6>
                     <small class="text-muted">Agrega cajeros y cargas para ver el resumen</small>
@@ -1498,7 +1498,7 @@ function actualizarTablaResumen() {
                     <div class="position-relative me-2">
                         <div class="story-circle small ${isTop && item.total > 0 ? 'pulse' : ''}" 
                              style="width: 36px; height: 36px;">
-                            <i class="fas ${item.total < 0 ? 'fa-exclamation-triangle text-danger' : isTop && item.total > 0 ? 'fa-crown' : 'fa-user'}"></i>
+                            <i class="hugeicons ${item.total < 0 ? 'hugeicons-exclamation-triangle text-danger' : isTop && item.total > 0 ? 'hugeicons-crown' : 'hugeicons-user'}"></i>
                         </div>
                     </div>
                     <div>
@@ -1526,7 +1526,7 @@ function actualizarTablaResumen() {
                         onclick="pagarCajero(${item.cajero_id}, '${item.cajero.replace(/'/g, "\\'")}')"
                         title="Marcar como pagado"
                         ${item.total <= 0 ? 'disabled' : ''}>
-                    <i class="fas fa-check-circle"></i> Pagar
+                    <i class="hugeicons hugeicons-check-circle"></i> Pagar
                 </button>
             </td>
         `;
@@ -1578,9 +1578,9 @@ function calcularEstadisticas() {
     
     const totalHoyNombreEl = document.getElementById('totalHoyNombre');
     if (totalHoyNombreEl) {
-        const icono = totalHoy < 0 ? 'fa-exclamation-triangle text-danger' : 'fa-calendar-day';
+        const icono = totalHoy < 0 ? 'hugeicons-exclamation-triangle text-danger' : 'hugeicons-calendar-day';
         const texto = totalHoy < 0 ? 'Deuda hoy' : 'Hoy';
-        totalHoyNombreEl.innerHTML = `<i class="fas ${icono} me-1"></i> ${texto}`;
+        totalHoyNombreEl.innerHTML = `<i class="hugeicons ${icono} me-1"></i> ${texto}`;
     }
     
     // Top cajero
@@ -1597,7 +1597,7 @@ function calcularEstadisticas() {
             
             const topCajeroNombreEl = document.getElementById('topCajeroNombre');
             if (topCajeroNombreEl) {
-                topCajeroNombreEl.innerHTML = `<i class="fas fa-crown me-1"></i> ${top.cajero}`;
+                topCajeroNombreEl.innerHTML = `<i class="hugeicons hugeicons-crown me-1"></i> ${top.cajero}`;
             }
         } else {
             const topCajeroEl = document.getElementById('topCajero');
@@ -1608,7 +1608,7 @@ function calcularEstadisticas() {
             
             const topCajeroNombreEl = document.getElementById('topCajeroNombre');
             if (topCajeroNombreEl) {
-                topCajeroNombreEl.innerHTML = `<i class="fas fa-user me-1"></i> Sin datos`;
+                topCajeroNombreEl.innerHTML = `<i class="hugeicons hugeicons-user me-1"></i> Sin datos`;
             }
         }
     }
@@ -1671,7 +1671,7 @@ async function mostrarModalPago() {
                 
                 <div class="mt-3">
                     <button class="btn btn-ig w-100" onclick="solicitarPago()">
-                        <i class="fas fa-credit-card me-2"></i> Generar Código de Pago
+                        <i class="hugeicons hugeicons-credit-card me-2"></i> Generar Código de Pago
                     </button>
                 </div>
             </div>
@@ -1687,7 +1687,7 @@ async function mostrarModalPago() {
             <div class="modal-content ig-card">
                 <div class="modal-header ig-card-header">
                     <h5 class="modal-title gradient-text">
-                        <i class="fas fa-credit-card me-2"></i>Renovar Plan
+                        <i class="hugeicons hugeicons-credit-card me-2"></i>Renovar Plan
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -1792,7 +1792,7 @@ function mostrarInstruccionesPago(datosPago) {
             <h4 class="gradient-text mb-4">Instrucciones de Pago</h4>
             
             <div class="alert alert-info mb-4">
-                <i class="fas fa-info-circle me-2"></i>
+                <i class="hugeicons hugeicons-info-circle me-2"></i>
                 <strong>Importante:</strong> Conserva este código durante todo el proceso
             </div>
             
@@ -1808,7 +1808,7 @@ function mostrarInstruccionesPago(datosPago) {
             <div class="row g-3">
                 <div class="col-md-6">
                     <div class="ig-card h-100">
-                        <h6><i class="fas fa-bank me-2"></i>Datos Bancarios</h6>
+                        <h6><i class="hugeicons hugeicons-bank me-2"></i>Datos Bancarios</h6>
                         <table class="table table-sm table-borderless">
                             <tr><td>Banco:</td><td><strong>${datosPago.banco_nombre}</strong></td></tr>
                             <tr><td>Cuenta:</td><td><strong>${datosPago.banco_cuenta}</strong></td></tr>
@@ -1820,15 +1820,15 @@ function mostrarInstruccionesPago(datosPago) {
                 </div>
                 <div class="col-md-6">
                     <div class="ig-card h-100">
-                        <h6><i class="fab fa-whatsapp me-2"></i>Envía Comprobante</h6>
+                        <h6><i class="hugeicons hugeicons-whatsapp me-2"></i>Envía Comprobante</h6>
                         <p class="small">Después de transferir, envía el screenshot:</p>
                         <a href="${whatsappLink}" 
                            class="btn btn-success w-100 mb-2"
                            target="_blank">
-                            <i class="fab fa-whatsapp me-2"></i> Abrir WhatsApp
+                            <i class="hugeicons hugeicons-whatsapp me-2"></i> Abrir WhatsApp
                         </a>
                         <p class="mt-2 small text-muted">
-                            <i class="fas fa-lightbulb me-1"></i>
+                            <i class="hugeicons hugeicons-lightbulb me-1"></i>
                             El enlace ya incluye tu código: <code>${datosPago.codigo}</code>
                         </p>
                     </div>
@@ -1837,10 +1837,10 @@ function mostrarInstruccionesPago(datosPago) {
             
             <div class="mt-4">
                 <div class="ig-card">
-                    <h6><i class="fas fa-clock me-2"></i>Seguimiento</h6>
+                    <h6><i class="hugeicons hugeicons-clock me-2"></i>Seguimiento</h6>
                     <p class="small mb-2">Puedes verificar el estado de tu pago:</p>
                     <button class="btn btn-ig-outline w-100" onclick="verificarEstadoPago(true)">
-                        <i class="fas fa-sync-alt me-2"></i> Verificar Estado
+                        <i class="hugeicons hugeicons-sync-alt me-2"></i> Verificar Estado
                     </button>
                 </div>
             </div>
@@ -1856,7 +1856,7 @@ function mostrarInstruccionesPago(datosPago) {
             <div class="modal-content ig-card">
                 <div class="modal-header ig-card-header">
                     <h5 class="modal-title gradient-text">
-                        <i class="fas fa-credit-card me-2"></i>Instrucciones de Pago
+                        <i class="hugeicons hugeicons-credit-card me-2"></i>Instrucciones de Pago
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -1866,7 +1866,7 @@ function mostrarInstruccionesPago(datosPago) {
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     <button type="button" class="btn btn-ig" onclick="copiarCodigo('${datosPago.codigo}')">
-                        <i class="fas fa-copy me-2"></i> Copiar Código
+                        <i class="hugeicons hugeicons-copy me-2"></i> Copiar Código
                     </button>
                 </div>
             </div>
@@ -2152,7 +2152,7 @@ async function verPendientes() {
                     <td class="text-end">${cajero.cargas}</td>
                     <td class="text-center">
                         <button class="btn btn-success btn-sm" onclick="pagarCajero(${cajero.cajero_id}, '${cajero.cajero.replace(/'/g, "\\'")}')">
-                            <i class="fas fa-money-bill-wave"></i> Pagar
+                            <i class="hugeicons hugeicons-money-bill-wave"></i> Pagar
                         </button>
                     </td>
                 </tr>
@@ -2174,7 +2174,7 @@ async function verPendientes() {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-clock me-2"></i>Pendientes de Pago
+                            <i class="hugeicons hugeicons-clock me-2"></i>Pendientes de Pago
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>

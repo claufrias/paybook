@@ -429,7 +429,7 @@ function actualizarEstadoSuscripcionUI(user) {
             const alertDiv = document.createElement('div');
             alertDiv.className = 'alert alert-danger subscription-expired-alert';
             alertDiv.innerHTML = `
-                <i class="fas fa-exclamation-triangle me-2"></i>
+                <i class="hugeicons hugeicons-exclamation-triangle me-2"></i>
                 <strong>Tu suscripción ha expirado.</strong> 
                 Renueva para continuar usando RedCajeros.
             `;
@@ -454,7 +454,7 @@ function actualizarEstadoSuscripcionUI(user) {
     }
     
     planInfo.textContent = planText;
-    expirationInfo.innerHTML = `<i class="fas fa-calendar me-1"></i> ${expirationText}`;
+    expirationInfo.innerHTML = `<i class="hugeicons hugeicons-calendar me-1"></i> ${expirationText}`;
     upgradeButton.textContent = buttonText;
     upgradeButton.className = `btn btn-sm ${buttonClass}`;
     
@@ -504,17 +504,17 @@ function mostrarModalPagoManual(pagoData) {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-money-bill-wave me-2"></i>Instrucciones de Pago
+                            <i class="hugeicons hugeicons-money-bill-wave me-2"></i>Instrucciones de Pago
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body ig-card-body">
                         <div class="alert alert-info mb-3">
-                            <i class="fas fa-info-circle me-2"></i>
+                            <i class="hugeicons hugeicons-info-circle me-2"></i>
                             <strong>Importante:</strong> Guarda tu código <code>${pagoData.codigo}</code>
                         </div>
                         
-                        <h6 class="mb-3"><i class="fas fa-list-ol me-2"></i>Pasos a seguir:</h6>
+                        <h6 class="mb-3"><i class="hugeicons hugeicons-list-ol me-2"></i>Pasos a seguir:</h6>
                         <ol class="mb-4">
                             <li>Transfiere <strong>$${pagoData.monto}</strong> a la cuenta bancaria</li>
                             <li>Toma screenshot del comprobante</li>
@@ -522,7 +522,7 @@ function mostrarModalPagoManual(pagoData) {
                             <li>Tu cuenta se activará en minutos</li>
                         </ol>
                         
-                        <h6 class="mb-3"><i class="fas fa-university me-2"></i>Datos Bancarios:</h6>
+                        <h6 class="mb-3"><i class="hugeicons hugeicons-university me-2"></i>Datos Bancarios:</h6>
                         <div class="ig-card mb-3">
                             <div class="p-3">
                                 <div class="mb-2">
@@ -544,15 +544,15 @@ function mostrarModalPagoManual(pagoData) {
                             </div>
                         </div>
                         
-                        <h6 class="mb-3"><i class="fab fa-whatsapp me-2"></i>Envía Comprobante:</h6>
+                        <h6 class="mb-3"><i class="hugeicons hugeicons-whatsapp me-2"></i>Envía Comprobante:</h6>
                         <a href="${pagoData.whatsapp_url}" 
                            class="btn btn-success w-100 mb-2" 
                            target="_blank">
-                            <i class="fab fa-whatsapp fa-lg me-2"></i>
+                            <i class="hugeicons hugeicons-whatsapp hugeicons-lg me-2"></i>
                             Abrir WhatsApp
                         </a>
                         <p class="text-muted small mb-0">
-                            <i class="fas fa-lightbulb me-1"></i>
+                            <i class="hugeicons hugeicons-lightbulb me-1"></i>
                             Si no tienes WhatsApp en este dispositivo, envía al número: 
                             <strong>${pagoData.whatsapp_numero}</strong>
                         </p>
@@ -560,7 +560,7 @@ function mostrarModalPagoManual(pagoData) {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="button" class="btn btn-ig" onclick="copiarDatosPago()">
-                            <i class="fas fa-copy me-2"></i> Copiar Datos
+                            <i class="hugeicons hugeicons-copy me-2"></i> Copiar Datos
                         </button>
                     </div>
                 </div>
@@ -641,7 +641,7 @@ function mostrarModalMisSolicitudes(solicitudes) {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-history me-2"></i>Mis Solicitudes de Pago
+                            <i class="hugeicons hugeicons-history me-2"></i>Mis Solicitudes de Pago
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -651,7 +651,7 @@ function mostrarModalMisSolicitudes(solicitudes) {
     if (solicitudes.length === 0) {
         html += `
             <div class="text-center py-5">
-                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <i class="hugeicons hugeicons-inbox hugeicons-3x text-muted mb-3"></i>
                 <h6>No tienes solicitudes de pago</h6>
                 <p class="text-muted">Cuando solicites un pago, aparecerá aquí.</p>
             </div>
@@ -770,7 +770,7 @@ async function mostrarModalSuscripcion() {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-crown me-2"></i>Planes de RedCajeros
+                            <i class="hugeicons hugeicons-crown me-2"></i>Planes de RedCajeros
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -829,7 +829,7 @@ async function mostrarModalSuscripcion() {
                         </div>
                         
                         <div class="mt-4">
-                            <h6><i class="fas fa-question-circle me-2"></i>Preguntas Frecuentes</h6>
+                            <h6><i class="hugeicons hugeicons-question-circle me-2"></i>Preguntas Frecuentes</h6>
                             <div class="accordion" id="faqAccordion">
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
@@ -864,7 +864,7 @@ async function mostrarModalSuscripcion() {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="button" class="btn btn-ig-outline" onclick="verMisSolicitudesPago()">
-                            <i class="fas fa-history me-2"></i> Ver Mis Solicitudes
+                            <i class="hugeicons hugeicons-history me-2"></i> Ver Mis Solicitudes
                         </button>
                     </div>
                 </div>
@@ -913,7 +913,7 @@ function mostrarAlertaAuth(titulo, mensaje, tipo = 'info') {
     alerta.className = `alert-ig ${tipos[tipo]} fade-in`;
     alerta.innerHTML = `
         <div class="d-flex align-items-center">
-            <i class="fas ${tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-exclamation-circle' : tipo === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'} fa-lg me-3"></i>
+            <i class="hugeicons ${tipo === 'success' ? 'hugeicons-check-circle' : tipo === 'error' ? 'hugeicons-exclamation-circle' : tipo === 'warning' ? 'hugeicons-exclamation-triangle' : 'hugeicons-info-circle'} hugeicons-lg me-3"></i>
             <div class="flex-grow-1">
                 <h6 class="mb-1 fw-bold">${titulo}</h6>
                 <small>${mensaje}</small>
@@ -1037,7 +1037,7 @@ async function verMiPerfil() {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-user me-2"></i>Mi Perfil
+                            <i class="hugeicons hugeicons-user me-2"></i>Mi Perfil
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -1104,7 +1104,7 @@ async function verMiPerfil() {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-ig" onclick="guardarPerfil()">
-                            <i class="fas fa-save me-2"></i> Guardar Cambios
+                            <i class="hugeicons hugeicons-save me-2"></i> Guardar Cambios
                         </button>
                     </div>
                 </div>
