@@ -96,6 +96,16 @@ def parse_plan_features(raw_value, fallback):
         features.append({'text': text, 'included': included})
     return features
 
+def normalize_plan_value(plan):
+    if not plan:
+        return ''
+    normalized = plan.strip().lower()
+    if normalized == 'basic':
+        return 'lite'
+    if normalized == 'premium':
+        return 'pro'
+    return normalized
+
 def parse_max_cajeros(value):
     try:
         max_cajeros = int(str(value).strip())
@@ -669,9 +679,9 @@ def api_auth_me():
 def solicitar_pago_manual():
     try:
         data = request.get_json(silent=True) or {}
-        plan = (data.get('plan') or 'basic').strip().lower()
-        if plan not in ['basic', 'premium']:
-            plan = 'basic'
+        plan = normalize_plan_value(data.get('plan') or 'lite')
+        if plan not in ['lite', 'pro']:
+            plan = 'lite'
 
         with db_lock:
             conn = sqlite3.connect(DB_PATH)
@@ -682,6 +692,7 @@ def solicitar_pago_manual():
             exp_date = None
             if user_row:
                 user_plan, fecha_expiracion = user_row
+                user_plan = normalize_plan_value(user_plan)
                 if fecha_expiracion:
                     try:
                         exp_date = datetime.strptime(fecha_expiracion, '%Y-%m-%d %H:%M:%S')
@@ -689,7 +700,7 @@ def solicitar_pago_manual():
                         exp_date = None
 
             tiene_suscripcion_activa = exp_date and exp_date > datetime.now()
-            es_upgrade_premium = user_plan == 'basic' and plan == 'premium' and tiene_suscripcion_activa
+            es_upgrade_premium = user_plan == 'lite' and plan == 'pro' and tiene_suscripcion_activa
             if tiene_suscripcion_activa and not es_upgrade_premium:
                 conn.close()
                 return jsonify({
@@ -699,6 +710,7 @@ def solicitar_pago_manual():
 
             if user_row:
                 user_plan, fecha_expiracion = user_row
+                user_plan = normalize_plan_value(user_plan)
                 if user_plan != 'expired' and fecha_expiracion:
                     try:
                         exp_date = datetime.strptime(fecha_expiracion, '%Y-%m-%d %H:%M:%S')
@@ -718,7 +730,7 @@ def solicitar_pago_manual():
             banco_titular = get_config_value(cursor, 'banco_titular', 'RedCajeros')
             whatsapp_admin = get_config_value(cursor, 'whatsapp_admin', '584121234567')
 
-            monto = precio_premium if plan == 'premium' else precio_basico
+            monto = precio_premium if plan == 'pro' else precio_basico
             if es_upgrade_premium:
                 monto = max(precio_premium - precio_basico, 0)
 
@@ -841,12 +853,12 @@ def add_cajero():
             cursor = conn.cursor()
             
             try:
-                plan_actual = (current_user.plan or 'basic').lower()
-                if plan_actual in ['basic', 'premium', 'trial']:
+                plan_actual = normalize_plan_value(current_user.plan or 'lite')
+                if plan_actual in ['lite', 'pro', 'trial']:
                     max_cajeros = None
-                    if plan_actual in ['basic', 'trial']:
+                    if plan_actual in ['lite', 'trial']:
                         max_cajeros = parse_max_cajeros(get_config_value(cursor, 'plan_lite_cajeros', '15'))
-                    elif plan_actual == 'premium':
+                    elif plan_actual == 'pro':
                         max_cajeros = parse_max_cajeros(get_config_value(cursor, 'plan_pro_cajeros', '0'))
 
                     if max_cajeros is not None:
@@ -2317,7 +2329,7 @@ def admin_actualizar_usuario(user_id):
 
         nombre = (data.get('nombre') or '').strip()
         telefono = (data.get('telefono') or '').strip()
-        plan = (data.get('plan') or 'free').strip().lower()
+        plan = normalize_plan_value(data.get('plan') or 'free')
         rol = (data.get('rol') or 'user').strip().lower()
         fecha_expiracion = data.get('fecha_expiracion')
         activo = 1 if data.get('activo', True) else 0

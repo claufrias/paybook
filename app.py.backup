@@ -474,10 +474,10 @@ def solicitar_pago():
     """Solicitar pago manual"""
     try:
         data = request.get_json()
-        plan = data.get('plan', 'basic')
+        plan = data.get('plan', 'lite')
         
         # Precios
-        precios = {'basic': 9.99, 'premium': 19.99}
+        precios = {'lite': 9.99, 'pro': 19.99}
         if plan not in precios:
             return jsonify({'success': False, 'error': 'Plan no válido'}), 400
         
@@ -1460,4 +1460,3 @@ def get_all_users():
             return count
     except:
         return 0
-
