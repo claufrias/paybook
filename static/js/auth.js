@@ -57,8 +57,8 @@ function formatPrice(value) {
 
 function renderPlanFeatures(features) {
     return (features || []).map(feature => {
-        const iconClass = feature.included ? 'fa-check text-success' : 'fa-times text-danger';
-        return `<li><i class="fas ${iconClass} me-2"></i> ${feature.text}</li>`;
+        const iconClass = feature.included ? 'fa-check text-success' : 'fa-xmark text-danger';
+        return `<li><i class="fa-solid ${iconClass} me-2"></i> ${feature.text}</li>`;
     }).join('');
 }
 
@@ -429,7 +429,7 @@ function actualizarEstadoSuscripcionUI(user) {
             const alertDiv = document.createElement('div');
             alertDiv.className = 'alert alert-danger subscription-expired-alert';
             alertDiv.innerHTML = `
-                <i class="hugeicons hugeicons-exclamation-triangle me-2"></i>
+                <i class="fa-solid fa-triangle-exclamation me-2"></i>
                 <strong>Tu suscripción ha expirado.</strong> 
                 Renueva para continuar usando RedCajeros.
             `;
@@ -454,7 +454,7 @@ function actualizarEstadoSuscripcionUI(user) {
     }
     
     planInfo.textContent = planText;
-    expirationInfo.innerHTML = `<i class="hugeicons hugeicons-calendar me-1"></i> ${expirationText}`;
+    expirationInfo.innerHTML = `<i class="fa-solid fa-calendar me-1"></i> ${expirationText}`;
     upgradeButton.textContent = buttonText;
     upgradeButton.className = `btn btn-sm ${buttonClass}`;
     
@@ -504,17 +504,17 @@ function mostrarModalPagoManual(pagoData) {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="hugeicons hugeicons-money-bill-wave me-2"></i>Instrucciones de Pago
+                            <i class="fa-solid fa-money-bill-wave me-2"></i>Instrucciones de Pago
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body ig-card-body">
                         <div class="alert alert-info mb-3">
-                            <i class="hugeicons hugeicons-info-circle me-2"></i>
+                            <i class="fa-solid fa-circle-info me-2"></i>
                             <strong>Importante:</strong> Guarda tu código <code>${pagoData.codigo}</code>
                         </div>
                         
-                        <h6 class="mb-3"><i class="hugeicons hugeicons-list-ol me-2"></i>Pasos a seguir:</h6>
+                        <h6 class="mb-3"><i class="fa-solid fa-list-ol me-2"></i>Pasos a seguir:</h6>
                         <ol class="mb-4">
                             <li>Transfiere <strong>$${pagoData.monto}</strong> a la cuenta bancaria</li>
                             <li>Toma screenshot del comprobante</li>
@@ -522,7 +522,7 @@ function mostrarModalPagoManual(pagoData) {
                             <li>Tu cuenta se activará en minutos</li>
                         </ol>
                         
-                        <h6 class="mb-3"><i class="hugeicons hugeicons-university me-2"></i>Datos Bancarios:</h6>
+                        <h6 class="mb-3"><i class="fa-solid fa-building-columns me-2"></i>Datos Bancarios:</h6>
                         <div class="ig-card mb-3">
                             <div class="p-3">
                                 <div class="mb-2">
@@ -544,15 +544,15 @@ function mostrarModalPagoManual(pagoData) {
                             </div>
                         </div>
                         
-                        <h6 class="mb-3"><i class="hugeicons hugeicons-whatsapp me-2"></i>Envía Comprobante:</h6>
+                        <h6 class="mb-3"><i class="fa-brands fa-whatsapp me-2"></i>Envía Comprobante:</h6>
                         <a href="${pagoData.whatsapp_url}" 
                            class="btn btn-success w-100 mb-2" 
                            target="_blank">
-                            <i class="hugeicons hugeicons-whatsapp hugeicons-lg me-2"></i>
+                            <i class="fa-brands fa-whatsapp fa-lg me-2"></i>
                             Abrir WhatsApp
                         </a>
                         <p class="text-muted small mb-0">
-                            <i class="hugeicons hugeicons-lightbulb me-1"></i>
+                            <i class="fa-solid fa-lightbulb me-1"></i>
                             Si no tienes WhatsApp en este dispositivo, envía al número: 
                             <strong>${pagoData.whatsapp_numero}</strong>
                         </p>
@@ -560,7 +560,7 @@ function mostrarModalPagoManual(pagoData) {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="button" class="btn btn-ig" onclick="copiarDatosPago()">
-                            <i class="hugeicons hugeicons-copy me-2"></i> Copiar Datos
+                            <i class="fa-solid fa-copy me-2"></i> Copiar Datos
                         </button>
                     </div>
                 </div>
@@ -641,7 +641,7 @@ function mostrarModalMisSolicitudes(solicitudes) {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="hugeicons hugeicons-history me-2"></i>Mis Solicitudes de Pago
+                            <i class="fa-solid fa-clock-rotate-left me-2"></i>Mis Solicitudes de Pago
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -651,7 +651,7 @@ function mostrarModalMisSolicitudes(solicitudes) {
     if (solicitudes.length === 0) {
         html += `
             <div class="text-center py-5">
-                <i class="hugeicons hugeicons-inbox hugeicons-3x text-muted mb-3"></i>
+                <i class="fa-solid fa-inbox fa-3x text-muted mb-3"></i>
                 <h6>No tienes solicitudes de pago</h6>
                 <p class="text-muted">Cuando solicites un pago, aparecerá aquí.</p>
             </div>
@@ -770,7 +770,7 @@ async function mostrarModalSuscripcion() {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="hugeicons hugeicons-crown me-2"></i>Planes de RedCajeros
+                            <i class="fa-solid fa-crown me-2"></i>Planes de RedCajeros
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -781,7 +781,7 @@ async function mostrarModalSuscripcion() {
                                 <div class="plan-card h-100 border border-light border-opacity-10 shadow-sm">
                                     <div class="plan-header bg-primary text-center py-3">
                                         <div class="plan-icon mb-2 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 48px; height: 48px;">
-                                            <i class="fas fa-leaf fa-lg"></i>
+                                            <i class="fa-solid fa-leaf fa-lg"></i>
                                         </div>
                                         <h4 class="mb-0">${litePlan.nombre}</h4>
                                         <small class="text-white-50">Ideal para empezar</small>
@@ -793,7 +793,7 @@ async function mostrarModalSuscripcion() {
                                         </ul>
                                         <div class="pt-2">
                                             <button class="btn btn-ig w-100 d-flex align-items-center justify-content-center gap-2" onclick="solicitarPagoManual('basic')">
-                                                <i class="fas fa-check-circle"></i>
+                                                <i class="fa-solid fa-check-circle"></i>
                                                 <span>Seleccionar ${litePlan.nombre}</span>
                                             </button>
                                         </div>
@@ -805,7 +805,7 @@ async function mostrarModalSuscripcion() {
                                 <div class="plan-card h-100 border border-light border-opacity-10 shadow-sm">
                                     <div class="plan-header bg-gradient text-center py-3">
                                         <div class="plan-icon mb-2 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 48px; height: 48px;">
-                                            <i class="fas fa-rocket fa-lg"></i>
+                                            <i class="fa-solid fa-rocket fa-lg"></i>
                                         </div>
                                         <h4 class="mb-0">${proPlan.nombre}</h4>
                                         <small class="text-white-50">Más crecimiento y soporte</small>
@@ -819,7 +819,7 @@ async function mostrarModalSuscripcion() {
                                         <div class="pt-2">
                                             ${upgradeNote}
                                             <button class="btn btn-ig w-100 d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, #f7d774, #e9b949); color: #1b1b1b; border: none;" onclick="solicitarPagoManual('premium')">
-                                                <i class="fas fa-star"></i>
+                                                <i class="fa-solid fa-star"></i>
                                                 <span>${premiumLabel}</span>
                                             </button>
                                         </div>
@@ -829,7 +829,7 @@ async function mostrarModalSuscripcion() {
                         </div>
                         
                         <div class="mt-4">
-                            <h6><i class="hugeicons hugeicons-question-circle me-2"></i>Preguntas Frecuentes</h6>
+                            <h6><i class="fa-solid fa-circle-question me-2"></i>Preguntas Frecuentes</h6>
                             <div class="accordion" id="faqAccordion">
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
@@ -864,7 +864,7 @@ async function mostrarModalSuscripcion() {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="button" class="btn btn-ig-outline" onclick="verMisSolicitudesPago()">
-                            <i class="hugeicons hugeicons-history me-2"></i> Ver Mis Solicitudes
+                            <i class="fa-solid fa-clock-rotate-left me-2"></i> Ver Mis Solicitudes
                         </button>
                     </div>
                 </div>
@@ -913,7 +913,7 @@ function mostrarAlertaAuth(titulo, mensaje, tipo = 'info') {
     alerta.className = `alert-ig ${tipos[tipo]} fade-in`;
     alerta.innerHTML = `
         <div class="d-flex align-items-center">
-            <i class="hugeicons ${tipo === 'success' ? 'hugeicons-check-circle' : tipo === 'error' ? 'hugeicons-exclamation-circle' : tipo === 'warning' ? 'hugeicons-exclamation-triangle' : 'hugeicons-info-circle'} hugeicons-lg me-3"></i>
+            <i class="fa-solid ${tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-circle-exclamation' : tipo === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-info'} fa-lg me-3"></i>
             <div class="flex-grow-1">
                 <h6 class="mb-1 fw-bold">${titulo}</h6>
                 <small>${mensaje}</small>
@@ -1037,7 +1037,7 @@ async function verMiPerfil() {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="hugeicons hugeicons-user me-2"></i>Mi Perfil
+                            <i class="fa-solid fa-user me-2"></i>Mi Perfil
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -1104,7 +1104,7 @@ async function verMiPerfil() {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-ig" onclick="guardarPerfil()">
-                            <i class="hugeicons hugeicons-save me-2"></i> Guardar Cambios
+                            <i class="fa-solid fa-floppy-disk me-2"></i> Guardar Cambios
                         </button>
                     </div>
                 </div>
