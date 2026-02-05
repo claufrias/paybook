@@ -4,6 +4,75 @@
 let currentUser = null;
 let userSubscription = null;
 const AVATAR_OPCIONES = ['😎', '😊', '🧑', '👩‍💼', '🧔', '👩‍🎨', '🤓', '🚀', '🍳', '🧑‍', '🦊', '🐼', '🐸','🧙‍♂️', '🧙‍♀️', '🐲', '🧛','🧟', '🧝‍♂️', '🦄','⚔️','🕹️','👾','🛸', '🤖',];
+let planesPublicos = null;
+
+function buildFallbackPlanesConfig() {
+    return {
+        lite: {
+            nombre: 'Lite',
+            precio: 10000,
+            features: [
+                { text: 'Hasta 15 cajeros', included: true },
+                { text: 'Cargas ilimitadas', included: true },
+                { text: 'Reportes básicos', included: true },
+                { text: 'WhatsApp API', included: false },
+                { text: 'Reportes avanzados', included: false }
+            ]
+        },
+        pro: {
+            nombre: 'Pro',
+            precio: 20000,
+            features: [
+                { text: 'Cajeros ilimitados', included: true },
+                { text: 'Cargas ilimitadas', included: true },
+                { text: 'Reportes avanzados', included: true },
+                { text: 'WhatsApp API', included: true },
+                { text: 'Soporte prioritario', included: true }
+            ]
+        }
+    };
+}
+
+async function obtenerPlanesPublicos(forceRefresh = false) {
+    if (planesPublicos && !forceRefresh) return planesPublicos;
+    try {
+        const response = await fetch('/api/planes');
+        const data = await response.json();
+        if (data.success) {
+            planesPublicos = data.data;
+            return planesPublicos;
+        }
+    } catch (error) {
+        console.error('Error cargando planes:', error);
+    }
+    planesPublicos = buildFallbackPlanesConfig();
+    return planesPublicos;
+}
+
+function formatPrice(value) {
+    const parsed = parseFloat(value);
+    if (!Number.isFinite(parsed)) return value;
+    return parsed.toFixed(2);
+}
+
+function renderPlanFeatures(features) {
+    return (features || []).map(feature => {
+        const iconClass = feature.included ? 'fa-check text-success' : 'fa-times text-danger';
+        return `<li><i class="fas ${iconClass} me-2"></i> ${feature.text}</li>`;
+    }).join('');
+}
+
+function getPlanLabel(plan) {
+    if (!plan) return '';
+    if (plan === 'basic') return 'Lite';
+    if (plan === 'premium') return 'Pro';
+    if (plan === 'trial') return 'Prueba';
+    if (plan === 'expired') return 'Expirado';
+    if (plan === 'admin') return 'Admin';
+    return plan.toUpperCase();
+}
+
+window.obtenerPlanesPublicos = obtenerPlanesPublicos;
 
 // ========== FUNCIONES DE AUTENTICACIÓN ==========
 
@@ -308,7 +377,7 @@ function actualizarUIUsuario(user) {
     
     userPlanElements.forEach(el => {
         if (el && user.plan) {
-            el.textContent = `Plan: ${user.plan.toUpperCase()}`;
+            el.textContent = `Plan: ${getPlanLabel(user.plan)}`;
         }
     });
 
@@ -376,7 +445,7 @@ function actualizarEstadoSuscripcionUI(user) {
         buttonText = 'Panel Admin';
         buttonClass = 'btn btn-warning';
     } else {
-        planText = `Plan: ${user.plan.toUpperCase()}`;
+        planText = `Plan: ${getPlanLabel(user.plan)}`;
         if (user.expiracion) {
             const expDate = new Date(user.expiracion);
             expirationText = `Expira: ${expDate.toLocaleDateString()}`;
@@ -392,7 +461,7 @@ function actualizarEstadoSuscripcionUI(user) {
     // Actualizar footer
     const footerPlan = document.getElementById('footerPlan');
     if (footerPlan) {
-        footerPlan.textContent = user.plan.toUpperCase();
+        footerPlan.textContent = getPlanLabel(user.plan);
     }
 }
 
@@ -617,8 +686,8 @@ function mostrarModalMisSolicitudes(solicitudes) {
             html += `
                 <tr>
                     <td><code>${s.codigo}</code></td>
-                    <td>$${s.monto}</td>
-                    <td>${s.plan}</td>
+                    <td>$${formatPrice(s.monto)}</td>
+                    <td>${getPlanLabel(s.plan)}</td>
                     <td>${estadoBadge}</td>
                     <td>${new Date(s.fecha_solicitud).toLocaleDateString()}</td>
                     <td>${s.fecha_verificacion ? new Date(s.fecha_verificacion).toLocaleDateString() : '--'}</td>
@@ -662,7 +731,7 @@ function verMisSuscripciones() {
     mostrarModalSuscripcion();
 }
 
-function mostrarModalSuscripcion() {
+async function mostrarModalSuscripcion() {
     const userData = localStorage.getItem('redcajeros_user');
     let currentPlan = '';
     if (userData) {
@@ -673,13 +742,18 @@ function mostrarModalSuscripcion() {
         }
     }
 
+    const planes = await obtenerPlanesPublicos(true);
+    const litePlan = planes.lite || buildFallbackPlanesConfig().lite;
+    const proPlan = planes.pro || buildFallbackPlanesConfig().pro;
+
     const showUpgradeOnly = currentPlan === 'basic';
+    const diferencia = Math.max(parseFloat(proPlan.precio) - parseFloat(litePlan.precio), 0);
     const premiumLabel = showUpgradeOnly
-        ? 'Actualizar a Premium (solo diferencia)'
-        : 'Seleccionar Premium';
-    const premiumPrice = showUpgradeOnly ? '$10000' : '$20000';
+        ? `Actualizar a ${proPlan.nombre} (solo diferencia)`
+        : `Seleccionar ${proPlan.nombre}`;
+    const premiumPrice = showUpgradeOnly ? `$${formatPrice(diferencia)}` : `$${formatPrice(proPlan.precio)}`;
     const upgradeNote = showUpgradeOnly
-        ? '<small class="text-info d-block mt-2">Pagas solo la diferencia: $10000</small>'
+        ? `<small class="text-info d-block mt-2">Pagas solo la diferencia: $${formatPrice(diferencia)}</small>`
         : '';
 
     const modalHtml = `
@@ -698,19 +772,18 @@ function mostrarModalSuscripcion() {
                             <div class="col-md-6 mb-3">
                                 <div class="plan-card">
                                     <div class="plan-header bg-primary">
-                                        <h4 class="mb-0">Básico</h4>
-                                        <div class="plan-price">$10000<span class="plan-period">/mes</span></div>
+                                        <div class="plan-icon mb-2">
+                                            <i class="fas fa-leaf fa-lg"></i>
+                                        </div>
+                                        <h4 class="mb-0">${litePlan.nombre}</h4>
+                                        <div class="plan-price">$${formatPrice(litePlan.precio)}<span class="plan-period">/mes</span></div>
                                     </div>
                                     <div class="plan-body">
                                         <ul class="plan-features">
-                                            <li><i class="fas fa-check text-success me-2"></i> Hasta 15 cajeros</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> Cargas ilimitadas</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> Reportes PDF</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> Historial completo</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> Soporte por email</li>
+                                            ${renderPlanFeatures(litePlan.features)}
                                         </ul>
                                         <button class="btn btn-ig w-100 mt-3" onclick="solicitarPagoManual('basic')">
-                                            <i class="fas fa-shopping-cart me-2"></i> Seleccionar Plan
+                                            <i class="fas fa-shopping-cart me-2"></i> Seleccionar ${litePlan.nombre}
                                         </button>
                                     </div>
                                 </div>
@@ -719,18 +792,16 @@ function mostrarModalSuscripcion() {
                             <div class="col-md-6 mb-3">
                                 <div class="plan-card">
                                     <div class="plan-header bg-gradient">
-                                        <h4 class="mb-0">Premium</h4>
+                                        <div class="plan-icon mb-2">
+                                            <i class="fas fa-rocket fa-lg"></i>
+                                        </div>
+                                        <h4 class="mb-0">${proPlan.nombre}</h4>
                                         <div class="plan-price">${premiumPrice}<span class="plan-period">/mes</span></div>
                                         <span class="plan-badge">Recomendado</span>
                                     </div>
                                     <div class="plan-body">
                                         <ul class="plan-features">
-                                            <li><i class="fas fa-check text-success me-2"></i> Cajeros ilimitados</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> Reportes avanzados</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> WhatsApp automático</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> API de integración</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> Soporte prioritario</li>
-                                            <li><i class="fas fa-check text-success me-2"></i> Backup automático</li>
+                                            ${renderPlanFeatures(proPlan.features)}
                                         </ul>
                                         ${upgradeNote}
                                         <button class="btn btn-gradient w-100 mt-3" onclick="solicitarPagoManual('premium')">
@@ -898,7 +969,7 @@ function actualizarPerfilModal(user) {
     if (avatarDisplay) avatarDisplay.textContent = user.avatar || AVATAR_OPCIONES[0];
     if (nombre) nombre.textContent = user.nombre || 'Usuario';
     if (email) email.textContent = user.email || '';
-    if (plan) plan.textContent = user.plan ? user.plan.toUpperCase() : '--';
+    if (plan) plan.textContent = user.plan ? getPlanLabel(user.plan) : '--';
     if (expiracion) {
         if (planNormalizado === 'free') {
             expiracion.textContent = `${diasRestantes} día(s)`;
@@ -968,7 +1039,7 @@ async function verMiPerfil() {
                                 <div class="row">
                                     <div class="col-6">
                                         <small class="text-muted d-block">Plan</small>
-                                        <strong class="d-block" data-profile="plan">${user.plan ? user.plan.toUpperCase() : '--'}</strong>
+                                        <strong class="d-block" data-profile="plan">${user.plan ? getPlanLabel(user.plan) : '--'}</strong>
                                     </div>
                                     <div class="col-6">
                                         <small class="text-muted d-block" data-profile-label="expiracion">
