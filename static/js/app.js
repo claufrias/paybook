@@ -64,8 +64,8 @@ function formatPrice(value) {
 
 function renderPlanFeatures(features) {
     return (features || []).map(feature => {
-        const iconClass = feature.included ? 'hugeicons-check text-success' : 'hugeicons-times text-danger';
-        return `<li><i class="hugeicons ${iconClass} me-2"></i>${feature.text}</li>`;
+        const iconClass = feature.included ? 'fa-check text-success' : 'fa-times text-danger';
+        return `<li><i class="fas ${iconClass} me-2"></i>${feature.text}</li>`;
     }).join('');
 }
 

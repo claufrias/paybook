@@ -57,8 +57,8 @@ function formatPrice(value) {
 
 function renderPlanFeatures(features) {
     return (features || []).map(feature => {
-        const iconClass = feature.included ? 'hugeicons-check text-success' : 'hugeicons-times text-danger';
-        return `<li><i class="hugeicons ${iconClass} me-2"></i> ${feature.text}</li>`;
+        const iconClass = feature.included ? 'fa-check text-success' : 'fa-times text-danger';
+        return `<li><i class="fas ${iconClass} me-2"></i> ${feature.text}</li>`;
     }).join('');
 }
 
@@ -756,7 +756,7 @@ async function mostrarModalSuscripcion() {
         ? `<small class="text-info d-block mt-2">Pagas solo la diferencia: $${formatPrice(diferencia)}</small>`
         : '';
 
-    const excluirTexto = ['whatsapp api', 'reportes avanzados'];
+    const excluirTexto = ['whatsapp api', 'reportes avanzados', 'reportes básicos', 'soporte prioritario'];
     const filtrarFeatures = (features) => (features || []).filter(feature => {
         const texto = (feature.text || '').toLowerCase();
         return !excluirTexto.some(excluir => texto.includes(excluir));
@@ -781,20 +781,22 @@ async function mostrarModalSuscripcion() {
                                 <div class="plan-card h-100 border border-light border-opacity-10 shadow-sm">
                                     <div class="plan-header bg-primary text-center py-3">
                                         <div class="plan-icon mb-2 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 48px; height: 48px;">
-                                            <i class="hugeicons hugeicons-leaf hugeicons-lg"></i>
+                                            <i class="fas fa-leaf fa-lg"></i>
                                         </div>
                                         <h4 class="mb-0">${litePlan.nombre}</h4>
                                         <small class="text-white-50">Ideal para empezar</small>
                                         <div class="plan-price">$${formatPrice(litePlan.precio)}<span class="plan-period">/mes</span></div>
                                     </div>
-                                    <div class="plan-body pt-3">
-                                        <ul class="plan-features">
+                                    <div class="plan-body pt-3 d-flex flex-column">
+                                        <ul class="plan-features mb-3" style="min-height: 180px;">
                                             ${renderPlanFeatures(liteFeatures)}
                                         </ul>
-                                        <button class="btn btn-ig w-100 mt-3 d-flex align-items-center justify-content-center gap-2" onclick="solicitarPagoManual('basic')">
-                                            <i class="hugeicons hugeicons-check-circle"></i>
-                                            <span>Seleccionar ${litePlan.nombre}</span>
-                                        </button>
+                                        <div class="pt-2">
+                                            <button class="btn btn-ig w-100 d-flex align-items-center justify-content-center gap-2" onclick="solicitarPagoManual('basic')">
+                                                <i class="fas fa-check-circle"></i>
+                                                <span>Seleccionar ${litePlan.nombre}</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -803,22 +805,24 @@ async function mostrarModalSuscripcion() {
                                 <div class="plan-card h-100 border border-light border-opacity-10 shadow-sm">
                                     <div class="plan-header bg-gradient text-center py-3">
                                         <div class="plan-icon mb-2 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 48px; height: 48px;">
-                                            <i class="hugeicons hugeicons-rocket hugeicons-lg"></i>
+                                            <i class="fas fa-rocket fa-lg"></i>
                                         </div>
                                         <h4 class="mb-0">${proPlan.nombre}</h4>
                                         <small class="text-white-50">Más crecimiento y soporte</small>
                                         <div class="plan-price">${premiumPrice}<span class="plan-period">/mes</span></div>
                                         <span class="plan-badge">Recomendado</span>
                                     </div>
-                                    <div class="plan-body pt-3">
-                                        <ul class="plan-features">
+                                    <div class="plan-body pt-3 d-flex flex-column">
+                                        <ul class="plan-features mb-3" style="min-height: 180px;">
                                             ${renderPlanFeatures(proFeatures)}
                                         </ul>
-                                        ${upgradeNote}
-                                        <button class="btn btn-gradient w-100 mt-3 d-flex align-items-center justify-content-center gap-2" onclick="solicitarPagoManual('premium')">
-                                            <i class="hugeicons hugeicons-star"></i>
-                                            <span>${premiumLabel}</span>
-                                        </button>
+                                        <div class="pt-2">
+                                            ${upgradeNote}
+                                            <button class="btn btn-ig w-100 d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, #f7d774, #e9b949); color: #1b1b1b; border: none;" onclick="solicitarPagoManual('premium')">
+                                                <i class="fas fa-star"></i>
+                                                <span>${premiumLabel}</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
