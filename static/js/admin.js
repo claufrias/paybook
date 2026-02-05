@@ -185,7 +185,7 @@ function actualizarTablaPagosPendientes(pagos) {
             <tr>
                 <td colspan="7" class="text-center text-muted py-5">
                     <div class="mb-3">
-                        <i class="fas fa-check-circle fa-2x text-success"></i>
+                        <i class="hugeicons hugeicons-check-circle hugeicons-2x text-success"></i>
                     </div>
                     <h6>¡Todo al día!</h6>
                     <small class="text-muted">No hay pagos pendientes por verificar</small>
@@ -234,20 +234,20 @@ function actualizarTablaPagosPendientes(pagos) {
                 <td>
                     ${pago.usuario_telefono ? `
                         <a href="${whatsappUrl}" target="_blank" class="btn btn-sm btn-success">
-                            <i class="fab fa-whatsapp"></i> Contactar
+                            <i class="hugeicons hugeicons-whatsapp"></i> Contactar
                         </a>
                     ` : '<span class="text-muted">Sin teléfono</span>'}
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-success" onclick="verificarPagoAdmin('${pago.codigo}')" title="Verificar pago">
-                            <i class="fas fa-check"></i> Verificar
+                            <i class="hugeicons hugeicons-check"></i> Verificar
                         </button>
                         <button class="btn btn-danger" onclick="rechazarPagoAdmin('${pago.codigo}')" title="Rechazar pago">
-                            <i class="fas fa-times"></i>
+                            <i class="hugeicons hugeicons-times"></i>
                         </button>
                         <button class="btn btn-info" onclick="verDetallesPago('${pago.codigo}')" title="Ver detalles">
-                            <i class="fas fa-eye"></i>
+                            <i class="hugeicons hugeicons-eye"></i>
                         </button>
                     </div>
                 </td>
@@ -333,7 +333,7 @@ function verDetallesPago(codigo) {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-search me-2"></i>Detalles del Pago
+                            <i class="hugeicons hugeicons-search me-2"></i>Detalles del Pago
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -375,7 +375,7 @@ function verDetallesPago(codigo) {
                         </div>
                         
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
+                            <i class="hugeicons hugeicons-info-circle me-2"></i>
                             <strong>Instrucciones:</strong>
                             <ol class="mt-2 mb-0">
                                 <li>Verifica que recibiste la transferencia</li>
@@ -389,11 +389,11 @@ function verDetallesPago(codigo) {
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         ${pago.usuario_telefono ? `
                             <a href="https://wa.me/${pago.usuario_telefono}" target="_blank" class="btn btn-success">
-                                <i class="fab fa-whatsapp me-2"></i> Contactar
+                                <i class="hugeicons hugeicons-whatsapp me-2"></i> Contactar
                             </a>
                         ` : ''}
                         <button type="button" class="btn btn-ig" onclick="verificarPagoAdmin('${pago.codigo}')">
-                            <i class="fas fa-check me-2"></i> Verificar Pago
+                            <i class="hugeicons hugeicons-check me-2"></i> Verificar Pago
                         </button>
                     </div>
                 </div>
@@ -449,7 +449,7 @@ function actualizarTablaUsuarios(usuarios) {
             <tr>
                 <td colspan="8" class="text-center text-muted py-5">
                     <div class="mb-3">
-                        <i class="fas fa-users fa-2x text-muted"></i>
+                        <i class="hugeicons hugeicons-users hugeicons-2x text-muted"></i>
                     </div>
                     <h6>No hay usuarios registrados</h6>
                 </td>
@@ -511,15 +511,15 @@ function actualizarTablaUsuarios(usuarios) {
                 <td>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-primary" onclick="editarUsuario(${usuario.id})" title="Editar">
-                            <i class="fas fa-edit"></i>
+                            <i class="hugeicons hugeicons-edit"></i>
                         </button>
                         <button class="btn btn-outline-${usuario.activo ? 'warning' : 'success'}" 
                                 onclick="${usuario.activo ? 'desactivarUsuario' : 'activarUsuario'}(${usuario.id})"
                                 title="${usuario.activo ? 'Desactivar' : 'Activar'}">
-                            <i class="fas fa-${usuario.activo ? 'user-slash' : 'user-check'}"></i>
+                            <i class="hugeicons hugeicons-${usuario.activo ? 'user-slash' : 'user-check'}"></i>
                         </button>
                         <button class="btn btn-outline-info" onclick="verUsuario(${usuario.id})" title="Ver detalles">
-                            <i class="fas fa-eye"></i>
+                            <i class="hugeicons hugeicons-eye"></i>
                         </button>
                     </div>
                 </td>
@@ -588,7 +588,7 @@ async function verUsuario(id) {
                     <div class="modal-content ig-card">
                         <div class="modal-header ig-card-header">
                             <h5 class="modal-title gradient-text">
-                                <i class="fas fa-user me-2"></i>Detalles del Usuario
+                                <i class="hugeicons hugeicons-user me-2"></i>Detalles del Usuario
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
@@ -596,7 +596,7 @@ async function verUsuario(id) {
                             <div class="row">
                                 <div class="col-md-3 text-center mb-3">
                                     <div class="story-circle mx-auto mb-2" style="width: 80px; height: 80px;">
-                                        <i class="fas fa-user fa-2x"></i>
+                                        <i class="hugeicons hugeicons-user hugeicons-2x"></i>
                                     </div>
                                     <div class="fw-bold">${usuario.nombre || 'Usuario'}</div>
                                     <div class="text-muted small">ID: ${usuario.id}</div>
@@ -641,11 +641,11 @@ async function verUsuario(id) {
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                             <button type="button" class="btn btn-ig" onclick="editarUsuario(${usuario.id})">
-                                <i class="fas fa-edit me-2"></i> Editar Usuario
+                                <i class="hugeicons hugeicons-edit me-2"></i> Editar Usuario
                             </button>
                             <button type="button" class="btn btn-${usuario.activo ? 'warning' : 'success'}" 
                                     onclick="${usuario.activo ? 'desactivarUsuario' : 'activarUsuario'}(${usuario.id})">
-                                <i class="fas fa-${usuario.activo ? 'ban' : 'check'} me-2"></i>
+                                <i class="hugeicons hugeicons-${usuario.activo ? 'ban' : 'check'} me-2"></i>
                                 ${usuario.activo ? 'Desactivar' : 'Activar'}
                             </button>
                         </div>
@@ -686,7 +686,7 @@ async function editarUsuario(id) {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-edit me-2"></i>Editar Usuario
+                            <i class="hugeicons hugeicons-edit me-2"></i>Editar Usuario
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -745,7 +745,7 @@ async function editarUsuario(id) {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-ig" onclick="guardarUsuario(${usuario.id})">
-                            <i class="fas fa-save me-2"></i> Guardar Cambios
+                            <i class="hugeicons hugeicons-save me-2"></i> Guardar Cambios
                         </button>
                     </div>
                 </div>
@@ -995,7 +995,7 @@ function mostrarAlertaAdmin(titulo, mensaje, tipo = 'info') {
     alerta.className = `alert-ig ${tipos[tipo]} fade-in`;
     alerta.innerHTML = `
         <div class="d-flex align-items-center">
-            <i class="fas ${tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-exclamation-circle' : tipo === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'} fa-lg me-3"></i>
+            <i class="hugeicons ${tipo === 'success' ? 'hugeicons-check-circle' : tipo === 'error' ? 'hugeicons-exclamation-circle' : tipo === 'warning' ? 'hugeicons-exclamation-triangle' : 'hugeicons-info-circle'} hugeicons-lg me-3"></i>
             <div class="flex-grow-1">
                 <h6 class="mb-1 fw-bold">${titulo}</h6>
                 <small>${mensaje}</small>
@@ -1154,10 +1154,10 @@ function actualizarTablaBackups(backups) {
                 <td>
                     <div class="btn-group btn-group-sm">
                         <a class="btn btn-outline-info" href="${downloadUrl}" target="_blank">
-                            <i class="fas fa-download"></i>
+                            <i class="hugeicons hugeicons-download"></i>
                         </a>
                         <button class="btn btn-outline-warning" onclick="confirmarRestauracionBackup('${backup.filename}')">
-                            <i class="fas fa-undo"></i>
+                            <i class="hugeicons hugeicons-undo"></i>
                         </button>
                     </div>
                 </td>
@@ -1184,7 +1184,7 @@ function mostrarModalRestaurarBackup(backups) {
                 <div class="modal-content ig-card">
                     <div class="modal-header ig-card-header">
                         <h5 class="modal-title gradient-text">
-                            <i class="fas fa-upload me-2"></i>Restaurar Backup
+                            <i class="hugeicons hugeicons-upload me-2"></i>Restaurar Backup
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
@@ -1197,14 +1197,14 @@ function mostrarModalRestaurarBackup(backups) {
                             </select>
                         </div>
                         <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <i class="hugeicons hugeicons-exclamation-triangle me-2"></i>
                             Esta acción sobrescribirá la base de datos actual.
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-danger" onclick="ejecutarRestauracionSeleccionada()">
-                            <i class="fas fa-undo me-2"></i> Restaurar
+                            <i class="hugeicons hugeicons-undo me-2"></i> Restaurar
                         </button>
                     </div>
                 </div>
