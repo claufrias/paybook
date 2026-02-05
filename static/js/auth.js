@@ -756,6 +756,14 @@ async function mostrarModalSuscripcion() {
         ? `<small class="text-info d-block mt-2">Pagas solo la diferencia: $${formatPrice(diferencia)}</small>`
         : '';
 
+    const excluirTexto = ['whatsapp api', 'reportes avanzados'];
+    const filtrarFeatures = (features) => (features || []).filter(feature => {
+        const texto = (feature.text || '').toLowerCase();
+        return !excluirTexto.some(excluir => texto.includes(excluir));
+    });
+    const liteFeatures = filtrarFeatures(litePlan.features);
+    const proFeatures = filtrarFeatures(proPlan.features);
+
     const modalHtml = `
         <div class="modal fade" id="modalSuscripcion" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -770,17 +778,18 @@ async function mostrarModalSuscripcion() {
                         <div class="row">
                             ${showUpgradeOnly ? '' : `
                             <div class="col-md-6 mb-3">
-                                <div class="plan-card">
-                                    <div class="plan-header bg-primary">
-                                        <div class="plan-icon mb-2">
+                                <div class="plan-card h-100 border border-light border-opacity-10 shadow-sm">
+                                    <div class="plan-header bg-primary text-center py-3">
+                                        <div class="plan-icon mb-2 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 48px; height: 48px;">
                                             <i class="fas fa-leaf fa-lg"></i>
                                         </div>
                                         <h4 class="mb-0">${litePlan.nombre}</h4>
+                                        <small class="text-white-50">Ideal para empezar</small>
                                         <div class="plan-price">$${formatPrice(litePlan.precio)}<span class="plan-period">/mes</span></div>
                                     </div>
-                                    <div class="plan-body">
+                                    <div class="plan-body pt-3">
                                         <ul class="plan-features">
-                                            ${renderPlanFeatures(litePlan.features)}
+                                            ${renderPlanFeatures(liteFeatures)}
                                         </ul>
                                         <button class="btn btn-ig w-100 mt-3" onclick="solicitarPagoManual('basic')">
                                             <i class="fas fa-shopping-cart me-2"></i> Seleccionar ${litePlan.nombre}
@@ -790,18 +799,19 @@ async function mostrarModalSuscripcion() {
                             </div>
                             `}
                             <div class="col-md-6 mb-3">
-                                <div class="plan-card">
-                                    <div class="plan-header bg-gradient">
-                                        <div class="plan-icon mb-2">
+                                <div class="plan-card h-100 border border-light border-opacity-10 shadow-sm">
+                                    <div class="plan-header bg-gradient text-center py-3">
+                                        <div class="plan-icon mb-2 d-inline-flex align-items-center justify-content-center rounded-circle bg-dark bg-opacity-25" style="width: 48px; height: 48px;">
                                             <i class="fas fa-rocket fa-lg"></i>
                                         </div>
                                         <h4 class="mb-0">${proPlan.nombre}</h4>
+                                        <small class="text-white-50">Más crecimiento y soporte</small>
                                         <div class="plan-price">${premiumPrice}<span class="plan-period">/mes</span></div>
                                         <span class="plan-badge">Recomendado</span>
                                     </div>
-                                    <div class="plan-body">
+                                    <div class="plan-body pt-3">
                                         <ul class="plan-features">
-                                            ${renderPlanFeatures(proPlan.features)}
+                                            ${renderPlanFeatures(proFeatures)}
                                         </ul>
                                         ${upgradeNote}
                                         <button class="btn btn-gradient w-100 mt-3" onclick="solicitarPagoManual('premium')">
