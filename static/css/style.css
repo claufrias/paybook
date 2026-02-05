@@ -17,6 +17,40 @@
     --glow: 0 10px 30px rgba(9, 17, 36, 0.55);
 }
 
+/* Hugeicons helpers */
+.hugeicons {
+    display: inline-block;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.hugeicons-lg {
+    font-size: 1.333333em;
+    line-height: 0.75em;
+    vertical-align: -0.0667em;
+}
+
+.hugeicons-2x {
+    font-size: 2em;
+}
+
+.hugeicons-3x {
+    font-size: 3em;
+}
+
+.hugeicons-spin {
+    animation: hugeicons-spin 1s infinite linear;
+}
+
+@keyframes hugeicons-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 /* Estilos básicos */
 body {
     background:
